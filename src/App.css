@@ -33,7 +33,7 @@
 
 a {
   font-weight: 500;
-  color: var(--accent-color);
+  color: var(--accent-text);
   text-decoration: inherit;
 }
 
@@ -74,7 +74,7 @@ button {
 
 .custom-markdown-content h1 {
   font-size: 2.2em;
-  color: var(--accent-color);
+  color: var(--accent-text);
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.3em;
 }
@@ -130,6 +130,6 @@ button {
 }
 
 .custom-markdown-content strong {
-  color: var(--accent-color);
+  color: var(--accent-text);
   font-weight: 700;
 }

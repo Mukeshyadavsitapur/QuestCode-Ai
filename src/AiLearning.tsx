@@ -94,7 +94,7 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onA
                 textAlign: "center",
                 color: "var(--text-muted)"
             }}>
-                <Sparkles size={64} style={{ color: "var(--accent-color)", opacity: 0.5, marginBottom: "24px" }} />
+                <Sparkles size={64} style={{ color: "var(--accent-text)", opacity: 0.5, marginBottom: "24px" }} />
                 <h2 style={{ fontSize: "1.5rem", marginBottom: "16px", color: "var(--text-main)" }}>Select a Topic to Start Learning</h2>
                 <p style={{ maxWidth: "400px", lineHeight: "1.6" }}>
                     Open the sidebar <span style={{ padding: "2px 6px", background: "var(--border-color)", borderRadius: "4px", fontSize: "0.85rem" }}>Top Left</span> to browse the curriculum and select a topic.
@@ -116,7 +116,7 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onA
                 alignItems: "center",
                 gap: "12px"
             }}>
-                <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "700", color: "var(--accent-color)", flex: 1 }}>
+                <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "700", color: "var(--accent-text)", flex: 1 }}>
                     {topic.id} {topic.title}
                 </h2>
                 <button
@@ -134,7 +134,7 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onA
             <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px" }} className="custom-markdown-content">
                 {isLoading ? (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", minHeight: "300px" }}>
-                        <Loader2 className="animate-spin" size={48} style={{ marginBottom: "24px", color: "var(--accent-color)" }} />
+                        <Loader2 className="animate-spin" size={48} style={{ marginBottom: "24px", color: "var(--accent-text)" }} />
                         <p style={{ fontSize: "1.2rem", fontWeight: "500" }}>Creating your guide...</p>
                         <p style={{ opacity: 0.7 }}>Writing custom examples for <strong>{topic.title}</strong>.</p>
                     </div>
@@ -159,7 +159,7 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onA
                                         return (
                                             <code className={className} {...props} style={{
                                                 background: "rgba(88, 166, 255, 0.1)",
-                                                color: "var(--accent-color)",
+                                                color: "var(--accent-text)",
                                                 padding: "2px 5px",
                                                 borderRadius: "4px",
                                                 fontSize: "0.9em",
@@ -203,7 +203,7 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onA
                                                         onClick={() => {
                                                             onApplyCode(codeText);
                                                         }}
-                                                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                                                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-text)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
                                                         title="Replace Editor Content"
                                                         className="code-action-btn"
                                                     >

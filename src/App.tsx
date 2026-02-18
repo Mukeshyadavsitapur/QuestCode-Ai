@@ -134,7 +134,7 @@ function App() {
     // Apply theme variables
     const root = document.documentElement;
     root.style.setProperty("--bg-color", selectedTheme.bg);
-    root.style.setProperty("--panel-bg", selectedTheme.bg);
+    root.style.setProperty("--panel-bg", selectedTheme.uiBg);
     root.style.setProperty("--border-color", selectedTheme.border);
     root.style.setProperty("--text-main", selectedTheme.text);
     root.style.setProperty("--text-muted", selectedTheme.secondary);
@@ -143,6 +143,7 @@ function App() {
     root.style.setProperty("--code-bg", selectedTheme.bg);
     root.style.setProperty("--highlight", selectedTheme.highlight);
     root.style.setProperty("--text-highlight", selectedTheme.activeWord);
+    root.style.setProperty("--accent-text", selectedTheme.primaryText);
 
     const isDark =
       selectedTheme.bg.startsWith("#0") ||
@@ -407,7 +408,7 @@ function App() {
     <div className="app-container">
       <header className="header">
         <div className="logo">
-          <Brain color="var(--accent-color)" />
+          <Brain color="var(--accent-text)" />
           <span>QuestCode AI</span>
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>

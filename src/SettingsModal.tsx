@@ -139,7 +139,7 @@ export function SettingsModal({
                                 href="https://aistudio.google.com/app/apikey"
                                 target="_blank"
                                 rel="noreferrer"
-                                style={{ color: 'var(--accent-color)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
+                                style={{ color: 'var(--accent-text)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
                             >
                                 Get a Gemini API Key mapped →
                             </a>

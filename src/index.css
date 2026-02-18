@@ -60,7 +60,7 @@ body {
 .logo {
     font-weight: 700;
     font-size: 1.2rem;
-    color: var(--accent-color);
+    color: var(--accent-text);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -111,7 +111,7 @@ body {
 .description-container h1,
 .description-container h2 {
     margin-bottom: 1rem;
-    color: var(--accent-color);
+    color: var(--accent-text);
 }
 
 .description-container p {
@@ -128,7 +128,7 @@ body {
 
 .description-container strong,
 .description-container b {
-    color: var(--accent-color);
+    color: var(--accent-text);
     font-weight: 700;
 }
 
@@ -143,7 +143,7 @@ body {
 }
 
 .description-container li::marker {
-    color: var(--accent-color);
+    color: var(--accent-text);
     font-weight: bold;
 }
 
@@ -434,7 +434,7 @@ body {
 
 .theme-btn.active {
     background: var(--panel-bg);
-    color: var(--accent-color);
+    color: var(--accent-text);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
@@ -508,7 +508,7 @@ body.light-theme .ai-input {
 
 .tab-btn.active {
     background: var(--bg-color);
-    color: var(--accent-color);
+    color: var(--accent-text);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -584,7 +584,7 @@ body.light-theme .tab-btn:hover {
 
 .history-item.active {
     background: var(--bg-color);
-    color: var(--accent-color);
+    color: var(--accent-text);
 }
 
 .history-title {
@@ -688,6 +688,6 @@ body.light-theme .history-item:hover {
 
 .dropdown-item.active {
     background: rgba(88, 166, 255, 0.1);
-    color: var(--accent-color);
+    color: var(--accent-text);
     font-weight: 600;
 }

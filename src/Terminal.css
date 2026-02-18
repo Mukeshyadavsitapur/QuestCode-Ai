@@ -1,0 +1,114 @@
+.terminal-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--code-bg);
+    /* Default terminal bg */
+    border-top: 1px solid var(--border-color);
+    font-family: var(--font-mono);
+}
+
+.terminal-header {
+    height: 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.terminal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.terminal-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.terminal-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.terminal-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-main);
+}
+
+.terminal-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.run-btn {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.run-btn:hover:not(:disabled) {
+    background: var(--accent-color);
+    color: white;
+}
+
+.terminal-output {
+    flex: 1;
+    padding: 16px;
+    overflow: auto;
+    color: #c9d1d9;
+    /* Standard terminal text */
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.terminal-output pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.terminal-running {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--accent-color);
+}
+
+.spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--accent-color);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Theme adaptation for terminal specifically if needed */
+body.light-theme .terminal-container {
+    background: var(--code-bg);
+}
+
+body.light-theme .terminal-output {
+    color: #24292f;
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
@@ -8,7 +8,7 @@ import {
 } from "react-resizable-panels";
 import Editor, { loader } from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
-import { Brain, Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2, X } from "lucide-react";
+import { Brain, Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2 } from "lucide-react";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
 import { themes } from "./themes";
@@ -75,10 +75,29 @@ function App() {
   const [theme, setTheme] = useState<string>(() =>
     localStorage.getItem("theme") || "day"
   );
+  const [activeModel, setActiveModel] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string | null>(() => {
+    return localStorage.getItem("selected_model");
+  });
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("apiKey", apiKey);
+    if (apiKey) {
+      invoke("get_available_models", { apiKey })
+        .then((m: any) => setAvailableModels(m))
+        .catch(console.error);
+    }
   }, [apiKey]);
+
+  useEffect(() => {
+    if (selectedModel) {
+      localStorage.setItem("selected_model", selectedModel);
+    } else {
+      localStorage.removeItem("selected_model");
+    }
+  }, [selectedModel]);
 
   useEffect(() => {
     localStorage.setItem("ai_chats", JSON.stringify(chats));
@@ -149,7 +168,7 @@ function App() {
     return firstLine.substring(0, 30) || "New Chat";
   };
 
-  const updateChatHistory = (newDescription: string) => {
+  const updateChatHistory = (newDescription: string, forcedTitle?: string) => {
     if (currentChatId) {
       setChats((prev) =>
         prev.map((chat) =>
@@ -157,7 +176,7 @@ function App() {
             ? {
               ...chat,
               description: newDescription,
-              title: chat.title === "New Chat" || chat.title === "Getting Started" ? extractTitle(newDescription) : chat.title,
+              title: forcedTitle || (chat.title === "New Chat" || chat.title === "Getting Started" ? extractTitle(newDescription) : chat.title),
             }
             : chat
         )
@@ -166,7 +185,7 @@ function App() {
       const newId = Date.now().toString();
       const newChat: ChatSession = {
         id: newId,
-        title: extractTitle(newDescription),
+        title: forcedTitle || extractTitle(newDescription),
         description: newDescription,
         timestamp: Date.now(),
       };
@@ -210,10 +229,20 @@ function App() {
     if (aiService === "web") return;
     setIsExplaining(true);
     setViewMode("ai");
+    console.log("Explaining code. Selection:", selectedModel);
     try {
-      const response: string = await invoke("explain_code", { apiKey, code, language });
-      setDescription(response);
-      updateChatHistory(response);
+      const response: { content: string; model: string } = await invoke("explain_code", {
+        req: {
+          api_key: apiKey,
+          code: code,
+          language: language,
+          selected_model: selectedModel
+        }
+      });
+      console.log("Response from:", response.model);
+      setDescription(response.content);
+      setActiveModel(response.model);
+      updateChatHistory(response.content);
     } catch (error) {
       console.error("Failed to explain code:", error);
       setDescription(`## Error\n\n${error}`);
@@ -228,14 +257,28 @@ function App() {
     const userQuestion = input;
     setInput("");
 
-    const newDescription = description + `\n\n--- \n\n**You asked:** ${userQuestion}\n\n*Thinking...*`;
+    const isFirstMessage = description === INITIAL_DESCRIPTION;
+    const cleanDescription = isFirstMessage ? "" : description;
+    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `**You asked:** ${userQuestion}\n\n*Thinking...*`;
     setDescription(newDescription);
 
+    console.log("Asking question. Selection:", selectedModel);
     try {
-      const response: string = await invoke("ask_question", { apiKey, code, question: userQuestion, language });
-      const finalDescription = newDescription.replace("*Thinking...*", response);
+      const response: { content: string; model: string } = await invoke("ask_question", {
+        req: {
+          api_key: apiKey,
+          code: code,
+          question: userQuestion,
+          language: language,
+          selected_model: selectedModel
+        }
+      });
+      console.log("Response from:", response.model);
+      const finalDescription = newDescription.replace("*Thinking...*", response.content);
       setDescription(finalDescription);
-      updateChatHistory(finalDescription);
+      setActiveModel(response.model);
+      // Use the question as title if it's the first message
+      updateChatHistory(finalDescription, isFirstMessage ? userQuestion.substring(0, 40) : undefined);
     } catch (error) {
       console.error("Failed to ask question:", error);
       setDescription((prev) => prev.replace("*Thinking...*", `\n\n**Error:** ${error}`));
@@ -260,10 +303,34 @@ function App() {
   const handleOpenGeminiWeb = async () => {
     try {
       await navigator.clipboard.writeText(code);
-      await openUrl("https://gemini.google.com/app");
+      const url = "https://gemini.google.com/app";
+      try {
+        await openUrl(url);
+      } catch (e) {
+        window.open(url, "_blank");
+      }
     } catch (error) {
       console.error("Failed to open Gemini Web:", error);
     }
+  };
+
+  const handleRunCodeRef = useRef(handleRunCode);
+  useEffect(() => {
+    handleRunCodeRef.current = handleRunCode;
+  }, [handleRunCode]);
+
+  const handleEditorMount = (editor: any, monaco: any) => {
+    console.log("Editor mounted, registering shortcuts");
+    // Ctrl + Enter to Run Code
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      console.log("Ctrl+Enter shortcut triggered");
+      handleRunCodeRef.current();
+    });
+
+    // Ctrl + S to (hypothetically) save or just prevent default
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      console.log("Save shortcut pressed - not implemented but captured");
+    });
   };
 
   return (
@@ -309,6 +376,7 @@ function App() {
         setApiKey={setApiKey}
         theme={theme}
         setTheme={setTheme}
+        onViewShortcuts={() => setViewMode("shortcuts")}
       />
 
       <main className="main-content">
@@ -331,9 +399,6 @@ function App() {
                   <button className={`tab-btn ${viewMode === "docs" ? "active" : ""}`} onClick={() => setViewMode("docs")}>
                     <Book size={14} /> {language === "rust" ? "Rust Docs" : "Python Docs"}
                   </button>
-                  <button className={`tab-btn ${viewMode === "shortcuts" ? "active" : ""}`} onClick={() => setViewMode("shortcuts")}>
-                    <TerminalIcon size={14} /> Shortcuts
-                  </button>
                 </div>
 
                 {viewMode === "ai" && (
@@ -352,6 +417,56 @@ function App() {
                     >
                       <Globe size={12} /> Gemini Web
                     </button>
+                    {aiService === "api" && (
+                      <div style={{ position: "relative" }}>
+                        <div
+                          className={`model-badge clickable ${selectedModel && activeModel && selectedModel !== activeModel ? "status-warning" : ""}`}
+                          title={selectedModel && activeModel && selectedModel !== activeModel
+                            ? `Selected ${selectedModel} failed (429/Error). Using ${activeModel}.`
+                            : "Click to Change Model"}
+                          onClick={() => setIsModelSelectOpen(!isModelSelectOpen)}
+                        >
+                          {selectedModel ? (
+                            <>
+                              <span style={{ opacity: 0.7 }}>Selected:</span> {selectedModel}
+                              {activeModel && activeModel !== selectedModel && (
+                                <span style={{ marginLeft: 8, fontStyle: "italic", borderLeft: "1px solid var(--border-color)", paddingLeft: 8 }}>
+                                  Active: {activeModel}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            activeModel || "Auto Select"
+                          )}
+                        </div>
+                        {isModelSelectOpen && (
+                          <div className="model-dropdown">
+                            <div className="dropdown-label">Select Model</div>
+                            <div
+                              className={`dropdown-item ${!selectedModel ? "active" : ""}`}
+                              onClick={() => {
+                                setSelectedModel(null);
+                                setIsModelSelectOpen(false);
+                              }}
+                            >
+                              Auto (2.5 → 2.0 → 1.5 → Pro 1.5)
+                            </div>
+                            {availableModels.map((m) => (
+                              <div
+                                key={m}
+                                className={`dropdown-item ${selectedModel === m ? "active" : ""}`}
+                                onClick={() => {
+                                  setSelectedModel(m);
+                                  setIsModelSelectOpen(false);
+                                }}
+                              >
+                                {m}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -485,6 +600,7 @@ function App() {
                       theme={theme}
                       value={code}
                       onChange={(value) => setCode(value || "")}
+                      onMount={handleEditorMount}
                       options={{
                         minimap: { enabled: isMinimapVisible },
                         fontSize: 14,

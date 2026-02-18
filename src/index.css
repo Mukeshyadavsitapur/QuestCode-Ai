@@ -582,3 +582,79 @@ body.light-theme .tab-btn:hover {
 body.light-theme .history-item:hover {
     background: rgba(0, 0, 0, 0.05);
 }
+
+.model-badge {
+    font-size: 0.65rem;
+    background: rgba(88, 166, 255, 0.1);
+    color: var(--accent-color);
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(88, 166, 255, 0.2);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    user-select: none;
+    display: flex;
+    align-items: center;
+}
+
+.model-badge.clickable {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.model-badge.clickable:hover {
+    background: rgba(88, 166, 255, 0.2);
+    border-color: var(--accent-color);
+}
+
+.model-badge.status-warning {
+    color: #ff9800;
+    background: rgba(255, 152, 0, 0.1);
+    border-color: rgba(255, 152, 0, 0.3);
+}
+
+.model-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    width: 280px;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.dropdown-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 4px 8px 8px;
+    text-transform: uppercase;
+}
+
+.dropdown-item {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    color: var(--text-main);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent-color);
+}
+
+.dropdown-item.active {
+    background: rgba(88, 166, 255, 0.1);
+    color: var(--accent-color);
+    font-weight: 600;
+}

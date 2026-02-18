@@ -9,6 +9,7 @@ interface SettingsModalProps {
     setApiKey: (key: string) => void;
     theme: string;
     setTheme: (theme: string) => void;
+    onViewShortcuts: () => void;
 }
 
 export function SettingsModal({
@@ -18,6 +19,7 @@ export function SettingsModal({
     setApiKey,
     theme,
     setTheme,
+    onViewShortcuts,
 }: SettingsModalProps) {
     const [localKey, setLocalKey] = useState(apiKey);
 
@@ -68,6 +70,23 @@ export function SettingsModal({
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="setting-group">
+                        <label className="setting-label">
+                            <Key size={18} />
+                            <span>Application Shortcuts</span>
+                        </label>
+                        <button
+                            className="btn btn-secondary"
+                            style={{ width: '100%', justifyContent: 'center' }}
+                            onClick={() => {
+                                onViewShortcuts();
+                                onClose();
+                            }}
+                        >
+                            View All Shortcuts
+                        </button>
                     </div>
 
                     <div className="setting-group">

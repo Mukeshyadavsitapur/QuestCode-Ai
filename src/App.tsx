@@ -8,11 +8,13 @@ import {
 } from "react-resizable-panels";
 import Editor, { loader } from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
-import { Brain, Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2 } from "lucide-react";
+import { Brain, Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2, ChevronRight, ChevronDown, ArrowLeft } from "lucide-react";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
 import { themes } from "./themes";
 import { Terminal } from "./Terminal"; // Import Terminal
+import { AiLearning } from "./AiLearning";
+import { TOPICS_RUST, TOPICS_PYTHON, Topic } from "./learningData";
 import "./App.css";
 
 const DEFAULT_RUST_CODE = `// Welcome to your AI Programming Tutor
@@ -57,8 +59,18 @@ function App() {
   });
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
-  // View Mode State (AI or Docs or Shortcuts)
-  const [viewMode, setViewMode] = useState<"ai" | "docs" | "shortcuts">("ai");
+  // View Mode State (AI or Docs or Shortcuts or Learning)
+  const [viewMode, setViewMode] = useState<"ai" | "docs" | "shortcuts" | "learning">("ai");
+
+  // Learning State
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  // Update default expanded groups when language changes
+  useEffect(() => {
+    const topics = language === "rust" ? TOPICS_RUST : TOPICS_PYTHON;
+    setExpandedGroups(new Set(topics.map(t => t.title)));
+  }, [language]);
 
   // AI Service Mode (API or Web)
   const [aiService, setAiService] = useState<"api" | "web">("api");
@@ -338,6 +350,22 @@ function App() {
     });
   };
 
+  // Learning Helpers
+  const toggleGroup = (groupTitle: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(groupTitle)) {
+      newExpanded.delete(groupTitle);
+    } else {
+      newExpanded.add(groupTitle);
+    }
+    setExpandedGroups(newExpanded);
+  };
+
+  const handleSelectTopic = (topic: Topic) => {
+    setSelectedTopic(topic);
+    setIsHistoryOpen(false); // Close sidebar on selection logic can be here
+  };
+
   return (
     <div className="app-container">
       <header className="header">
@@ -424,40 +452,120 @@ function App() {
                 )}
               </div>
 
-              {/* Chat History Sidebar */}
+              {/* Sidebar Overlay (Chat History OR Learning Topics) */}
               {isHistoryOpen && (
                 <div className="chat-history-sidebar">
-                  <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
-                      <Plus size={16} /> New Chat
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                      onClick={() => {
-                        setViewMode("docs");
-                        setIsHistoryOpen(false);
-                      }}
-                    >
-                      <Book size={16} /> {language === "rust" ? "Rust Docs" : "Python Docs"}
-                    </button>
-                  </div>
-                  <div className="sidebar-content">
-                    <div className="sidebar-label">Recent Chats</div>
-                    {chats.length === 0 ? (
-                      <div className="empty-history">No history yet</div>
-                    ) : (
-                      chats.map((chat) => (
-                        <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
-                          <MessageSquare size={14} />
-                          <span className="history-title">{chat.title}</span>
-                          <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
-                            <Trash2 size={12} />
+                  {viewMode === "learning" ? (
+                    // Learning Topics Sidebar
+                    <div className="sidebar-content" style={{ padding: "16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => { setViewMode("ai"); setIsHistoryOpen(true); }}
+                          style={{ marginRight: "10px", padding: "4px" }}
+                        >
+                          <ArrowLeft size={16} />
+                        </button>
+                        <h3 style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-color)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          {language === "rust" ? "Rust" : "Python"} Course
+                        </h3>
+                      </div>
+
+                      {(language === "rust" ? TOPICS_RUST : TOPICS_PYTHON).map((group) => (
+                        <div key={group.title} style={{ marginBottom: "12px" }}>
+                          <button
+                            onClick={() => toggleGroup(group.title)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              width: "100%",
+                              background: "transparent",
+                              border: "none",
+                              padding: "6px 0",
+                              cursor: "pointer",
+                              color: "var(--text-main)",
+                              fontSize: "0.85rem",
+                              fontWeight: "600"
+                            }}
+                          >
+                            <span style={{ color: "var(--text-muted)", marginRight: "6px" }}>
+                              {expandedGroups.has(group.title) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </span>
+                            {group.title}
                           </button>
+
+                          {expandedGroups.has(group.title) && (
+                            <div style={{ marginLeft: "14px", borderLeft: "1px solid var(--border-color)", paddingLeft: "8px", marginTop: "4px" }}>
+                              {group.topics.map(topic => (
+                                <button
+                                  key={topic.id}
+                                  onClick={() => handleSelectTopic(topic)}
+                                  className={`history-item ${selectedTopic?.id === topic.id ? "active" : ""}`}
+                                  style={{
+                                    width: "100%",
+                                    justifyContent: "flex-start",
+                                    fontSize: "0.8rem",
+                                    padding: "6px 8px",
+                                    marginBottom: "2px",
+                                    border: "none",
+                                    textAlign: "left"
+                                  }}
+                                >
+                                  <span style={{ opacity: 0.7, marginRight: "6px", fontSize: "0.75rem" }}>{topic.id}</span>
+                                  <span>{topic.title}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      ))
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    // Chat History Sidebar
+                    <>
+                      <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
+                          <Plus size={16} /> New Chat
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                          onClick={() => {
+                            setViewMode("docs");
+                            setIsHistoryOpen(false);
+                          }}
+                        >
+                          <Book size={16} /> {language === "rust" ? "Rust Docs" : "Python Docs"}
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                          onClick={() => {
+                            setViewMode("learning");
+                            setIsHistoryOpen(true); // Keep sidebar open for topic selection
+                          }}
+                        >
+                          <Sparkles size={16} /> Getting Started with AI
+                        </button>
+                      </div>
+                      <div className="sidebar-content">
+                        <div className="sidebar-label">Recent Chats</div>
+                        {chats.length === 0 ? (
+                          <div className="empty-history">No history yet</div>
+                        ) : (
+                          chats.map((chat) => (
+                            <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
+                              <MessageSquare size={14} />
+                              <span className="history-title">{chat.title}</span>
+                              <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -517,6 +625,16 @@ function App() {
 
               <div style={{ display: viewMode === "shortcuts" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
                 <Shortcuts />
+              </div>
+
+              <div style={{ display: viewMode === "learning" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
+                <AiLearning
+                  language={language}
+                  apiKey={apiKey}
+                  selectedModel={selectedModel}
+                  topic={selectedTopic}
+                  onBack={() => setIsHistoryOpen(true)}
+                />
               </div>
             </div>
           </Panel>

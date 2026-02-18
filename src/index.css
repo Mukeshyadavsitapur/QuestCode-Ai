@@ -574,6 +574,8 @@ body.light-theme .tab-btn:hover {
     transition: all 0.2s;
     margin-bottom: 2px;
     position: relative;
+    background: transparent;
+    border: none;
 }
 
 .history-item:hover {

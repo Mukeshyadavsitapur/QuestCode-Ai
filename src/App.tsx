@@ -43,8 +43,13 @@ interface ChatSession {
 const INITIAL_DESCRIPTION = "# Getting Started\n\nWelcome! Type some code on the left and click **'Explain Code'** to get an AI-powered breakdown of what's happening.\n\nYou can also ask specific questions using the chat bar below.";
 
 function App() {
-  const [language, setLanguage] = useState<"rust" | "python">("rust");
-  const [code, setCode] = useState(DEFAULT_RUST_CODE);
+  const [language, setLanguage] = useState<"rust" | "python">(() => {
+    return (localStorage.getItem("language") as "rust" | "python") || "python";
+  });
+  const [code, setCode] = useState(() => {
+    const savedLanguage = localStorage.getItem("language") as "rust" | "python" || "python";
+    return savedLanguage === "rust" ? DEFAULT_RUST_CODE : DEFAULT_PYTHON_CODE;
+  });
   const [description, setDescription] = useState(INITIAL_DESCRIPTION);
   const [input, setInput] = useState("");
   const [isExplaining, setIsExplaining] = useState(false);
@@ -146,6 +151,11 @@ function App() {
       selectedTheme.bg.startsWith("#3");
     document.body.className = isDark ? "" : "light-theme";
   }, [theme]);
+
+  // Save language preference
+  useEffect(() => {
+    localStorage.setItem("language", language);
+  }, [language]);
 
   // Define themes globally once
   useEffect(() => {
@@ -573,7 +583,89 @@ function App() {
                 {aiService === "api" ? (
                   <>
                     <div className="description-container">
-                      <ReactMarkdown>{description}</ReactMarkdown>
+                      <ReactMarkdown
+                        components={{
+                          code({ className, children, ...props }) {
+                            const match = /language-(\w+)/.exec(className || "");
+                            const isInline = !match;
+                            const codeText = String(children).replace(/\n$/, "");
+
+                            if (isInline) {
+                              return (
+                                <code className={className} {...props} style={{
+                                  background: "rgba(88, 166, 255, 0.1)",
+                                  color: "var(--accent-color)",
+                                  padding: "2px 5px",
+                                  borderRadius: "4px",
+                                  fontSize: "0.9em",
+                                  fontFamily: "var(--font-mono)"
+                                }}>
+                                  {children}
+                                </code>
+                              );
+                            }
+
+                            return (
+                              <div style={{ position: "relative", margin: "1.5em 0" }}>
+                                <div style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  background: "var(--panel-bg)",
+                                  padding: "8px 12px",
+                                  borderTopLeftRadius: "8px",
+                                  borderTopRightRadius: "8px",
+                                  border: "1px solid var(--border-color)",
+                                  borderBottom: "none",
+                                  fontSize: "0.75rem",
+                                  fontFamily: "var(--font-sans)",
+                                  color: "var(--text-muted)",
+                                  fontWeight: 600
+                                }}>
+                                  <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
+                                  <div style={{ display: "flex", gap: "12px" }}>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(codeText);
+                                      }}
+                                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                                      title="Copy to Clipboard"
+                                      className="code-action-btn"
+                                    >
+                                      <Copy size={13} /> Copy
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setCode(codeText);
+                                        // Optional: Switch to editor view if on mobile or if needed
+                                      }}
+                                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                                      title="Replace Editor Content"
+                                      className="code-action-btn"
+                                    >
+                                      <TerminalIcon size={13} /> Apply
+                                    </button>
+                                  </div>
+                                </div>
+                                <div style={{
+                                  background: "#1e1e1e", // Force dark bg for code
+                                  padding: "16px",
+                                  borderBottomLeftRadius: "8px",
+                                  borderBottomRightRadius: "8px",
+                                  border: "1px solid var(--border-color)",
+                                  overflowX: "auto"
+                                }}>
+                                  <code className={className} {...props} style={{ fontFamily: "var(--font-mono)", fontSize: "0.9rem", color: "#e5e5e5" }}>
+                                    {children}
+                                  </code>
+                                </div>
+                              </div>
+                            );
+                          }
+                        }}
+                      >
+                        {description}
+                      </ReactMarkdown>
                     </div>
                     <div className="ai-controls">
                       <input
@@ -634,6 +726,7 @@ function App() {
                   selectedModel={selectedModel}
                   topic={selectedTopic}
                   onBack={() => setIsHistoryOpen(true)}
+                  onApplyCode={setCode}
                 />
               </div>
             </div>

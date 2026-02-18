@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import ReactMarkdown from "react-markdown";
-import { Sparkles, Loader2, RefreshCw, BookOpen } from "lucide-react";
+import { Sparkles, Loader2, RefreshCw, BookOpen, Copy, Terminal as TerminalIcon } from "lucide-react";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css"; // Basic dark theme, can be overridden by custom CSS
 import "prismjs/components/prism-rust";
@@ -14,9 +14,10 @@ interface AiLearningProps {
     selectedModel: string | null;
     topic: Topic | null;
     onBack: () => void;
+    onApplyCode: (code: string) => void;
 }
 
-export function AiLearning({ language, apiKey, selectedModel, topic, onBack }: AiLearningProps) {
+export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onApplyCode }: AiLearningProps) {
     const [content, setContent] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -34,7 +35,17 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack }: A
         }
     }, [content]);
 
-    const fetchExplanation = async (currentTopic: Topic) => {
+    const fetchExplanation = async (currentTopic: Topic, forceRefresh = false) => {
+        const cacheKey = `ai_learning_${language}_${currentTopic.id}`;
+
+        if (!forceRefresh) {
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                setContent(cached);
+                return;
+            }
+        }
+
         setIsLoading(true);
         setContent("");
         setError(null);
@@ -62,6 +73,7 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack }: A
                 }
             });
             setContent(response.content);
+            localStorage.setItem(cacheKey, response.content);
         } catch (err) {
             console.error("Failed to fetch explanation:", err);
             setError(String(err));
@@ -107,7 +119,16 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack }: A
                 <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "700", color: "var(--accent-color)", flex: 1 }}>
                     {topic.id} {topic.title}
                 </h2>
-                {/* Optional: Add navigation buttons specific to curriculum here if needed */}
+                <button
+                    onClick={() => fetchExplanation(topic, true)}
+                    disabled={isLoading}
+                    className="btn btn-secondary"
+                    style={{ padding: "6px 12px", fontSize: "0.85rem", opacity: isLoading ? 0.5 : 1 }}
+                    title="Regenerate Explanation"
+                >
+                    <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} style={{ marginRight: "6px" }} />
+                    {isLoading ? "Generating..." : "Regenerate"}
+                </button>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px" }} className="custom-markdown-content">
@@ -132,21 +153,77 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack }: A
                                 code({ className, children, ...props }) {
                                     const match = /language-(\w+)/.exec(className || "");
                                     const isInline = !match;
-                                    return isInline ? (
-                                        <code className={className} {...props} style={{
-                                            background: "rgba(88, 166, 255, 0.1)",
-                                            color: "var(--accent-color)",
-                                            padding: "2px 5px",
-                                            borderRadius: "4px",
-                                            fontSize: "0.9em",
-                                            fontFamily: "var(--font-mono)"
-                                        }}>
-                                            {children}
-                                        </code>
-                                    ) : (
-                                        <code className={className} {...props}>
-                                            {children}
-                                        </code>
+                                    const codeText = String(children).replace(/\n$/, "");
+
+                                    if (isInline) {
+                                        return (
+                                            <code className={className} {...props} style={{
+                                                background: "rgba(88, 166, 255, 0.1)",
+                                                color: "var(--accent-color)",
+                                                padding: "2px 5px",
+                                                borderRadius: "4px",
+                                                fontSize: "0.9em",
+                                                fontFamily: "var(--font-mono)"
+                                            }}>
+                                                {children}
+                                            </code>
+                                        );
+                                    }
+
+                                    return (
+                                        <div style={{ position: "relative", margin: "1.5em 0" }}>
+                                            <div style={{
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
+                                                background: "var(--panel-bg)",
+                                                padding: "8px 12px",
+                                                borderTopLeftRadius: "8px",
+                                                borderTopRightRadius: "8px",
+                                                border: "1px solid var(--border-color)",
+                                                borderBottom: "none",
+                                                fontSize: "0.75rem",
+                                                fontFamily: "var(--font-sans)",
+                                                color: "var(--text-muted)",
+                                                fontWeight: 600
+                                            }}>
+                                                <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
+                                                <div style={{ display: "flex", gap: "12px" }}>
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(codeText);
+                                                        }}
+                                                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                                                        title="Copy to Clipboard"
+                                                        className="code-action-btn"
+                                                    >
+                                                        <Copy size={13} /> Copy
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            onApplyCode(codeText);
+                                                        }}
+                                                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                                                        title="Replace Editor Content"
+                                                        className="code-action-btn"
+                                                    >
+                                                        <TerminalIcon size={13} /> Apply
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div style={{
+                                                background: "#1e1e1e", // Force dark bg for code
+                                                padding: "16px",
+                                                borderBottomLeftRadius: "8px",
+                                                borderBottomRightRadius: "8px",
+                                                border: "1px solid var(--border-color)",
+                                                overflowX: "auto"
+                                            }}>
+                                                <code className={className} {...props} style={{ fontFamily: "var(--font-mono)", fontSize: "0.9rem", color: "#e5e5e5" }}>
+                                                    {children}
+                                                </code>
+                                            </div>
+                                        </div>
                                     );
                                 }
                             }}

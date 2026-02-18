@@ -389,7 +389,7 @@ function App() {
       />
 
       <main className="main-content">
-        <PanelGroup direction="horizontal">
+        <PanelGroup orientation="horizontal">
           <Panel defaultSize={50} minSize={30}>
             <div className="panel" style={{ position: "relative" }}>
               <div className="panel-header">
@@ -521,14 +521,14 @@ function App() {
             </div>
           </Panel>
 
-          <PanelResizeHandle className="resizer" />
+          <PanelResizeHandle className="resizer horizontal" />
 
           <Panel defaultSize={50} minSize={30}>
-            <PanelGroup direction="horizontal">
-              <Panel defaultSize={isTerminalVisible ? 70 : 100} minSize={30}>
+            <PanelGroup orientation="vertical">
+              <Panel defaultSize={70} minSize={20}>
                 <div className="panel">
                   <div className="panel-header">
-                    <span>EDITOR ({language.toUpperCase()})</span>
+                    <span>CODE EDITOR</span>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         className={`tab-btn ${isMinimapVisible ? "active" : ""}`}
@@ -556,7 +556,7 @@ function App() {
                       </button>
                     </div>
                   </div>
-                  <div className="editor-container" style={{ height: "calc(100% - 48px)" }}>
+                  <div className="editor-container" style={{ flex: 1, position: "relative" }}>
                     <Editor
                       height="100%"
                       language={language}
@@ -579,10 +579,9 @@ function App() {
 
               {isTerminalVisible && (
                 <>
-                  <PanelResizeHandle className="resizer" />
-
-                  <Panel defaultSize={30} minSize={20}>
-                    <div className="panel">
+                  <PanelResizeHandle className="resizer vertical" />
+                  <Panel defaultSize={30} minSize={15}>
+                    <div className="panel" style={{ height: "100%" }}>
                       <Terminal output={terminalOutput} isRunning={isRunning} onClear={() => setTerminalOutput("")} />
                     </div>
                   </Panel>

@@ -204,22 +204,62 @@ body {
 }
 
 .resizer {
-    width: 1px;
     background: var(--border-color);
-    cursor: col-resize;
     position: relative;
+    z-index: 10;
+    transition: all 0.2s;
+}
+
+.resizer.horizontal,
+.resizer[data-panel-group-direction="horizontal"] {
+    width: 4px;
+    cursor: col-resize;
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    border-right: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.resizer.vertical,
+.resizer[data-panel-group-direction="vertical"] {
+    height: 4px;
+    width: 100%;
+    cursor: row-resize;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.resizer:hover,
+.resizer[data-panel-resize-handle-active="true"] {
+    background: var(--accent-color);
+    box-shadow: 0 0 8px var(--accent-color);
+}
+
+.resizer::after {
+    content: "";
+    position: absolute;
+    background: var(--accent-color);
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.resizer.horizontal::after,
+.resizer[data-panel-group-direction="horizontal"]::after {
+    top: 0;
+    bottom: 0;
+    left: -4px;
+    right: -4px;
+}
+
+.resizer.vertical::after,
+.resizer[data-panel-group-direction="vertical"]::after {
+    left: 0;
+    right: 0;
+    top: -4px;
+    bottom: -4px;
 }
 
 .resizer:hover::after,
-.resizer[data-panel-group-direction="vertical"]:hover::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -2px;
-    right: -2px;
-    bottom: 0;
-    background: var(--accent-color);
-    opacity: 0.5;
+.resizer[data-panel-resize-handle-active="true"]::after {
+    opacity: 0.2;
 }
 
 

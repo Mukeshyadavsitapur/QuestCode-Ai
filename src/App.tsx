@@ -16,6 +16,10 @@ import { Terminal } from "./Terminal"; // Import Terminal
 import { AiLearning } from "./AiLearning";
 import { TOPICS_RUST, TOPICS_PYTHON, Topic } from "./learningData";
 import "./App.css";
+import Prism from "prismjs";
+import "prismjs/themes/prism-tomorrow.css";
+import "prismjs/components/prism-rust";
+import "prismjs/components/prism-python";
 
 const DEFAULT_RUST_CODE = `// Welcome to your AI Programming Tutor
 // Write code here and ask AI for help!
@@ -66,6 +70,11 @@ function App() {
 
   // View Mode State (AI or Docs or Shortcuts or Learning)
   const [viewMode, setViewMode] = useState<"ai" | "docs" | "shortcuts" | "learning">("ai");
+
+  // Highlight code in chat
+  useEffect(() => {
+    Prism.highlightAll();
+  }, [description, viewMode]);
 
   // Learning State
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
@@ -614,6 +623,7 @@ function App() {
                     <div className="description-container">
                       <ReactMarkdown
                         components={{
+                          pre: ({ children }) => <>{children}</>,
                           code({ className, children, ...props }) {
                             const match = /language-(\w+)/.exec(className || "");
                             const isInline = !match;
@@ -676,18 +686,26 @@ function App() {
                                     </button>
                                   </div>
                                 </div>
-                                <div style={{
+                                <pre style={{
                                   background: "#1e1e1e", // Force dark bg for code
                                   padding: "16px",
                                   borderBottomLeftRadius: "8px",
                                   borderBottomRightRadius: "8px",
                                   border: "1px solid var(--border-color)",
-                                  overflowX: "auto"
-                                }}>
-                                  <code className={className} {...props} style={{ fontFamily: "var(--font-mono)", fontSize: "0.9rem", color: "#e5e5e5" }}>
+                                  overflowX: "auto",
+                                  margin: 0 // Remove default pre margin
+                                }} className={className}>
+                                  <code className={className} {...props} style={{
+                                    fontFamily: "var(--font-mono)",
+                                    fontSize: "0.9rem",
+                                    color: "#e5e5e5",
+                                    whiteSpace: "pre",
+                                    textAlign: "left",
+                                    display: "block"
+                                  }}>
                                     {children}
                                   </code>
-                                </div>
+                                </pre>
                               </div>
                             );
                           }

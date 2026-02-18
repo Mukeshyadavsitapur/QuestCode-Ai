@@ -150,6 +150,7 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onA
                     <div className="markdown-body">
                         <ReactMarkdown
                             components={{
+                                pre: ({ children }) => <>{children}</>,
                                 code({ className, children, ...props }) {
                                     const match = /language-(\w+)/.exec(className || "");
                                     const isInline = !match;
@@ -211,18 +212,26 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onA
                                                     </button>
                                                 </div>
                                             </div>
-                                            <div style={{
+                                            <pre style={{
                                                 background: "#1e1e1e", // Force dark bg for code
                                                 padding: "16px",
                                                 borderBottomLeftRadius: "8px",
                                                 borderBottomRightRadius: "8px",
                                                 border: "1px solid var(--border-color)",
-                                                overflowX: "auto"
-                                            }}>
-                                                <code className={className} {...props} style={{ fontFamily: "var(--font-mono)", fontSize: "0.9rem", color: "#e5e5e5" }}>
+                                                overflowX: "auto",
+                                                margin: 0
+                                            }} className={className}>
+                                                <code className={className} {...props} style={{
+                                                    fontFamily: "var(--font-mono)",
+                                                    fontSize: "0.9rem",
+                                                    color: "#e5e5e5",
+                                                    whiteSpace: "pre",
+                                                    textAlign: "left",
+                                                    display: "block"
+                                                }}>
                                                     {children}
                                                 </code>
-                                            </div>
+                                            </pre>
                                         </div>
                                     );
                                 }

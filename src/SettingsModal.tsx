@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Moon, Key, Sparkles } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { X, Moon, Key, Sparkles, Loader2 } from "lucide-react";
 import { themes } from "./themes";
 
 interface SettingsModalProps {
@@ -30,10 +31,48 @@ export function SettingsModal({
     activeModel,
 }: SettingsModalProps) {
     const [localKey, setLocalKey] = useState(apiKey);
+    const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+    const [isLoadingModels, setIsLoadingModels] = useState(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     useEffect(() => {
         setLocalKey(apiKey);
     }, [apiKey]);
+
+    // Debounce and fetch models when localKey changes
+    useEffect(() => {
+        const fetchModels = async () => {
+            if (!localKey.trim()) {
+                setFetchedModels([]);
+                setFetchError(null);
+                return;
+            }
+
+            // Don't re-fetch if it matches the current global key and we already have models passed in props
+            if (localKey === apiKey && availableModels.length > 0) {
+                setFetchedModels(availableModels);
+                return;
+            }
+
+            setIsLoadingModels(true);
+            setFetchError(null);
+            try {
+                console.log("Fetching models for key...", localKey.substring(0, 5) + "...");
+                const models = await invoke<string[]>("get_available_models", { apiKey: localKey });
+                setFetchedModels(models);
+            } catch (error) {
+                console.error("Failed to fetch models:", error);
+                setFetchedModels([]);
+                setFetchError("Invalid API Key or Network Error");
+            } finally {
+                setIsLoadingModels(false);
+            }
+        };
+
+        const timer = setTimeout(fetchModels, 800); // 800ms debounce
+
+        return () => clearTimeout(timer);
+    }, [localKey, apiKey, availableModels]); // Depend on availableModels to sync initial state
 
     const handleSave = () => {
         setApiKey(localKey);
@@ -41,6 +80,11 @@ export function SettingsModal({
     };
 
     if (!isOpen) return null;
+
+    // Determine which list to show:
+    // 1. If we have fetched models (specifically for the *current* localKey input), use them.
+    // 2. Otherwise default to availableModels (though the effect above syncs them).
+    const displayModels = fetchedModels.length > 0 ? fetchedModels : availableModels;
 
     return (
         <div className="modal-overlay">
@@ -74,22 +118,69 @@ export function SettingsModal({
 
                     <div className="setting-group">
                         <label className="setting-label">
+                            <Key size={18} />
+                            <span>API Key</span>
+                        </label>
+                        <input
+                            type="password"
+                            className="settings-input"
+                            placeholder="Enter your API Key"
+                            value={localKey}
+                            onChange={(e) => setLocalKey(e.target.value)}
+                        />
+                        {fetchError && (
+                            <div style={{ color: "#ff6b6b", fontSize: "0.8rem", marginTop: 4 }}>
+                                ⚠️ {fetchError}
+                            </div>
+                        )}
+                        <p className="setting-hint">
+                            Your key is stored locally on your device.
+                            <br />
+                            <a
+                                href="https://aistudio.google.com/app/apikey"
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ color: 'var(--accent-text)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
+                            >
+                                Get a Gemini API Key mapped →
+                            </a>
+                        </p>
+                    </div>
+
+                    <div className="setting-group">
+                        <label className="setting-label">
                             <Sparkles size={18} />
                             <span>AI Model</span>
                         </label>
-                        <select
-                            className="settings-input"
-                            style={{ width: '100%', padding: '8px', borderRadius: '4px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
-                            value={selectedModel || ""}
-                            onChange={(e) => setSelectedModel(e.target.value || null)}
-                        >
-                            <option value="">Auto Select (Recommended)</option>
-                            {availableModels.map(model => (
-                                <option key={model} value={model}>{model}</option>
-                            ))}
-                        </select>
+                        <div style={{ position: 'relative', width: '100%' }}>
+                            <select
+                                className="settings-input"
+                                style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    borderRadius: '4px',
+                                    background: 'var(--panel-bg)',
+                                    color: 'var(--text-main)',
+                                    border: '1px solid var(--border-color)',
+                                    opacity: isLoadingModels ? 0.7 : 1
+                                }}
+                                value={selectedModel || ""}
+                                onChange={(e) => setSelectedModel(e.target.value || null)}
+                                disabled={isLoadingModels}
+                            >
+                                <option value="">Auto Select (Recommended)</option>
+                                {displayModels.map(model => (
+                                    <option key={model} value={model}>{model}</option>
+                                ))}
+                            </select>
+                            {isLoadingModels && (
+                                <div style={{ position: 'absolute', right: 30, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                                    <Loader2 className="animate-spin" size={16} color="var(--text-muted)" />
+                                </div>
+                            )}
+                        </div>
                         <p className="setting-hint">
-                            Choose a specific Gemini model or let the system auto-select.
+                            {isLoadingModels ? "Checking availability..." : "Choose a specific Gemini model or let the system auto-select."}
                         </p>
                         {activeModel && (
                             <div
@@ -118,32 +209,6 @@ export function SettingsModal({
                         >
                             View All Shortcuts
                         </button>
-                    </div>
-
-                    <div className="setting-group">
-                        <label className="setting-label">
-                            <Key size={18} />
-                            <span>API Key</span>
-                        </label>
-                        <input
-                            type="password"
-                            className="settings-input"
-                            placeholder="Enter your API Key"
-                            value={localKey}
-                            onChange={(e) => setLocalKey(e.target.value)}
-                        />
-                        <p className="setting-hint">
-                            Your key is stored locally on your device.
-                            <br />
-                            <a
-                                href="https://aistudio.google.com/app/apikey"
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{ color: 'var(--accent-text)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
-                            >
-                                Get a Gemini API Key mapped →
-                            </a>
-                        </p>
                     </div>
                 </div>
 

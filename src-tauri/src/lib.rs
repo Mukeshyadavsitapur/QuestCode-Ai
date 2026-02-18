@@ -12,8 +12,15 @@ struct GeminiContent {
 }
 
 #[derive(Serialize)]
+struct GenerationConfig {
+    temperature: Option<f32>,
+}
+
+#[derive(Serialize)]
 struct GeminiRequest {
     contents: Vec<GeminiContent>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    generationConfig: Option<GenerationConfig>,
 }
 
 #[derive(Deserialize)]
@@ -54,7 +61,7 @@ struct GeminiModelList {
     models: Vec<GeminiModel>,
 }
 
-async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>) -> Result<AIResponse, String> {
+async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
     if api_key.trim().is_empty() {
         return Err("API Key is missing. Please add it in Settings.".to_string());
     }
@@ -87,20 +94,30 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
     let mut last_error = "No response generated.".to_string();
 
     for model in &models {
-        println!("Attempting request with model: {}", model);
+        println!("Attempting request with model: {}, temp: {:?}", model, temperature);
         let client = Client::new();
         let url = format!(
             "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
             model, api_key
         );
 
-        let request_body = GeminiRequest {
+        let mut request_body = GeminiRequest {
             contents: vec![GeminiContent {
                 parts: vec![GeminiPart {
                     text: prompt.to_string(),
                 }],
             }],
+            generationConfig: None,
         };
+
+        if let Some(temp) = temperature {
+             println!("Using temperature: {}", temp);
+             request_body.generationConfig = Some(GenerationConfig {
+                temperature: Some(temp),
+            });
+        } else {
+             println!("Using default temperature (None)");
+        }
 
         let response_res = client.post(&url)
             .json(&request_body)
@@ -195,6 +212,7 @@ struct AIRequest {
     code: String,
     language: String,
     selected_model: Option<String>,
+    temperature: Option<f32>,
 }
 
 #[derive(Deserialize)]
@@ -204,18 +222,19 @@ struct QuestionRequest {
     question: String,
     language: String,
     selected_model: Option<String>,
+    temperature: Option<f32>,
 }
 
 #[tauri::command]
 async fn explain_code(req: AIRequest) -> Result<AIResponse, String> {
     let prompt = format!("Explain this {} code in markdown format:\n\n```{}\n{}\n```", req.language, req.language, req.code);
-    call_gemini(&req.api_key, &prompt, req.selected_model).await
+    call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await
 }
 
 #[tauri::command]
 async fn ask_question(req: QuestionRequest) -> Result<AIResponse, String> {
     let prompt = format!("Given this {} code:\n\n```{}\n{}\n```\n\nQuestion: {}\n\nAnswer in markdown:", req.language, req.language, req.code, req.question);
-    call_gemini(&req.api_key, &prompt, req.selected_model).await
+    call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await
 }
 
 use std::process::Command;

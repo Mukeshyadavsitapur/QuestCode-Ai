@@ -22,6 +22,7 @@ export function AiLearning({ language, apiKey, selectedModel, topic, groupTitle,
     const [content, setContent] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [temperature, setTemperature] = useState<number>(0.3);
 
     useEffect(() => {
         if (topic) {
@@ -98,7 +99,8 @@ export function AiLearning({ language, apiKey, selectedModel, topic, groupTitle,
                     code: "", // No context code needed
                     question: prompt,
                     language: language === "dsa" ? "python" : language,
-                    selected_model: selectedModel
+                    selected_model: selectedModel,
+                    temperature: temperature // Use selected temperature
                 }
             });
             setContent(response.content);
@@ -148,6 +150,32 @@ export function AiLearning({ language, apiKey, selectedModel, topic, groupTitle,
                 <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "700", color: "var(--accent-text)", flex: 1 }}>
                     {topic.id} {topic.title}
                 </h2>
+
+                <select
+                    value={temperature}
+                    onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                    className="settings-input"
+                    style={{
+                        padding: "6px 8px",
+                        borderRadius: "4px",
+                        background: "var(--bg-color)",
+                        color: "var(--text-main)",
+                        border: "1px solid var(--border-color)",
+                        marginRight: "8px",
+                        fontSize: "0.85rem",
+                        width: "auto",
+                        maxWidth: "140px",
+                        cursor: "pointer"
+                    }}
+                    title="Creativity Level (Temperature)"
+                >
+                    <option value={0.1}>Focused (0.1)</option>
+                    <option value={0.3}>Default (0.3)</option>
+                    <option value={0.5}>Balanced (0.5)</option>
+                    <option value={0.8}>Creative (0.8)</option>
+                    <option value={1.0}>Exploratory (1.0)</option>
+                </select>
+
                 <button
                     onClick={() => fetchExplanation(topic, true)}
                     disabled={isLoading}

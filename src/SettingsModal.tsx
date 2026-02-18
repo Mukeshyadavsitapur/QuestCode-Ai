@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
-import { X, Moon, Sun, Key } from "lucide-react";
+import { X, Moon, Key } from "lucide-react";
+import { themes } from "./themes";
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     apiKey: string;
     setApiKey: (key: string) => void;
-    theme: "dark" | "light";
-    setTheme: (theme: "dark" | "light") => void;
+    theme: string;
+    setTheme: (theme: string) => void;
 }
 
 export function SettingsModal({
@@ -47,19 +48,25 @@ export function SettingsModal({
                             <Moon size={18} />
                             <span>Appearance</span>
                         </label>
-                        <div className="theme-toggle">
-                            <button
-                                className={`theme-btn ${theme === "dark" ? "active" : ""}`}
-                                onClick={() => setTheme("dark")}
-                            >
-                                <Moon size={16} /> Dark
-                            </button>
-                            <button
-                                className={`theme-btn ${theme === "light" ? "active" : ""}`}
-                                onClick={() => setTheme("light")}
-                            >
-                                <Sun size={16} /> Light
-                            </button>
+                        <div className="theme-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8 }}>
+                            {Object.values(themes).map((t) => (
+                                <button
+                                    key={t.id}
+                                    className={`theme-btn ${theme === t.id ? "active" : ""}`}
+                                    onClick={() => setTheme(t.id)}
+                                    style={{
+                                        flexDirection: 'column',
+                                        height: 'auto',
+                                        padding: 8,
+                                        border: theme === t.id ? `2px solid var(--accent-color)` : '1px solid var(--border-color)',
+                                        background: t.bg,
+                                        color: t.text
+                                    }}
+                                >
+                                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: t.primary, marginBottom: 4 }}></div>
+                                    <span style={{ fontSize: '0.75rem' }}>{t.label}</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
 

@@ -110,5 +110,5 @@ body.light-theme .terminal-container {
 }
 
 body.light-theme .terminal-output {
-    color: #24292f;
+    color: var(--text-main);
 }

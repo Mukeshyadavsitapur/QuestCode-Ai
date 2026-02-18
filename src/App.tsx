@@ -197,12 +197,14 @@ function App() {
     setCurrentChatId(null);
     setDescription(INITIAL_DESCRIPTION);
     setIsHistoryOpen(false);
+    setViewMode("ai");
   };
 
   const handleSelectChat = (chat: ChatSession) => {
     setCurrentChatId(chat.id);
     setDescription(chat.description);
     setIsHistoryOpen(false);
+    setViewMode("ai");
   };
 
   const handleDeleteChat = (e: React.MouseEvent, id: string) => {
@@ -403,9 +405,6 @@ function App() {
                   <button className={`tab-btn ${viewMode === "ai" ? "active" : ""}`} onClick={() => setViewMode("ai")}>
                     <MessageSquare size={14} /> AI Assistant
                   </button>
-                  <button className={`tab-btn ${viewMode === "docs" ? "active" : ""}`} onClick={() => setViewMode("docs")}>
-                    <Book size={14} /> {language === "rust" ? "Rust Docs" : "Python Docs"}
-                  </button>
                 </div>
 
                 {viewMode === "ai" && (
@@ -428,9 +427,19 @@ function App() {
               {/* Chat History Sidebar */}
               {isHistoryOpen && (
                 <div className="chat-history-sidebar">
-                  <div className="sidebar-header">
+                  <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
                       <Plus size={16} /> New Chat
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                      onClick={() => {
+                        setViewMode("docs");
+                        setIsHistoryOpen(false);
+                      }}
+                    >
+                      <Book size={16} /> {language === "rust" ? "Rust Docs" : "Python Docs"}
                     </button>
                   </div>
                   <div className="sidebar-content">

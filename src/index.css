@@ -583,32 +583,23 @@ body.light-theme .history-item:hover {
     background: rgba(0, 0, 0, 0.05);
 }
 
-.model-badge {
+.model-status {
     font-size: 0.65rem;
-    background: rgba(88, 166, 255, 0.1);
-    color: var(--accent-color);
+    background: var(--highlight);
+    color: var(--text-muted);
     padding: 2px 8px;
     border-radius: 12px;
-    border: 1px solid rgba(88, 166, 255, 0.2);
+    border: 1px solid var(--border-color);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     user-select: none;
     display: flex;
     align-items: center;
+    white-space: nowrap;
 }
 
-.model-badge.clickable {
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.model-badge.clickable:hover {
-    background: rgba(88, 166, 255, 0.2);
-    border-color: var(--accent-color);
-}
-
-.model-badge.status-warning {
+.model-status.status-warning {
     color: #ff9800;
     background: rgba(255, 152, 0, 0.1);
     border-color: rgba(255, 152, 0, 0.3);

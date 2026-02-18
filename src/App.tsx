@@ -80,7 +80,6 @@ function App() {
     return localStorage.getItem("selected_model");
   });
   const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("apiKey", apiKey);
@@ -223,6 +222,10 @@ function App() {
       setCode(DEFAULT_RUST_CODE);
     }
     setTerminalOutput("");
+  };
+
+  const toggleAiService = () => {
+    setAiService((prev) => (prev === "api" ? "web" : "api"));
   };
 
   const handleExplain = async () => {
@@ -377,6 +380,10 @@ function App() {
         theme={theme}
         setTheme={setTheme}
         onViewShortcuts={() => setViewMode("shortcuts")}
+        selectedModel={selectedModel}
+        availableModels={availableModels}
+        setSelectedModel={setSelectedModel}
+        activeModel={activeModel}
       />
 
       <main className="main-content">
@@ -404,69 +411,16 @@ function App() {
                 {viewMode === "ai" && (
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
-                      className={`tab-btn ${aiService === "api" ? "active" : ""}`}
-                      style={{ fontSize: "0.75rem", padding: "4px 8px" }}
-                      onClick={() => setAiService("api")}
+                      className="tab-btn active"
+                      style={{ fontSize: "0.75rem", padding: "4px 12px", minWidth: "120px", display: "flex", justifyContent: "center" }}
+                      onClick={toggleAiService}
                     >
-                      <Bot size={12} /> QuestCode AI
+                      {aiService === "api" ? (
+                        <><Bot size={12} style={{ marginRight: 6 }} /> QuestCode AI</>
+                      ) : (
+                        <><Globe size={12} style={{ marginRight: 6 }} /> Gemini Web</>
+                      )}
                     </button>
-                    <button
-                      className={`tab-btn ${aiService === "web" ? "active" : ""}`}
-                      style={{ fontSize: "0.75rem", padding: "4px 8px" }}
-                      onClick={() => setAiService("web")}
-                    >
-                      <Globe size={12} /> Gemini Web
-                    </button>
-                    {aiService === "api" && (
-                      <div style={{ position: "relative" }}>
-                        <div
-                          className={`model-badge clickable ${selectedModel && activeModel && selectedModel !== activeModel ? "status-warning" : ""}`}
-                          title={selectedModel && activeModel && selectedModel !== activeModel
-                            ? `Selected ${selectedModel} failed (429/Error). Using ${activeModel}.`
-                            : "Click to Change Model"}
-                          onClick={() => setIsModelSelectOpen(!isModelSelectOpen)}
-                        >
-                          {selectedModel ? (
-                            <>
-                              <span style={{ opacity: 0.7 }}>Selected:</span> {selectedModel}
-                              {activeModel && activeModel !== selectedModel && (
-                                <span style={{ marginLeft: 8, fontStyle: "italic", borderLeft: "1px solid var(--border-color)", paddingLeft: 8 }}>
-                                  Active: {activeModel}
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            activeModel || "Auto Select"
-                          )}
-                        </div>
-                        {isModelSelectOpen && (
-                          <div className="model-dropdown">
-                            <div className="dropdown-label">Select Model</div>
-                            <div
-                              className={`dropdown-item ${!selectedModel ? "active" : ""}`}
-                              onClick={() => {
-                                setSelectedModel(null);
-                                setIsModelSelectOpen(false);
-                              }}
-                            >
-                              Auto (2.5 → 2.0 → 1.5 → Pro 1.5)
-                            </div>
-                            {availableModels.map((m) => (
-                              <div
-                                key={m}
-                                className={`dropdown-item ${selectedModel === m ? "active" : ""}`}
-                                onClick={() => {
-                                  setSelectedModel(m);
-                                  setIsModelSelectOpen(false);
-                                }}
-                              >
-                                {m}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

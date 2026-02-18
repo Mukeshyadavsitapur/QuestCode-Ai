@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Moon, Key } from "lucide-react";
+import { X, Moon, Key, Sparkles } from "lucide-react";
 import { themes } from "./themes";
 
 interface SettingsModalProps {
@@ -10,6 +10,10 @@ interface SettingsModalProps {
     theme: string;
     setTheme: (theme: string) => void;
     onViewShortcuts: () => void;
+    selectedModel: string | null;
+    availableModels: string[];
+    setSelectedModel: (model: string | null) => void;
+    activeModel: string;
 }
 
 export function SettingsModal({
@@ -20,6 +24,10 @@ export function SettingsModal({
     theme,
     setTheme,
     onViewShortcuts,
+    selectedModel,
+    availableModels,
+    setSelectedModel,
+    activeModel,
 }: SettingsModalProps) {
     const [localKey, setLocalKey] = useState(apiKey);
 
@@ -50,26 +58,49 @@ export function SettingsModal({
                             <Moon size={18} />
                             <span>Appearance</span>
                         </label>
-                        <div className="theme-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8 }}>
+                        <select
+                            className="settings-input"
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+                            value={theme}
+                            onChange={(e) => setTheme(e.target.value)}
+                        >
                             {Object.values(themes).map((t) => (
-                                <button
-                                    key={t.id}
-                                    className={`theme-btn ${theme === t.id ? "active" : ""}`}
-                                    onClick={() => setTheme(t.id)}
-                                    style={{
-                                        flexDirection: 'column',
-                                        height: 'auto',
-                                        padding: 8,
-                                        border: theme === t.id ? `2px solid var(--accent-color)` : '1px solid var(--border-color)',
-                                        background: t.bg,
-                                        color: t.text
-                                    }}
-                                >
-                                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: t.primary, marginBottom: 4 }}></div>
-                                    <span style={{ fontSize: '0.75rem' }}>{t.label}</span>
-                                </button>
+                                <option key={t.id} value={t.id}>
+                                    {t.label}
+                                </option>
                             ))}
-                        </div>
+                        </select>
+                    </div>
+
+                    <div className="setting-group">
+                        <label className="setting-label">
+                            <Sparkles size={18} />
+                            <span>AI Model</span>
+                        </label>
+                        <select
+                            className="settings-input"
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+                            value={selectedModel || ""}
+                            onChange={(e) => setSelectedModel(e.target.value || null)}
+                        >
+                            <option value="">Auto Select (Recommended)</option>
+                            {availableModels.map(model => (
+                                <option key={model} value={model}>{model}</option>
+                            ))}
+                        </select>
+                        <p className="setting-hint">
+                            Choose a specific Gemini model or let the system auto-select.
+                        </p>
+                        {activeModel && (
+                            <div
+                                className={`model-status ${selectedModel && activeModel && selectedModel !== activeModel ? "status-warning" : ""}`}
+                                style={{ marginTop: 8, alignSelf: 'flex-start' }}
+                            >
+                                {selectedModel && activeModel && selectedModel !== activeModel
+                                    ? `⚠️ FALLBACK ACTIVE: ${activeModel}`
+                                    : `CURRENTLY ACTIVE: ${activeModel}`}
+                            </div>
+                        )}
                     </div>
 
                     <div className="setting-group">

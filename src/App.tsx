@@ -183,6 +183,26 @@ function App() {
     });
   }, []);
 
+  // Sidebar Ref for click outside
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const toggleBtn = document.getElementById("sidebar-toggle");
+      if (toggleBtn && toggleBtn.contains(event.target as Node)) {
+        return;
+      }
+      if (isHistoryOpen && sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
+        setIsHistoryOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isHistoryOpen]);
+
   // Chat Helpers
   const extractTitle = (text: string) => {
     const firstLine = text.split("\n")[0].replace(/[#*`]/g, "").trim();
@@ -281,12 +301,19 @@ function App() {
   const handleSend = async () => {
     if (!input.trim() || aiService === "web") return;
 
-    const userQuestion = input;
+    let userQuestion = input;
+
+    // If we are in learning mode, switch to AI mode and contextually update the question
+    if (viewMode === "learning" && selectedTopic) {
+      userQuestion = `Regarding the topic '${selectedTopic.title}' in the ${language} course: ${input}`;
+      setViewMode("ai");
+    }
+
     setInput("");
 
     const isFirstMessage = description === INITIAL_DESCRIPTION;
     const cleanDescription = isFirstMessage ? "" : description;
-    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `**You asked:** ${userQuestion}\n\n*Thinking...*`;
+    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `**You asked:** ${input}\n\n*Thinking...*`; // Display original input to user
     setDescription(newDescription);
 
     console.log("Asking question. Selection:", selectedModel);
@@ -295,7 +322,7 @@ function App() {
         req: {
           api_key: apiKey,
           code: code,
-          question: userQuestion,
+          question: userQuestion, // Send context-enhanced question to AI
           language: language,
           selected_model: selectedModel
         }
@@ -433,6 +460,7 @@ function App() {
               <div className="panel-header">
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                   <button
+                    id="sidebar-toggle"
                     className="tab-btn"
                     onClick={() => setIsHistoryOpen(!isHistoryOpen)}
                     style={{ padding: "4px" }}
@@ -464,7 +492,7 @@ function App() {
 
               {/* Sidebar Overlay (Chat History OR Learning Topics) */}
               {isHistoryOpen && (
-                <div className="chat-history-sidebar">
+                <div className="chat-history-sidebar" ref={sidebarRef}>
                   {viewMode === "learning" ? (
                     // Learning Topics Sidebar
                     <div className="sidebar-content" style={{ padding: "16px" }}>
@@ -667,19 +695,6 @@ function App() {
                         {description}
                       </ReactMarkdown>
                     </div>
-                    <div className="ai-controls">
-                      <input
-                        type="text"
-                        className="ai-input"
-                        placeholder="Ask a question about this code..."
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                      />
-                      <button className="btn btn-primary" onClick={handleSend}>
-                        <Send size={18} />
-                      </button>
-                    </div>
                   </>
                 ) : (
                   <div
@@ -729,6 +744,24 @@ function App() {
                   onApplyCode={setCode}
                 />
               </div>
+
+
+              {/* Shared AI Controls */}
+              {((viewMode === "ai" && aiService === "api") || viewMode === "learning") && (
+                <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px" }}>
+                  <input
+                    type="text"
+                    className="ai-input"
+                    placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  />
+                  <button className="btn btn-primary" onClick={handleSend}>
+                    <Send size={18} />
+                  </button>
+                </div>
+              )}
             </div>
           </Panel>
 
@@ -802,7 +835,7 @@ function App() {
           </Panel>
         </PanelGroup>
       </main>
-    </div>
+    </div >
   );
 }
 

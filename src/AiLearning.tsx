@@ -9,15 +9,16 @@ import "prismjs/components/prism-python";
 import { Topic } from "./learningData";
 
 interface AiLearningProps {
-    language: "rust" | "python";
+    language: "rust" | "python" | "dsa";
     apiKey: string;
     selectedModel: string | null;
     topic: Topic | null;
+    groupTitle: string | null;
     onBack: () => void;
     onApplyCode: (code: string) => void;
 }
 
-export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onApplyCode }: AiLearningProps) {
+export function AiLearning({ language, apiKey, selectedModel, topic, groupTitle, onBack, onApplyCode }: AiLearningProps) {
     const [content, setContent] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -51,7 +52,34 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onA
         setError(null);
 
         try {
-            const prompt = `Explain the topic '${currentTopic.title}' for a beginner learning ${language}. 
+            let prompt = "";
+
+            if (language === "dsa") {
+                prompt = `Explain the topic '${currentTopic.title}' in the context of Data Structures and Algorithms using Python.
+      Act as a friendly, expert tutor.
+
+      Structure your response like a high-quality interactive textbook:
+      1.  **Concept**: Clearly explain the data structure or algorithm.
+      2.  **Visual Intuition**: Describe how it works conceptually (e.g., "Think of a Stack like a pile of plates").
+      3.  **Complexity**: Time and Space complexity (Big O).
+      4.  **Implementation**: Provide a clear, commented Python implementation.
+      5.  **Usage**: When to use this vs other structures.
+
+      Use clean Markdown formatting. Use code blocks for all code.`;
+            } else if (currentTopic.title === "Practice Questions") {
+                prompt = `Generate 10 beginner-friendly practice questions and exercises for the topic: "${groupTitle || "General Practice"}" in ${language}.
+      Act as a friendly, expert tutor.
+
+      Structure your response as follows:
+      1.  **Introduction**: Briefly mention what these questions cover.
+      2.  **Exercises**: List 10 questions. For each question:
+          -   **Question**: A clear problem statement.
+          -   **Hint**: A small clue (formatted as a quote or italicized).
+          -   **Solution**: A collapsible or clear code block with the solution and brief explanation.
+
+      Ensure the questions range from easy to medium difficulty. Use clean Markdown formatting.`;
+            } else {
+                prompt = `Explain the topic '${currentTopic.title}' for a beginner learning ${language}. 
       Act as a friendly, expert tutor.
       
       Structure your response like a high-quality documentation page:
@@ -62,13 +90,14 @@ export function AiLearning({ language, apiKey, selectedModel, topic, onBack, onA
       5.  **Summary**: A one-sentence takeaway.
 
       Use clean Markdown formatting. Use code blocks for all code.`;
+            }
 
             const response: { content: string; model: string } = await invoke("ask_question", {
                 req: {
                     api_key: apiKey,
                     code: "", // No context code needed
                     question: prompt,
-                    language: language,
+                    language: language === "dsa" ? "python" : language,
                     selected_model: selectedModel
                 }
             });

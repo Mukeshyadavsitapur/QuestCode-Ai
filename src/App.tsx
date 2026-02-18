@@ -14,7 +14,7 @@ import { Shortcuts } from "./Shortcuts";
 import { themes } from "./themes";
 import { Terminal } from "./Terminal"; // Import Terminal
 import { AiLearning } from "./AiLearning";
-import { TOPICS_RUST, TOPICS_PYTHON, Topic } from "./learningData";
+import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, Topic } from "./learningData";
 import "./App.css";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
@@ -47,11 +47,11 @@ interface ChatSession {
 const INITIAL_DESCRIPTION = "# Getting Started\n\nWelcome! Type some code on the left and click **'Explain Code'** to get an AI-powered breakdown of what's happening.\n\nYou can also ask specific questions using the chat bar below.";
 
 function App() {
-  const [language, setLanguage] = useState<"rust" | "python">(() => {
-    return (localStorage.getItem("language") as "rust" | "python") || "python";
+  const [language, setLanguage] = useState<"rust" | "python" | "dsa">(() => {
+    return (localStorage.getItem("language") as "rust" | "python" | "dsa") || "python";
   });
   const [code, setCode] = useState(() => {
-    const savedLanguage = localStorage.getItem("language") as "rust" | "python" || "python";
+    const savedLanguage = localStorage.getItem("language") as "rust" | "python" | "dsa" || "python";
     return savedLanguage === "rust" ? DEFAULT_RUST_CODE : DEFAULT_PYTHON_CODE;
   });
   const [description, setDescription] = useState(INITIAL_DESCRIPTION);
@@ -78,11 +78,12 @@ function App() {
 
   // Learning State
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Update default expanded groups when language changes
   useEffect(() => {
-    const topics = language === "rust" ? TOPICS_RUST : TOPICS_PYTHON;
+    const topics = language === "rust" ? TOPICS_RUST : language === "python" ? TOPICS_PYTHON : TOPICS_DSA;
     setExpandedGroups(new Set(topics.map(t => t.title)));
   }, [language]);
 
@@ -271,6 +272,9 @@ function App() {
     if (language === "rust") {
       setLanguage("python");
       setCode(DEFAULT_PYTHON_CODE);
+    } else if (language === "python") {
+      setLanguage("dsa");
+      setCode(DEFAULT_PYTHON_CODE); // DSA uses Python syntax
     } else {
       setLanguage("rust");
       setCode(DEFAULT_RUST_CODE);
@@ -292,7 +296,7 @@ function App() {
         req: {
           api_key: apiKey,
           code: code,
-          language: language,
+          language: language === "dsa" ? "python" : language,
           selected_model: selectedModel
         }
       });
@@ -333,7 +337,7 @@ function App() {
           api_key: apiKey,
           code: code,
           question: userQuestion, // Send context-enhanced question to AI
-          language: language,
+          language: language === "dsa" ? "python" : language,
           selected_model: selectedModel
         }
       });
@@ -352,9 +356,9 @@ function App() {
   const handleRunCode = async () => {
     if (!isTerminalVisible) setIsTerminalVisible(true);
     setIsRunning(true);
-    setTerminalOutput(`Running ${language === "rust" ? "Rust" : "Python"} code...`);
+    setTerminalOutput(`Running ${language === "rust" ? "Rust" : language === "python" ? "Python" : "DSA (Python)"} code...`);
     try {
-      const output: string = await invoke("execute_code", { code, language });
+      const output: string = await invoke("execute_code", { code, language: language === "dsa" ? "python" : language });
       setTerminalOutput(output);
     } catch (error) {
       console.error("Failed to run code:", error);
@@ -408,8 +412,9 @@ function App() {
     setExpandedGroups(newExpanded);
   };
 
-  const handleSelectTopic = (topic: Topic) => {
+  const handleSelectTopic = (topic: Topic, groupTitle: string) => {
     setSelectedTopic(topic);
+    setSelectedGroup(groupTitle);
     setIsHistoryOpen(false); // Close sidebar on selection logic can be here
   };
 
@@ -426,7 +431,7 @@ function App() {
             onClick={toggleLanguage}
             style={{ minWidth: "120px", display: "flex", justifyContent: "center" }}
           >
-            {language === "rust" ? "🦀 Rust" : "🐍 Python"}
+            {language === "rust" ? "🦀 Rust" : language === "python" ? "🐍 Python" : "📊 DSA"}
           </button>
         </div>
         <div className="header-actions">
@@ -515,11 +520,11 @@ function App() {
                           <ArrowLeft size={16} />
                         </button>
                         <h3 style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-color)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          {language === "rust" ? "Rust" : "Python"} Course
+                          {language === "rust" ? "Rust" : language === "python" ? "Python" : "DSA"} Course
                         </h3>
                       </div>
 
-                      {(language === "rust" ? TOPICS_RUST : TOPICS_PYTHON).map((group) => (
+                      {(language === "rust" ? TOPICS_RUST : language === "python" ? TOPICS_PYTHON : TOPICS_DSA).map((group) => (
                         <div key={group.title} style={{ marginBottom: "12px" }}>
                           <button
                             onClick={() => toggleGroup(group.title)}
@@ -547,7 +552,7 @@ function App() {
                               {group.topics.map(topic => (
                                 <button
                                   key={topic.id}
-                                  onClick={() => handleSelectTopic(topic)}
+                                  onClick={() => handleSelectTopic(topic, group.title)}
                                   className={`history-item ${selectedTopic?.id === topic.id ? "active" : ""}`}
                                   style={{
                                     width: "100%",
@@ -759,6 +764,7 @@ function App() {
                   apiKey={apiKey}
                   selectedModel={selectedModel}
                   topic={selectedTopic}
+                  groupTitle={selectedGroup}
                   onBack={() => setIsHistoryOpen(true)}
                   onApplyCode={setCode}
                 />

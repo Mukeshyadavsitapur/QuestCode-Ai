@@ -68,9 +68,10 @@ struct GeminiModelList {
     models: Vec<GeminiModel>,
 }
 
-// Global state to manage the running process cancellation
+// Global state to manage the running process cancellation and adaptive model priority
 struct AppState {
     stop_tx: Mutex<Option<oneshot::Sender<()>>>,
+    last_working_model: Mutex<Option<String>>,
 }
 
 async fn fetch_gemini_models_raw(api_key: &str) -> Result<Vec<String>, String> {
@@ -107,13 +108,12 @@ async fn fetch_gemini_models_raw(api_key: &str) -> Result<Vec<String>, String> {
     Ok(models)
 }
 
-async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+async fn call_gemini(state: &State<'_, AppState>, api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
     if api_key.trim().is_empty() {
         return Err("API Key is missing. Please add it in Settings.".to_string());
     }
 
-    // 1. Fetch all available models properly
-    // If fetching fails, we start with a small hardcoded safe-list to not completely fail
+    // 1. Fetch available models
     let all_models = match fetch_gemini_models_raw(api_key).await {
         Ok(m) => m,
         Err(e) => {
@@ -131,12 +131,22 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
     let mut execution_chain = Vec::new();
 
     // Strategy:
+    // Priority 0: Last Known Good Model (Adaptive Priority)
     // Priority 1: User Selected Model (Specific)
     // Priority 2: All models in the SAME version family as selected (e.g. all 2.5s)
     // Priority 3: 3.0 Family
     // Priority 4: 2.5 Family
     // Priority 5: 2.0 Family
     // Priority 6: 1.5 Family (Deep fallback)
+
+    // Priority 0: Last Known Good Model
+    {
+        let lock = state.last_working_model.lock().await;
+        if let Some(ref last_good) = *lock {
+            println!("⚡ Adaptive Priority: Trying last working model first: {}", last_good);
+            execution_chain.push(last_good.clone());
+        }
+    }
 
     let mut selected_family = None;
     if let Some(ref m) = selected_model {
@@ -146,8 +156,10 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
         else if m_clean.contains("2.5") { selected_family = Some("2.5"); }
         else if m_clean.contains("3.0") { selected_family = Some("3.0"); }
         
-        // Add specific selected model first (Priority 1)
-        execution_chain.push(m_clean);
+        // Add specific selected model (Priority 1) - only if not already added by adaptive logic
+        if !execution_chain.contains(&m_clean) {
+             execution_chain.push(m_clean);
+        }
     }
 
     // Helper to add unique models from a family
@@ -157,8 +169,6 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
             .cloned()
             .collect();
         
-        // Sort effectively (newest/longest names often implies specific versions, but simple iterate is fine)
-        // Reverse alphabetical often puts "pro" before "flash" or "newer" dates first if YYYYMMDD
         family_models.sort_by(|a, b| b.cmp(a)); 
 
         for m in family_models {
@@ -174,7 +184,6 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
     }
 
     // Priority 3-6: Default Cascade (3.0 -> 2.5 -> 2.0 -> 1.5)
-    // We add them in order. The 'add_family' helper ensures no duplicates if they were already added.
     let default_order = vec!["3.0", "2.5", "2.0", "1.5"];
     for fam in default_order {
         add_family(&mut execution_chain, fam);
@@ -187,7 +196,6 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
     for model in &execution_chain {
         println!("Attempting request with model: {}, temp: {:?}", model, temperature);
         let client = Client::new();
-        // Ensure "models/" prefix is present for the URL construction if missing
         let model_path = if model.starts_with("models/") { model.to_string() } else { format!("models/{}", model) };
         
         let url = format!(
@@ -230,6 +238,14 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
                 if let Some(first_candidate) = candidates.first() {
                     if let Some(first_part) = first_candidate.content.parts.first() {
                         println!("✅ SUCCESS: Response received from model: {}", model);
+                        
+                        // Update the last working model (Adaptive Priority)
+                        {
+                            let mut lock = state.last_working_model.lock().await;
+                            *lock = Some(model.to_string());
+                            println!("💾 Adaptive Memory: Saved {} as priority model for next request.", model);
+                        }
+
                         return Ok(AIResponse {
                             content: first_part.text.clone(),
                             model: model.to_string(),
@@ -243,9 +259,6 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
             let error_text = response.text().await.unwrap_or_default();
             last_error = format!("Model {} Error ({}): {}", model, status, error_text);
             
-            // Fallback on 429 OR 404/503/etc since we want to try everything in the list
-            // User requested "application automatically choose next model as fallback... until all model give api key error"
-            // So we basically fallback on ANY error.
             if status.is_success() {
                  return Err(last_error);
             }
@@ -296,15 +309,15 @@ struct QuestionRequest {
 }
 
 #[tauri::command]
-async fn explain_code(req: AIRequest) -> Result<AIResponse, String> {
+async fn explain_code(state: State<'_, AppState>, req: AIRequest) -> Result<AIResponse, String> {
     let prompt = format!("Explain this {} code in markdown format:\n\n```{}\n{}\n```", req.language, req.language, req.code);
-    call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await
+    call_gemini(&state, &req.api_key, &prompt, req.selected_model, req.temperature).await
 }
 
 #[tauri::command]
-async fn ask_question(req: QuestionRequest) -> Result<AIResponse, String> {
+async fn ask_question(state: State<'_, AppState>, req: QuestionRequest) -> Result<AIResponse, String> {
     let prompt = format!("Given this {} code:\n\n```{}\n{}\n```\n\nQuestion: {}\n\nAnswer in markdown:", req.language, req.language, req.code, req.question);
-    call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await
+    call_gemini(&state, &req.api_key, &prompt, req.selected_model, req.temperature).await
 }
 
 #[tauri::command]
@@ -443,7 +456,10 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(AppState { stop_tx: Mutex::new(None) })
+        .manage(AppState { 
+            stop_tx: Mutex::new(None),
+            last_working_model: Mutex::new(None) 
+        })
         .invoke_handler(tauri::generate_handler![
             explain_code, 
             ask_question, 

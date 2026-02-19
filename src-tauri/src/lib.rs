@@ -1,5 +1,11 @@
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
+use std::process::Stdio;
+use tokio::process::Command as TokioCommand;
+use tokio::sync::{Mutex, oneshot};
+use tauri::State;
+use std::env;
+// actually simple std::fs::write is fine for small files.
 
 #[derive(Serialize)]
 struct GeminiPart {
@@ -20,7 +26,8 @@ struct GenerationConfig {
 struct GeminiRequest {
     contents: Vec<GeminiContent>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    generationConfig: Option<GenerationConfig>,
+    #[serde(rename = "generationConfig")] // Keep JSON key as camelCase for API
+    generation_config: Option<GenerationConfig>,
 }
 
 #[derive(Deserialize)]
@@ -59,6 +66,11 @@ struct GeminiModel {
 #[derive(Deserialize)]
 struct GeminiModelList {
     models: Vec<GeminiModel>,
+}
+
+// Global state to manage the running process cancellation
+struct AppState {
+    stop_tx: Mutex<Option<oneshot::Sender<()>>>,
 }
 
 async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
@@ -107,12 +119,12 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
                     text: prompt.to_string(),
                 }],
             }],
-            generationConfig: None,
+            generation_config: None,
         };
 
         if let Some(temp) = temperature {
              println!("Using temperature: {}", temp);
-             request_body.generationConfig = Some(GenerationConfig {
+             request_body.generation_config = Some(GenerationConfig {
                 temperature: Some(temp),
             });
         } else {
@@ -237,13 +249,19 @@ async fn ask_question(req: QuestionRequest) -> Result<AIResponse, String> {
     call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await
 }
 
-use std::process::Command;
-use std::io::Write;
-use std::fs::File;
-use std::env;
+#[tauri::command]
+async fn stop_execution(state: State<'_, AppState>) -> Result<(), String> {
+    let mut lock = state.stop_tx.lock().await;
+    if let Some(tx) = lock.take() {
+        let _ = tx.send(()); // Send stop signal
+        Ok(())
+    } else {
+        Ok(()) // No running process to stop
+    }
+}
 
 #[tauri::command]
-async fn execute_code(code: String, language: String) -> Result<String, String> {
+async fn execute_code(state: State<'_, AppState>, code: String, language: String) -> Result<String, String> {
     // 1. Create a temporary directory/file
     let mut temp_dir = env::temp_dir();
     temp_dir.push("rust_reader_pro_exec");
@@ -253,70 +271,128 @@ async fn execute_code(code: String, language: String) -> Result<String, String> 
         std::fs::create_dir(&temp_dir).map_err(|e| format!("Failed to create temp dir: {}", e))?;
     }
 
-    if language.to_lowercase() == "rust" {
+    let (tx, rx) = oneshot::channel();
+    
+    // Store the cancellation sender
+    {
+        let mut lock = state.stop_tx.lock().await;
+        *lock = Some(tx);
+    }
+
+    let result = if language.to_lowercase() == "rust" {
         let file_path = temp_dir.join("main.rs");
-        let exe_path = temp_dir.join("main.exe"); // Windows extension
+        let exe_path = temp_dir.join("main.exe"); 
 
-        // Write code to file
-        let mut file = File::create(&file_path).map_err(|e| format!("Failed to create file: {}", e))?;
-        file.write_all(code.as_bytes()).map_err(|e| format!("Failed to write code: {}", e))?;
+        // Write code to file (synchronously is fine for small files)
+        if let Err(e) = std::fs::write(&file_path, &code) {
+           return Err(format!("Failed to write code: {}", e));
+        }
 
-        // Compile using rustc
-        let compile_output = Command::new("rustc")
-            .arg(&file_path)
+        // Compile using rustc (cancellable)
+        let mut compile_cmd = TokioCommand::new("rustc");
+        compile_cmd.arg(&file_path)
             .arg("-o")
             .arg(&exe_path)
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true); 
+
+        let compile_output = compile_cmd.output().await
             .map_err(|e| format!("Failed to run rustc: {}. Is Rust installed?", e))?;
 
         if !compile_output.status.success() {
-            return Ok(format!("Compilation Error:\n{}", String::from_utf8_lossy(&compile_output.stderr)));
-        }
-
-        // Run the executable
-        let run_output = Command::new(&exe_path)
-            .output()
-            .map_err(|e| format!("Failed to run executable: {}", e))?;
-
-        let stdout = String::from_utf8_lossy(&run_output.stdout);
-        let stderr = String::from_utf8_lossy(&run_output.stderr);
-
-        if !stderr.is_empty() {
-            Ok(format!("Output:\n{}\n\nErrors:\n{}", stdout, stderr))
+             Ok(format!("Compilation Error:\n{}", String::from_utf8_lossy(&compile_output.stderr)))
         } else {
-            Ok(stdout.to_string())
+            // Run the executable
+            let mut run_cmd = TokioCommand::new(&exe_path);
+            run_cmd.stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .kill_on_drop(true);
+
+            let child = run_cmd.spawn()
+                .map_err(|e| format!("Failed to spawn executable: {}", e))?;
+            
+            tokio::select! {
+                output_res = child.wait_with_output() => {
+                    match output_res {
+                        Ok(output) => {
+                            let stdout = String::from_utf8_lossy(&output.stdout);
+                            let stderr = String::from_utf8_lossy(&output.stderr);
+                            if !stderr.is_empty() {
+                                Ok(format!("Output:\n{}\n\nErrors:\n{}", stdout, stderr))
+                            } else {
+                                Ok(stdout.to_string())
+                            }
+                        }
+                        Err(e) => Err(format!("Execution failed: {}", e))
+                    }
+                }
+                _ = rx => {
+                    Ok("Execution Stopped by User.".to_string())
+                }
+            }
         }
+
     } else if language.to_lowercase() == "python" {
         let file_path = temp_dir.join("script.py");
 
-        // Write code to file
-        let mut file = File::create(&file_path).map_err(|e| format!("Failed to create file: {}", e))?;
-        file.write_all(code.as_bytes()).map_err(|e| format!("Failed to write code: {}", e))?;
+        if let Err(e) = std::fs::write(&file_path, &code) {
+            return Err(format!("Failed to write code: {}", e));
+        }
 
-        // Run using python
-        let run_output = Command::new("python")
-            .arg(&file_path)
-            .output()
+        let mut cmd = TokioCommand::new("python");
+        cmd.arg(&file_path)
+           .stdout(Stdio::piped())
+           .stderr(Stdio::piped())
+           .kill_on_drop(true);
+
+        let child = cmd.spawn()
             .map_err(|e| format!("Failed to run python: {}. Is Python installed?", e))?;
 
-        let stdout = String::from_utf8_lossy(&run_output.stdout);
-        let stderr = String::from_utf8_lossy(&run_output.stderr);
-
-        if !stderr.is_empty() {
-            Ok(format!("Output:\n{}\n\nErrors:\n{}", stdout, stderr))
-        } else {
-            Ok(stdout.to_string())
+        tokio::select! {
+             output_res = child.wait_with_output() => {
+                match output_res {
+                    Ok(output) => {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        if !stderr.is_empty() {
+                            Ok(format!("Output:\n{}\n\nErrors:\n{}", stdout, stderr))
+                        } else {
+                            Ok(stdout.to_string())
+                        }
+                    }
+                    Err(e) => Err(format!("Execution failed: {}", e))
+                }
+            }
+            _ = rx => {
+                Ok("Execution Stopped by User.".to_string())
+            }
         }
     } else {
         Err(format!("Unsupported language: {}", language))
+    };
+
+    // Cleanup state
+    {
+        let mut lock = state.stop_tx.lock().await;
+        *lock = None;
     }
+
+    result
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![explain_code, ask_question, execute_code, get_available_models])
+        .manage(AppState { stop_tx: Mutex::new(None) })
+        .invoke_handler(tauri::generate_handler![
+            explain_code, 
+            ask_question, 
+            execute_code, 
+            stop_execution, 
+            get_available_models
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

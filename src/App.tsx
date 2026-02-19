@@ -8,7 +8,13 @@ import {
 } from "react-resizable-panels";
 import Editor, { loader } from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
-import { Brain, Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2, ChevronRight, ChevronDown, ArrowLeft } from "lucide-react";
+import {
+  Brain, Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2,
+  ChevronRight,
+  ChevronDown,
+  Square,
+  ArrowLeft
+} from "lucide-react";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
 import { themes } from "./themes";
@@ -359,6 +365,16 @@ function App() {
   };
 
   const handleRunCode = async () => {
+    if (isRunning) {
+      // If already running, treating this as a STOP request
+      try {
+        await invoke("stop_execution");
+      } catch (error) {
+        console.error("Failed to stop execution:", error);
+      }
+      return;
+    }
+
     if (!isTerminalVisible) setIsTerminalVisible(true);
     setIsRunning(true);
     setTerminalOutput(`Running ${language === "rust" ? "Rust" : language === "python" ? "Python" : "DSA (Python)"} code...`);
@@ -372,6 +388,7 @@ function App() {
       setIsRunning(false);
     }
   };
+
 
   const handleOpenGeminiWeb = async () => {
     try {
@@ -823,10 +840,14 @@ function App() {
                       <button
                         className="btn btn-sm btn-primary"
                         onClick={handleRunCode}
-                        disabled={isRunning}
-                        style={{ padding: "4px 12px", fontSize: "0.8rem" }}
+                        style={{
+                          padding: "4px 12px",
+                          fontSize: "0.8rem",
+                          backgroundColor: isRunning ? "#ef4444" : "var(--accent-color)", // Red when running
+                          transition: "background-color 0.2s"
+                        }}
                       >
-                        Run Code
+                        {isRunning ? <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /> Stop</> : "Run Code"}
                       </button>
                     </div>
                   </div>

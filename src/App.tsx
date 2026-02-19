@@ -9,7 +9,7 @@ import {
 import Editor, { loader } from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
 import {
-  Brain, Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2,
+  Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2,
   ChevronRight,
   ChevronDown,
   Square,
@@ -498,73 +498,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="header">
-        <div className="logo">
-          <Brain color="var(--accent-text)" />
-          <span>QuestCode AI</span>
-        </div>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <select
-            value={language}
-            onChange={(e) => {
-              const newLang = e.target.value as any;
-              setLanguage(newLang);
-              localStorage.setItem("language", newLang);
 
-              // Load saved code for new language or default
-              const savedCode = localStorage.getItem(`code_${newLang}`);
-              const newCode = savedCode || getDefaultCode(newLang);
-              setCode(newCode);
-
-              // Load saved topic for new language or default
-              const savedTopicParams = localStorage.getItem(`topic_${newLang}`);
-              const savedTopic = savedTopicParams ? JSON.parse(savedTopicParams) : null;
-              setSelectedTopic(savedTopic);
-
-              // Trigger Preview Update if needed (done by useEffect)
-              if (newLang === "html") {
-                setWebPreviewContent(newCode);
-              } else if (newLang === "css") {
-                setWebPreviewContent(`<html><head><style>${newCode}</style></head><body><h1>CSS Preview</h1><div class="box">Box</div></body></html>`);
-              }
-
-              // Auto-open preview for HTML/CSS
-              if (newLang === "html" || newLang === "css") {
-                setIsTerminalVisible(true);
-              }
-            }}
-            className="language-select"
-            style={{
-              background: "var(--secondary-color)",
-              color: "var(--text-main)",
-              border: "1px solid var(--border-color)",
-              padding: "6px 12px",
-              borderRadius: "6px",
-              cursor: "pointer",
-              outline: "none",
-              fontWeight: "600",
-              fontSize: "0.9rem"
-            }}
-          >
-            <option value="python">🐍 Python</option>
-            <option value="rust">🦀 Rust</option>
-            <option value="dsa">📊 DSA</option>
-            <option value="html">🌐 HTML</option>
-            <option value="css">🎨 CSS</option>
-            <option value="javascript">⚡ JavaScript</option>
-            <option value="ml">🤖 Machine Learning</option>
-          </select>
-        </div>
-        <div className="header-actions">
-          <button
-            className="btn btn-secondary"
-            onClick={() => setIsSettingsOpen(true)}
-            style={{ marginRight: 10, border: "none", color: "var(--text-muted)" }}
-          >
-            <Settings size={20} />
-          </button>
-        </div>
-      </header>
 
       <SettingsModal
         isOpen={isSettingsOpen}
@@ -597,6 +531,14 @@ function App() {
                   </button>
                   <button className={`tab-btn ${viewMode === "ai" ? "active" : ""}`} onClick={() => setViewMode("ai")}>
                     <MessageSquare size={14} /> AI Assistant
+                  </button>
+                  <button
+                    className="tab-btn"
+                    onClick={() => setIsSettingsOpen(true)}
+                    style={{ border: "none", color: "var(--text-muted)", padding: "4px" }}
+                    title="Settings"
+                  >
+                    <Settings size={16} />
                   </button>
                 </div>
 
@@ -961,7 +903,57 @@ function App() {
               <Panel defaultSize={70} minSize={20}>
                 <div className="panel">
                   <div className="panel-header">
-                    <span>CODE EDITOR</span>
+                    <select
+                      value={language}
+                      onChange={(e) => {
+                        const newLang = e.target.value as any;
+                        setLanguage(newLang);
+                        localStorage.setItem("language", newLang);
+
+                        // Load saved code for new language or default
+                        const savedCode = localStorage.getItem(`code_${newLang}`);
+                        const newCode = savedCode || getDefaultCode(newLang);
+                        setCode(newCode);
+
+                        // Load saved topic for new language or default
+                        const savedTopicParams = localStorage.getItem(`topic_${newLang}`);
+                        const savedTopic = savedTopicParams ? JSON.parse(savedTopicParams) : null;
+                        setSelectedTopic(savedTopic);
+
+                        // Trigger Preview Update if needed (done by useEffect)
+                        if (newLang === "html") {
+                          setWebPreviewContent(newCode);
+                        } else if (newLang === "css") {
+                          setWebPreviewContent(`<html><head><style>${newCode}</style></head><body><h1>CSS Preview</h1><div class="box">Box</div></body></html>`);
+                        }
+
+                        // Auto-open preview for HTML/CSS
+                        if (newLang === "html" || newLang === "css") {
+                          setIsTerminalVisible(true);
+                        }
+                      }}
+                      className="language-select"
+                      style={{
+                        background: "transparent",
+                        color: "var(--text-main)",
+                        border: "none",
+                        padding: "4px 8px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        outline: "none",
+                        fontWeight: "600",
+                        fontSize: "0.85rem",
+                        marginTop: -2
+                      }}
+                    >
+                      <option value="python">🐍 Python</option>
+                      <option value="rust">🦀 Rust</option>
+                      <option value="dsa">📊 DSA</option>
+                      <option value="html">🌐 HTML</option>
+                      <option value="css">🎨 CSS</option>
+                      <option value="javascript">⚡ JavaScript</option>
+                      <option value="ml">🤖 Machine Learning</option>
+                    </select>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         className={`tab-btn ${isMinimapVisible ? "active" : ""}`}

@@ -144,6 +144,7 @@ function App() {
   const [terminalOutput, setTerminalOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [isTerminalVisible, setIsTerminalVisible] = useState(true);
+  const [webPreviewContent, setWebPreviewContent] = useState("");
   const [isMinimapVisible, setIsMinimapVisible] = useState(true);
 
   // Settings State
@@ -393,6 +394,39 @@ function App() {
     }
   };
 
+  // Update Web Preview on code change
+  useEffect(() => {
+    if (language === "html") {
+      setWebPreviewContent(code);
+    } else if (language === "css") {
+      setWebPreviewContent(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              ${code}
+            </style>
+          </head>
+          <body>
+            <h1>CSS Preview</h1>
+            <p>The CSS you wrote is applied to this page.</p>
+            <div class="container">
+                <div class="box">Sample Box</div>
+                <button>Sample Button</button>
+                <input type="text" placeholder="Sample Input" />
+            </div>
+            <hr />
+            <h2>Common Elements</h2>
+            <ul>
+                <li>List Item 1</li>
+                <li>List Item 2</li>
+            </ul>
+          </body>
+        </html>
+      `);
+    }
+  }, [code, language]);
+
   const handleRunCode = async () => {
     if (isRunning) {
       // If already running, treating this as a STOP request
@@ -485,11 +519,19 @@ function App() {
               localStorage.setItem("language", newLang);
               // Also update code to default if empty or matches default of previous lang? 
               // For simplicity, let's set to default of new lang
-              if (newLang === "rust") setCode(DEFAULT_RUST_CODE);
-              else if (newLang === "html") setCode(DEFAULT_HTML_CODE);
-              else if (newLang === "css") setCode(DEFAULT_CSS_CODE);
-              else if (newLang === "javascript") setCode(DEFAULT_JS_CODE);
-              else setCode(DEFAULT_PYTHON_CODE);
+              if (newLang === "rust") {
+                setCode(DEFAULT_RUST_CODE);
+              } else if (newLang === "html") {
+                setCode(DEFAULT_HTML_CODE);
+                setWebPreviewContent(DEFAULT_HTML_CODE);
+              } else if (newLang === "css") {
+                setCode(DEFAULT_CSS_CODE);
+                setWebPreviewContent(`<html><head><style>${DEFAULT_CSS_CODE}</style></head><body><h1>CSS Preview</h1><div class="box">Box</div></body></html>`);
+              } else if (newLang === "javascript") {
+                setCode(DEFAULT_JS_CODE);
+              } else {
+                setCode(DEFAULT_PYTHON_CODE);
+              }
             }}
             className="language-select"
             style={{
@@ -937,12 +979,12 @@ function App() {
                         <Layout size={14} />
                       </button>
                       <button
-                        className={`tab-btn ${isTerminalVisible ? "active" : ""}`}
-                        title={isTerminalVisible ? "Hide Terminal" : "Show Terminal"}
+                        className={`tab-btn ${isTerminalVisible || (language === "html" || language === "css") ? "active" : ""}`}
+                        title={language === "html" || language === "css" ? "Toggle Preview" : (isTerminalVisible ? "Hide Terminal" : "Show Terminal")}
                         onClick={() => setIsTerminalVisible(!isTerminalVisible)}
                         style={{ padding: "4px 8px" }}
                       >
-                        <TerminalIcon size={14} />
+                        {language === "html" || language === "css" ? <Layout size={14} /> : <TerminalIcon size={14} />}
                       </button>
                       <button
                         className="btn btn-sm btn-primary"
@@ -954,7 +996,13 @@ function App() {
                           transition: "background-color 0.2s"
                         }}
                       >
-                        {isRunning ? <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /> Stop</> : "Run Code"}
+                        {isRunning ? (
+                          <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /> Stop</>
+                        ) : (language === "html" || language === "css") ? (
+                          <><Globe size={12} style={{ marginRight: 6 }} /> Live Preview Active</>
+                        ) : (
+                          "Run Code"
+                        )}
                       </button>
                     </div>
                   </div>
@@ -979,12 +1027,29 @@ function App() {
                 </div>
               </Panel>
 
-              {isTerminalVisible && (
+              {(isTerminalVisible || (language === "html" || language === "css")) && (
                 <>
                   <PanelResizeHandle className="resizer vertical" />
                   <Panel defaultSize={30} minSize={15}>
-                    <div className="panel" style={{ height: "100%" }}>
-                      <Terminal output={terminalOutput} isRunning={isRunning} onClear={() => setTerminalOutput("")} />
+                    <div className="panel" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                      {(language === "html" || language === "css") ? (
+                        <>
+                          <div className="panel-header" style={{ justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", padding: "8px 16px", background: "var(--panel-bg)" }}>
+                            <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "var(--text-main)" }}>WEB PREVIEW</span>
+                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                              {language === "html" ? "index.html" : "style.css (Wrapped)"}
+                            </div>
+                          </div>
+                          <iframe
+                            srcDoc={webPreviewContent}
+                            title="Web Preview"
+                            style={{ flex: 1, border: "none", background: "white", width: "100%" }}
+                            sandbox="allow-scripts"
+                          />
+                        </>
+                      ) : (
+                        <Terminal output={terminalOutput} isRunning={isRunning} onClear={() => setTerminalOutput("")} />
+                      )}
                     </div>
                   </Panel>
                 </>

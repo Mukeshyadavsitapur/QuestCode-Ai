@@ -487,7 +487,7 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
         cmd.arg("/C")
            .arg("start")
            .arg(&file_path)
-           .kill_on_drop(true);
+           .arg(&file_path);
 
         match cmd.spawn() {
             Ok(_) => Ok("Opened index.html in your default browser.".to_string()),
@@ -495,7 +495,49 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
         }
 
     } else if language.to_lowercase() == "css" {
-        Ok("CSS cannot be executed directly. Please create an HTML file and link this CSS (or use <style> tags) to view changes.".to_string())
+        let file_path = temp_dir.join("style_preview.html");
+        let html_content = format!(
+            r#"<!DOCTYPE html>
+<html>
+<head>
+<title>CSS Preview</title>
+<style>
+{}
+</style>
+</head>
+<body>
+    <h1>CSS Preview</h1>
+    <p>The CSS you wrote is applied to this page.</p>
+    <div class="container">
+        <div class="box">Sample Box</div>
+        <button>Sample Button</button>
+        <input type="text" placeholder="Sample Input" />
+    </div>
+    <hr />
+    <h2>Common Elements</h2>
+    <ul>
+        <li>List Item 1</li>
+        <li>List Item 2</li>
+    </ul>
+</body>
+</html>"#,
+            code
+        );
+
+        if let Err(e) = std::fs::write(&file_path, &html_content) {
+             return Err(format!("Failed to write preview file: {}", e));
+        }
+
+        let mut cmd = TokioCommand::new("cmd");
+        cmd.arg("/C")
+           .arg("start")
+           .arg(&file_path)
+           .arg(&file_path);
+
+        match cmd.spawn() {
+            Ok(_) => Ok("Opened CSS preview in your default browser.".to_string()),
+            Err(e) => Err(format!("Failed to open browser: {}", e))
+        }
     } else {
         Err(format!("Unsupported language: {}", language))
     };

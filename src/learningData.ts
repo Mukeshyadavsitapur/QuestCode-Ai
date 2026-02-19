@@ -581,3 +581,75 @@ export const TOPICS_JS: TopicGroup[] = [
         ],
     },
 ];
+
+export const TOPICS_ML: TopicGroup[] = [
+    {
+        title: "1. ML Introduction",
+        topics: [
+            { id: "1.1", title: "What is Machine Learning?" },
+            { id: "1.2", title: "Types of ML (Supervised, Unsupervised, RL)" },
+            { id: "1.3", title: "Setting up Python for ML" },
+            { id: "1.4", title: "ML vs Traditional Programming" },
+            { id: "1.5", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "2. Data Preprocessing (NumPy & Pandas)",
+        topics: [
+            { id: "2.1", title: "NumPy Arrays & Operations" },
+            { id: "2.2", title: "Pandas DataFrames" },
+            { id: "2.3", title: "Handling Missing Data" },
+            { id: "2.4", title: "Feature Scaling (Normalization/Standardization)" },
+            { id: "2.5", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "3. Supervised Learning - Regression",
+        topics: [
+            { id: "3.1", title: "Linear Regression" },
+            { id: "3.2", title: "Polynomial Regression" },
+            { id: "3.3", title: "Cost Function & Gradient Descent" },
+            { id: "3.4", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "4. Supervised Learning - Classification",
+        topics: [
+            { id: "4.1", title: "Logistic Regression" },
+            { id: "4.2", title: "K-Nearest Neighbors (KNN)" },
+            { id: "4.3", title: "Support Vector Machines (SVM)" },
+            { id: "4.4", title: "Decision Trees & Random Forests" },
+            { id: "4.5", title: "Naive Bayes" },
+            { id: "4.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "5. Unsupervised Learning",
+        topics: [
+            { id: "5.1", title: "K-Means Clustering" },
+            { id: "5.2", title: "Hierarchical Clustering" },
+            { id: "5.3", title: "Principal Component Analysis (PCA)" },
+            { id: "5.4", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "6. Model Evaluation",
+        topics: [
+            { id: "6.1", title: "Train/Test Split" },
+            { id: "6.2", title: "Confusion Matrix" },
+            { id: "6.3", title: "Accuracy, Precision, Recall, F1-Score" },
+            { id: "6.4", title: "Cross-Validation" },
+            { id: "6.5", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "7. Neural Networks (Deep Learning)",
+        topics: [
+            { id: "7.1", title: "Introduction to Neural Networks" },
+            { id: "7.2", title: "Perceptrons & Activation Functions" },
+            { id: "7.3", title: "Backpropagation" },
+            { id: "7.4", title: "Intro to TensorFlow/PyTorch" },
+            { id: "7.5", title: "Practice Questions" },
+        ],
+    },
+];

@@ -13,7 +13,7 @@ export interface AiLearningHandle {
 }
 
 interface AiLearningProps {
-    language: "rust" | "python" | "dsa" | "html" | "css" | "javascript";
+    language: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml";
     apiKey: string;
     selectedModel: string | null;
     topic: Topic | null;

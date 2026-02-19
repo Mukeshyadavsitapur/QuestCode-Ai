@@ -20,8 +20,9 @@ import { Shortcuts } from "./Shortcuts";
 import { themes } from "./themes";
 import { Terminal } from "./Terminal"; // Import Terminal
 import { AiLearning, AiLearningHandle } from "./AiLearning";
-import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, TOPICS_HTML, TOPICS_CSS, TOPICS_JS, Topic } from "./learningData";
+import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, TOPICS_HTML, TOPICS_CSS, TOPICS_JS, TOPICS_ML, Topic } from "./learningData";
 import "./App.css";
+import { DEFAULT_RUST_CODE, DEFAULT_PYTHON_CODE, DEFAULT_HTML_CODE, DEFAULT_CSS_CODE, DEFAULT_JS_CODE, DEFAULT_ML_CODE } from "./defaultCode";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-rust";
@@ -30,51 +31,8 @@ import "prismjs/components/prism-css";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-markup";
 
-const DEFAULT_RUST_CODE = `// Welcome to your AI Programming Tutor
-// Write code here and ask AI for help!
 
-fn main() {
-    println!("Hello, Rust learner!");
-}`;
 
-const DEFAULT_PYTHON_CODE = `# Welcome to your AI Programming Tutor
-# Write code here and ask AI for help!
-
-def main():
-    print("Hello, Python learner!")
-
-if __name__ == "__main__":
-    main()`;
-
-const DEFAULT_HTML_CODE = `<!-- Welcome to HTML Learning -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Hello World</title>
-</head>
-<body>
-    <h1>Hello, HTML Learner!</h1>
-    <p>This is a paragraph.</p>
-</body>
-</html>`;
-
-const DEFAULT_CSS_CODE = `/* Welcome to CSS Learning */
-body {
-    background-color: #1e1e1e;
-    color: #ffffff;
-    font-family: sans-serif;
-}
-
-h1 {
-    color: #61dafb;
-}`;
-
-const DEFAULT_JS_CODE = `// Welcome to JavaScript Learning
-console.log("Hello, JavaScript Learner!");
-
-function greet(name) {
-    return "Hello, " + name + "!";
-}`;
 
 interface ChatSession {
   id: string;
@@ -86,8 +44,8 @@ interface ChatSession {
 const INITIAL_DESCRIPTION = "# Getting Started\n\nWelcome! Type some code on the left and click **'Explain Code'** to get an AI-powered breakdown of what's happening.\n\nYou can also ask specific questions using the chat bar below.";
 
 function App() {
-  const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript">(() => {
-    return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript") || "python";
+  const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml">(() => {
+    return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml") || "python";
   });
   const [code, setCode] = useState(() => {
     const savedLanguage = localStorage.getItem("language");
@@ -95,6 +53,7 @@ function App() {
     if (savedLanguage === "html") return DEFAULT_HTML_CODE;
     if (savedLanguage === "css") return DEFAULT_CSS_CODE;
     if (savedLanguage === "javascript") return DEFAULT_JS_CODE;
+    if (savedLanguage === "ml") return DEFAULT_ML_CODE;
     return DEFAULT_PYTHON_CODE;
   });
   const [description, setDescription] = useState(INITIAL_DESCRIPTION);
@@ -133,6 +92,7 @@ function App() {
     else if (language === "html") topics = TOPICS_HTML;
     else if (language === "css") topics = TOPICS_CSS;
     else if (language === "javascript") topics = TOPICS_JS;
+    else if (language === "ml") topics = TOPICS_ML;
 
     setExpandedGroups(new Set(topics.map(t => t.title)));
   }, [language]);
@@ -336,7 +296,7 @@ function App() {
         req: {
           api_key: apiKey,
           code: code,
-          language: language === "dsa" ? "python" : language,
+          language: (language === "dsa" || language === "ml") ? "python" : language,
           selected_model: selectedModel
         }
       });
@@ -380,7 +340,7 @@ function App() {
           api_key: apiKey,
           code: code,
           question: userQuestion, // Send context-enhanced question to AI
-          language: language === "dsa" ? "python" : language,
+          language: (language === "dsa" || language === "ml") ? "python" : language,
           selected_model: selectedModel
         }
       });
@@ -444,7 +404,7 @@ function App() {
     setIsRunning(true);
     setTerminalOutput(`Running ${language.toUpperCase()} code...`);
     try {
-      const output: string = await invoke("execute_code", { code, language: language === "dsa" ? "python" : language });
+      const output: string = await invoke("execute_code", { code, language: (language === "dsa" || language === "ml") ? "python" : language });
       setTerminalOutput(output);
     } catch (error) {
       console.error("Failed to run code:", error);
@@ -531,6 +491,8 @@ function App() {
                 setWebPreviewContent(`<html><head><style>${DEFAULT_CSS_CODE}</style></head><body><h1>CSS Preview</h1><div class="box">Box</div></body></html>`);
               } else if (newLang === "javascript") {
                 setCode(DEFAULT_JS_CODE);
+              } else if (newLang === "ml") {
+                setCode(DEFAULT_ML_CODE);
               } else {
                 setCode(DEFAULT_PYTHON_CODE);
               }
@@ -554,6 +516,7 @@ function App() {
             <option value="html">🌐 HTML</option>
             <option value="css">🎨 CSS</option>
             <option value="javascript">⚡ JavaScript</option>
+            <option value="ml">🤖 Machine Learning</option>
           </select>
         </div>
         <div className="header-actions">
@@ -652,7 +615,8 @@ function App() {
                             language === "dsa" ? TOPICS_DSA :
                               language === "html" ? TOPICS_HTML :
                                 language === "css" ? TOPICS_CSS :
-                                  TOPICS_JS
+                                  language === "ml" ? TOPICS_ML :
+                                    TOPICS_JS
                       ).map((group) => (
                         <div key={group.title} style={{ marginBottom: "12px" }}>
                           <button
@@ -876,9 +840,9 @@ function App() {
               </div>
 
               <div style={{ display: viewMode === "docs" ? "flex" : "none", flex: 1, flexDirection: "column" }}>
-                {(language === "rust" || language === "python") ? (
+                {(language === "rust" || language === "python" || language === "ml") ? (
                   <iframe
-                    src={language === "rust" ? "https://doc.rust-lang.org/book/" : "https://docs.python.org/3/"}
+                    src={language === "rust" ? "https://doc.rust-lang.org/book/" : language === "ml" ? "https://scikit-learn.org/stable/user_guide.html" : "https://docs.python.org/3/"}
                     title="Documentation"
                     style={{ flex: 1, border: "none", width: "100%", height: "100%", backgroundColor: "var(--bg-color)" }}
                   />

@@ -97,6 +97,7 @@ body {
     overflow: auto;
     background-color: var(--code-bg);
     font-family: var(--font-mono);
+    padding-top: 10px;
 }
 
 .description-container {

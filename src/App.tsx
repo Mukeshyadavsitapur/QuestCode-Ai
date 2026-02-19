@@ -173,12 +173,17 @@ function App() {
     loader.init().then((monaco) => {
       Object.values(themes).forEach((t) => {
         monaco.editor.defineTheme(t.id, {
-          base: ["day", "sepia", "forest", "yellow", "ocean", "slate"].includes(t.id) ? "vs" : "vs-dark",
+          base: ["day", "sepia", "yellow", "ocean", "slate"].includes(t.id) ? "vs" : "vs-dark",
           inherit: true,
           rules: [
             { token: "", foreground: t.text.replace("#", "") },
             { token: "comment", foreground: t.secondary.replace("#", "") },
             { token: "keyword", foreground: t.primary.replace("#", "") },
+            { token: "delimiter", foreground: t.text.replace("#", "") },
+            { token: "operator", foreground: t.primary.replace("#", "") },
+            { token: "string", foreground: t.activeWord.replace("#", "") },
+            { token: "number", foreground: t.secondary.replace("#", "") },
+            { token: "type", foreground: t.primaryText.replace("#", "") },
           ],
           colors: {
             "editor.background": t.bg,

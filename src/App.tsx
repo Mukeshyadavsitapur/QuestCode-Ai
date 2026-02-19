@@ -432,6 +432,11 @@ function App() {
     }
 
     if (!isTerminalVisible) setIsTerminalVisible(true);
+
+    if (language === "html" || language === "css") {
+      return;
+    }
+
     setIsRunning(true);
     setTerminalOutput(`Running ${language.toUpperCase()} code...`);
     try {

@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import ReactMarkdown from "react-markdown";
 import { Sparkles, Loader2, RefreshCw, BookOpen, Copy, Terminal as TerminalIcon } from "lucide-react";
@@ -268,9 +268,9 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                 ) : (
                     <div className="markdown-body">
                         <ReactMarkdown
-                            components={{
-                                pre: ({ children }) => <>{children}</>,
-                                code({ className, children, ...props }) {
+                            components={useMemo(() => ({
+                                pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+                                code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
                                     const match = /language-(\w+)/.exec(className || "");
                                     const isInline = !match;
                                     const codeText = String(children).replace(/\n$/, "");
@@ -354,7 +354,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                                         </div>
                                     );
                                 }
-                            }}
+                            }), [])}
                         >
                             {content}
                         </ReactMarkdown>

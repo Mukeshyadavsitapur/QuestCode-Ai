@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
@@ -43,6 +43,9 @@ interface ChatSession {
 }
 
 const INITIAL_DESCRIPTION = "# Getting Started\n\nWelcome! Type some code on the left and click **'Explain Code'** to get an AI-powered breakdown of what's happening.\n\nYou can also ask specific questions using the chat bar below.";
+
+// Helper to check if running in Tauri
+const isTauri = () => "TAURI_INTERNALS" in window || "__TAURI_INTERNALS__" in window;
 
 function App() {
   // Helper to get default code for a language
@@ -153,6 +156,11 @@ function App() {
   useEffect(() => {
     localStorage.setItem("apiKey", apiKey);
     if (apiKey) {
+      if (!isTauri()) {
+        console.warn("Not in Tauri environment, skipping model fetch");
+        setAvailableModels(["gemini-2.0-flash", "gemini-1.5-flash"]); // Fallback for browser demo
+        return;
+      }
       invoke("get_available_models", { apiKey })
         .then((m: any) => setAvailableModels(m))
         .catch(console.error);
@@ -216,12 +224,48 @@ function App() {
   useEffect(() => {
     loader.init().then((monaco) => {
       Object.values(themes).forEach((t) => {
+        const isLight = ["day", "sepia", "yellow", "ocean", "slate"].includes(t.id);
+        const base = isLight ? "vs" : "vs-dark";
+
+        // Define syntax highlighting rules based on light/dark mode
+        const rules = isLight
+          ? [
+            { token: "", foreground: t.text.replace("#", "") }, // Default text color
+            { token: "comment", foreground: "008000" },
+            { token: "keyword", foreground: "098658", fontStyle: "bold" },
+            { token: "string", foreground: "a31515" },
+            { token: "number", foreground: "098658" },
+            { token: "regexp", foreground: "811f3f" },
+            { token: "type", foreground: "267f99" }, // Classes, Types
+            { token: "class", foreground: "267f99" },
+            { token: "function", foreground: "795e26" }, // Functions
+            { token: "variable", foreground: "001080" }, // Variables
+            { token: "operator", foreground: "333333" },
+            { token: "tag", foreground: "800000" }, // HTML tags
+            { token: "attribute.name", foreground: "e50000" },
+            { token: "attribute.value", foreground: "0000ff" },
+          ]
+          : [
+            { token: "", foreground: t.text.replace("#", "") }, // Default text color
+            { token: "comment", foreground: "6A9955" },
+            { token: "keyword", foreground: "569CD6", fontStyle: "bold" },
+            { token: "string", foreground: "CE9178" },
+            { token: "number", foreground: "B5CEA8" },
+            { token: "regexp", foreground: "D16969" },
+            { token: "type", foreground: "4EC9B0" }, // Classes, Types
+            { token: "class", foreground: "4EC9B0" },
+            { token: "function", foreground: "DCDCAA" }, // Functions
+            { token: "variable", foreground: "9CDCFE" }, // Variables
+            { token: "operator", foreground: "D4D4D4" },
+            { token: "tag", foreground: "569CD6" }, // HTML tags
+            { token: "attribute.name", foreground: "9CDCFE" },
+            { token: "attribute.value", foreground: "CE9178" },
+          ];
+
         monaco.editor.defineTheme(t.id, {
-          base: ["day", "sepia", "yellow", "ocean", "slate"].includes(t.id) ? "vs" : "vs-dark",
-          inherit: true,
-          rules: [
-            { token: "", foreground: t.text.replace("#", "") }, // Match base text to theme
-          ],
+          base: base,
+          inherit: true, // Inherit base VS Code styles
+          rules: rules,
           colors: {
             "editor.background": t.bg,
             "editor.foreground": t.text,
@@ -321,6 +365,13 @@ function App() {
     if (aiService === "web") return;
     setIsExplaining(true);
     setViewMode("ai");
+
+    if (!isTauri()) {
+      setDescription("## Browser Mode\n\nAI features require the desktop application to access the backend. Please download the full application.");
+      setIsExplaining(false);
+      return;
+    }
+
     console.log("Explaining code. Selection:", selectedModel);
     try {
       const response: { content: string; model: string } = await invoke("explain_code", {
@@ -363,6 +414,13 @@ function App() {
     const cleanDescription = isFirstMessage ? "" : description;
     const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `**You asked:** ${input}\n\n*Thinking...*`; // Display original input to user
     setDescription(newDescription);
+
+    if (!isTauri()) {
+      setTimeout(() => {
+        setDescription((prev) => prev.replace("*Thinking...*", "\n\n**Browser Mode:** AI Chat requires the desktop application to access the backend."));
+      }, 500);
+      return;
+    }
 
     console.log("Asking question. Selection:", selectedModel);
     try {
@@ -439,6 +497,13 @@ function App() {
 
     setIsRunning(true);
     setTerminalOutput(`Running ${language.toUpperCase()} code...`);
+
+    if (!isTauri()) {
+      setTerminalOutput("Error: Running code requires the desktop application backend.\n\nBrowser mode mainly supports HTML/CSS Preview.");
+      setIsRunning(false);
+      return;
+    }
+
     try {
       const output: string = await invoke("execute_code", { code, language: (language === "dsa" || language === "ml") ? "python" : language });
       setTerminalOutput(output);
@@ -694,9 +759,9 @@ function App() {
                   <>
                     <div className="description-container">
                       <ReactMarkdown
-                        components={{
-                          pre: ({ children }) => <>{children}</>,
-                          code({ className, children, ...props }) {
+                        components={useMemo(() => ({
+                          pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+                          code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
                             const match = /language-(\w+)/.exec(className || "");
                             const isInline = !match;
                             const codeText = String(children).replace(/\n$/, "");
@@ -781,7 +846,7 @@ function App() {
                               </div>
                             );
                           }
-                        }}
+                        }), [])}
                       >
                         {description}
                       </ReactMarkdown>
@@ -897,7 +962,7 @@ function App() {
                 </div>
               )}
             </div>
-          </Panel>
+          </Panel >
 
 
 
@@ -1061,8 +1126,8 @@ function App() {
               )}
             </PanelGroup>
           </Panel>
-        </PanelGroup>
-      </main>
+        </PanelGroup >
+      </main >
     </div >
   );
 }

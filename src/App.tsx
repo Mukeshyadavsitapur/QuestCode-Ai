@@ -204,7 +204,9 @@ function App() {
     root.style.setProperty("--code-bg", selectedTheme.bg);
     root.style.setProperty("--highlight", selectedTheme.highlight);
     root.style.setProperty("--text-highlight", selectedTheme.activeWord);
+    root.style.setProperty("--text-highlight", selectedTheme.activeWord);
     root.style.setProperty("--accent-text", selectedTheme.primaryText);
+    root.style.setProperty("--secondary-color", selectedTheme.buttonBg);
 
     const isDark =
       selectedTheme.bg.startsWith("#0") ||

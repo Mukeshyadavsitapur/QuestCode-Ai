@@ -133,3 +133,8 @@ button {
   color: var(--accent-text);
   font-weight: 700;
 }
+
+select option {
+  background-color: var(--secondary-color);
+  color: var(--text-main);
+}

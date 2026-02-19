@@ -14,6 +14,7 @@ export function Terminal({ output, isRunning, onClear }: TerminalProps) {
                 <div className="terminal-title">
                     <TerminalIcon size={16} />
                     <span>TERMINAL</span>
+                    {isRunning && <span className="spinner" style={{ marginLeft: '10px' }}></span>}
                 </div>
                 <div className="terminal-actions">
                     <button className="terminal-btn clear-btn" onClick={onClear}>
@@ -22,13 +23,7 @@ export function Terminal({ output, isRunning, onClear }: TerminalProps) {
                 </div>
             </div>
             <div className="terminal-output">
-                {isRunning ? (
-                    <div className="terminal-running">
-                        <span className="spinner"></span> Compiling and running...
-                    </div>
-                ) : (
-                    <pre>{output || "Click 'Run Code' to see output here..."}</pre>
-                )}
+                <pre>{output || "Click 'Run Code' to see output here..."}</pre>
             </div>
         </div>
     );

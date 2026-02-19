@@ -5,6 +5,8 @@ use tokio::process::Command as TokioCommand;
 use tokio::sync::{Mutex, oneshot};
 use tauri::State;
 use std::env;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 // actually simple std::fs::write is fine for small files.
 
 #[derive(Serialize)]
@@ -366,7 +368,10 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
             .arg(&exe_path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .kill_on_drop(true); 
+            .kill_on_drop(true);
+
+        #[cfg(target_os = "windows")]
+        compile_cmd.creation_flags(0x08000000); 
 
         let compile_output = compile_cmd.output().await
             .map_err(|e| format!("Failed to run rustc: {}. Is Rust installed?", e))?;
@@ -379,6 +384,9 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
             run_cmd.stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .kill_on_drop(true);
+
+            #[cfg(target_os = "windows")]
+            run_cmd.creation_flags(0x08000000);
 
             let child = run_cmd.spawn()
                 .map_err(|e| format!("Failed to spawn executable: {}", e))?;
@@ -417,6 +425,9 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
            .stderr(Stdio::piped())
            .kill_on_drop(true);
 
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(0x08000000);
+
         let child = cmd.spawn()
             .map_err(|e| format!("Failed to run python: {}. Is Python installed?", e))?;
 
@@ -451,6 +462,9 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
            .stdout(Stdio::piped())
            .stderr(Stdio::piped())
            .kill_on_drop(true);
+
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(0x08000000);
 
         let child = cmd.spawn()
             .map_err(|e| format!("Failed to run node: {}. Is Node.js installed?", e))?;
@@ -488,6 +502,9 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
            .arg("start")
            .arg(&file_path)
            .arg(&file_path);
+
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(0x08000000);
 
         match cmd.spawn() {
             Ok(_) => Ok("Opened index.html in your default browser.".to_string()),
@@ -533,6 +550,9 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
            .arg("start")
            .arg(&file_path)
            .arg(&file_path);
+
+        #[cfg(target_os = "windows")]
+        cmd.creation_flags(0x08000000);
 
         match cmd.spawn() {
             Ok(_) => Ok("Opened CSS preview in your default browser.".to_string()),

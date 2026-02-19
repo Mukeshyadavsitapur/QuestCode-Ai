@@ -13,7 +13,7 @@ export interface AiLearningHandle {
 }
 
 interface AiLearningProps {
-    language: "rust" | "python" | "dsa";
+    language: "rust" | "python" | "dsa" | "html" | "css" | "javascript";
     apiKey: string;
     selectedModel: string | null;
     topic: Topic | null;
@@ -129,6 +129,18 @@ Answer the user's question in the context of this topic. Be concise and helpful.
           -   **Solution**: A collapsible or clear code block with the solution and brief explanation.
 
       Ensure the questions range from easy to medium difficulty. Use clean Markdown formatting.`;
+            } else if (language === "html" || language === "css" || language === "javascript") {
+                prompt = `Explain the topic '${currentTopic.title}' for a beginner learning ${language.toUpperCase()}.
+        Act as a friendly, expert web development tutor.
+
+        Structure your response like a high-quality interactive textbook:
+        1.  **Concept**: What is it and why do we use it?
+        2.  **Syntax**: Show the basic syntax.
+        3.  **Visual Examples**: Provide clear, commented code examples.
+        4.  **Best Practices**: Common patterns or mistakes to avoid.
+        5.  **Mini-Challenge**: A small task for the user to try in the editor.
+
+        Use clean Markdown. Code blocks must be tagged with '${language}'.`;
             } else {
                 prompt = `Explain the topic '${currentTopic.title}' for a beginner learning ${language}. 
       Act as a friendly, expert tutor.

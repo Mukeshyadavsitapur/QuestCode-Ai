@@ -20,12 +20,15 @@ import { Shortcuts } from "./Shortcuts";
 import { themes } from "./themes";
 import { Terminal } from "./Terminal"; // Import Terminal
 import { AiLearning, AiLearningHandle } from "./AiLearning";
-import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, Topic } from "./learningData";
+import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, TOPICS_HTML, TOPICS_CSS, TOPICS_JS, Topic } from "./learningData";
 import "./App.css";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-rust";
 import "prismjs/components/prism-python";
+import "prismjs/components/prism-css";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-markup";
 
 const DEFAULT_RUST_CODE = `// Welcome to your AI Programming Tutor
 // Write code here and ask AI for help!
@@ -43,6 +46,36 @@ def main():
 if __name__ == "__main__":
     main()`;
 
+const DEFAULT_HTML_CODE = `<!-- Welcome to HTML Learning -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello World</title>
+</head>
+<body>
+    <h1>Hello, HTML Learner!</h1>
+    <p>This is a paragraph.</p>
+</body>
+</html>`;
+
+const DEFAULT_CSS_CODE = `/* Welcome to CSS Learning */
+body {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    font-family: sans-serif;
+}
+
+h1 {
+    color: #61dafb;
+}`;
+
+const DEFAULT_JS_CODE = `// Welcome to JavaScript Learning
+console.log("Hello, JavaScript Learner!");
+
+function greet(name) {
+    return "Hello, " + name + "!";
+}`;
+
 interface ChatSession {
   id: string;
   title: string;
@@ -53,12 +86,16 @@ interface ChatSession {
 const INITIAL_DESCRIPTION = "# Getting Started\n\nWelcome! Type some code on the left and click **'Explain Code'** to get an AI-powered breakdown of what's happening.\n\nYou can also ask specific questions using the chat bar below.";
 
 function App() {
-  const [language, setLanguage] = useState<"rust" | "python" | "dsa">(() => {
-    return (localStorage.getItem("language") as "rust" | "python" | "dsa") || "python";
+  const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript">(() => {
+    return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript") || "python";
   });
   const [code, setCode] = useState(() => {
-    const savedLanguage = localStorage.getItem("language") as "rust" | "python" | "dsa" || "python";
-    return savedLanguage === "rust" ? DEFAULT_RUST_CODE : DEFAULT_PYTHON_CODE;
+    const savedLanguage = localStorage.getItem("language");
+    if (savedLanguage === "rust") return DEFAULT_RUST_CODE;
+    if (savedLanguage === "html") return DEFAULT_HTML_CODE;
+    if (savedLanguage === "css") return DEFAULT_CSS_CODE;
+    if (savedLanguage === "javascript") return DEFAULT_JS_CODE;
+    return DEFAULT_PYTHON_CODE;
   });
   const [description, setDescription] = useState(INITIAL_DESCRIPTION);
   const [input, setInput] = useState("");
@@ -89,7 +126,14 @@ function App() {
 
   // Update default expanded groups when language changes
   useEffect(() => {
-    const topics = language === "rust" ? TOPICS_RUST : language === "python" ? TOPICS_PYTHON : TOPICS_DSA;
+    let topics: any[] = [];
+    if (language === "rust") topics = TOPICS_RUST;
+    else if (language === "python") topics = TOPICS_PYTHON;
+    else if (language === "dsa") topics = TOPICS_DSA;
+    else if (language === "html") topics = TOPICS_HTML;
+    else if (language === "css") topics = TOPICS_CSS;
+    else if (language === "javascript") topics = TOPICS_JS;
+
     setExpandedGroups(new Set(topics.map(t => t.title)));
   }, [language]);
 
@@ -273,19 +317,7 @@ function App() {
     }
   };
 
-  const toggleLanguage = () => {
-    if (language === "rust") {
-      setLanguage("python");
-      setCode(DEFAULT_PYTHON_CODE);
-    } else if (language === "python") {
-      setLanguage("dsa");
-      setCode(DEFAULT_PYTHON_CODE); // DSA uses Python syntax
-    } else {
-      setLanguage("rust");
-      setCode(DEFAULT_RUST_CODE);
-    }
-    setTerminalOutput("");
-  };
+
 
   const toggleAiService = () => {
     setAiService((prev) => (prev === "api" ? "web" : "api"));
@@ -374,7 +406,7 @@ function App() {
 
     if (!isTerminalVisible) setIsTerminalVisible(true);
     setIsRunning(true);
-    setTerminalOutput(`Running ${language === "rust" ? "Rust" : language === "python" ? "Python" : "DSA (Python)"} code...`);
+    setTerminalOutput(`Running ${language.toUpperCase()} code...`);
     try {
       const output: string = await invoke("execute_code", { code, language: language === "dsa" ? "python" : language });
       setTerminalOutput(output);
@@ -445,13 +477,40 @@ function App() {
           <span>QuestCode AI</span>
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <button
-            className="btn btn-secondary"
-            onClick={toggleLanguage}
-            style={{ minWidth: "120px", display: "flex", justifyContent: "center" }}
+          <select
+            value={language}
+            onChange={(e) => {
+              const newLang = e.target.value as any;
+              setLanguage(newLang);
+              localStorage.setItem("language", newLang);
+              // Also update code to default if empty or matches default of previous lang? 
+              // For simplicity, let's set to default of new lang
+              if (newLang === "rust") setCode(DEFAULT_RUST_CODE);
+              else if (newLang === "html") setCode(DEFAULT_HTML_CODE);
+              else if (newLang === "css") setCode(DEFAULT_CSS_CODE);
+              else if (newLang === "javascript") setCode(DEFAULT_JS_CODE);
+              else setCode(DEFAULT_PYTHON_CODE);
+            }}
+            className="language-select"
+            style={{
+              background: "var(--secondary-color)",
+              color: "var(--text-main)",
+              border: "1px solid var(--border-color)",
+              padding: "6px 12px",
+              borderRadius: "6px",
+              cursor: "pointer",
+              outline: "none",
+              fontWeight: "600",
+              fontSize: "0.9rem"
+            }}
           >
-            {language === "rust" ? "🦀 Rust" : language === "python" ? "🐍 Python" : "📊 DSA"}
-          </button>
+            <option value="python">🐍 Python</option>
+            <option value="rust">🦀 Rust</option>
+            <option value="dsa">📊 DSA</option>
+            <option value="html">🌐 HTML</option>
+            <option value="css">🎨 CSS</option>
+            <option value="javascript">⚡ JavaScript</option>
+          </select>
         </div>
         <div className="header-actions">
           <button
@@ -539,11 +598,18 @@ function App() {
                           <ArrowLeft size={16} />
                         </button>
                         <h3 style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-color)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          {language === "rust" ? "Rust" : language === "python" ? "Python" : "DSA"} Course
+                          {language.toUpperCase()} Course
                         </h3>
                       </div>
 
-                      {(language === "rust" ? TOPICS_RUST : language === "python" ? TOPICS_PYTHON : TOPICS_DSA).map((group) => (
+                      {(
+                        language === "rust" ? TOPICS_RUST :
+                          language === "python" ? TOPICS_PYTHON :
+                            language === "dsa" ? TOPICS_DSA :
+                              language === "html" ? TOPICS_HTML :
+                                language === "css" ? TOPICS_CSS :
+                                  TOPICS_JS
+                      ).map((group) => (
                         <div key={group.title} style={{ marginBottom: "12px" }}>
                           <button
                             onClick={() => toggleGroup(group.title)}
@@ -607,7 +673,7 @@ function App() {
                             setIsHistoryOpen(false);
                           }}
                         >
-                          <Book size={16} /> {language === "rust" ? "Rust Docs" : "Python Docs"}
+                          <Book size={16} /> Official Docs
                         </button>
                         <button
                           className="btn btn-secondary"
@@ -767,7 +833,13 @@ function App() {
 
               <div style={{ display: viewMode === "docs" ? "flex" : "none", flex: 1, flexDirection: "column" }}>
                 <iframe
-                  src={language === "rust" ? "https://doc.rust-lang.org/book/" : "https://docs.python.org/3/"}
+                  src={
+                    language === "rust" ? "https://doc.rust-lang.org/book/" :
+                      language === "python" ? "https://docs.python.org/3/" :
+                        language === "html" ? "https://developer.mozilla.org/en-US/docs/Web/HTML" :
+                          language === "css" ? "https://developer.mozilla.org/en-US/docs/Web/CSS" :
+                            "https://developer.mozilla.org/en-US/docs/Web/JavaScript"
+                  }
                   title="Documentation"
                   style={{ flex: 1, border: "none", width: "100%", height: "100%", backgroundColor: "var(--bg-color)" }}
                 />

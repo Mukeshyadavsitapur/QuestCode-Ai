@@ -403,3 +403,181 @@ export const TOPICS_DSA: TopicGroup[] = [
         ],
     },
 ];
+
+export const TOPICS_HTML: TopicGroup[] = [
+    {
+        title: "1. HTML Introduction",
+        topics: [
+            { id: "1.1", title: "Introduction to HTML" },
+            { id: "1.2", title: "HTML Editors" },
+            { id: "1.3", title: "HTML Basic Structure" },
+            { id: "1.4", title: "HTML Elements & Tags" },
+            { id: "1.5", title: "HTML Attributes" },
+            { id: "1.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "2. HTML Text & Formatting",
+        topics: [
+            { id: "2.1", title: "Headings (h1-h6)" },
+            { id: "2.2", title: "Paragraphs (p)" },
+            { id: "2.3", title: "Text Formatting (b, i, strong)" },
+            { id: "2.4", title: "Quotations & Citations" },
+            { id: "2.5", title: "Comments" },
+            { id: "2.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "3. HTML Links & Images",
+        topics: [
+            { id: "3.1", title: "HTML Links (anchor tag)" },
+            { id: "3.2", title: "Link Attributes (target, title)" },
+            { id: "3.3", title: "HTML Images (img tag)" },
+            { id: "3.4", title: "Image Maps" },
+            { id: "3.5", title: "Background Images" },
+            { id: "3.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "4. HTML Lists & Tables",
+        topics: [
+            { id: "4.1", title: "Unordered Lists (ul)" },
+            { id: "4.2", title: "Ordered Lists (ol)" },
+            { id: "4.3", title: "Description Lists (dl)" },
+            { id: "4.4", title: "HTML Tables (table, tr, td)" },
+            { id: "4.5", title: "Table Borders & Headers" },
+            { id: "4.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "5. HTML Forms",
+        topics: [
+            { id: "5.1", title: "HTML Forms" },
+            { id: "5.2", title: "Form Attributes" },
+            { id: "5.3", title: "Input Types" },
+            { id: "5.4", title: "Input Attributes" },
+            { id: "5.5", title: "Practice Questions" },
+        ],
+    },
+];
+
+export const TOPICS_CSS: TopicGroup[] = [
+    {
+        title: "1. CSS Introduction",
+        topics: [
+            { id: "1.1", title: "Introduction to CSS" },
+            { id: "1.2", title: "CSS Syntax" },
+            { id: "1.3", title: "CSS Selectors" },
+            { id: "1.4", title: "How to Add CSS" },
+            { id: "1.5", title: "CSS Comments" },
+            { id: "1.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "2. CSS Styling & Colors",
+        topics: [
+            { id: "2.1", title: "CSS Colors (RGB, HEX, HSL)" },
+            { id: "2.2", title: "CSS Backgrounds" },
+            { id: "2.3", title: "CSS Borders" },
+            { id: "2.4", title: "CSS Margins" },
+            { id: "2.5", title: "CSS Padding" },
+            { id: "2.6", title: "CSS Height/Width" },
+            { id: "2.7", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "3. CSS Box Model & Text",
+        topics: [
+            { id: "3.1", title: "The CSS Box Model" },
+            { id: "3.2", title: "CSS Outline" },
+            { id: "3.3", title: "CSS Text Formatting" },
+            { id: "3.4", title: "CSS Fonts" },
+            { id: "3.5", title: "CSS Icons" },
+            { id: "3.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "4. CSS Layout",
+        topics: [
+            { id: "4.1", title: "CSS Display Property" },
+            { id: "4.2", title: "CSS Max-width" },
+            { id: "4.3", title: "CSS Position" },
+            { id: "4.4", title: "CSS Z-index" },
+            { id: "4.5", title: "CSS Overflow" },
+            { id: "4.6", title: "CSS Float" },
+            { id: "4.7", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "5. CSS Flexbox & Grid",
+        topics: [
+            { id: "5.1", title: "Flexbox Introduction" },
+            { id: "5.2", title: "Flex Container & Items" },
+            { id: "5.3", title: "CSS Grid Container" },
+            { id: "5.4", title: "CSS Grid Item" },
+            { id: "5.5", title: "Media Queries (Responsive)" },
+            { id: "5.6", title: "Practice Questions" },
+        ],
+    },
+];
+
+export const TOPICS_JS: TopicGroup[] = [
+    {
+        title: "1. JS Introduction",
+        topics: [
+            { id: "1.1", title: "Introduction to JavaScript" },
+            { id: "1.2", title: "JS Output" },
+            { id: "1.3", title: "JS Statements" },
+            { id: "1.4", title: "JS Syntax" },
+            { id: "1.5", title: "JS Comments" },
+            { id: "1.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "2. JS Variables & Data Types",
+        topics: [
+            { id: "2.1", title: "JS Variables (var, let, const)" },
+            { id: "2.2", title: "JS Operators" },
+            { id: "2.3", title: "JS Arithmetic" },
+            { id: "2.4", title: "JS Assignment" },
+            { id: "2.5", title: "JS Data Types" },
+            { id: "2.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "3. JS Functions & Objects",
+        topics: [
+            { id: "3.1", title: "JS Functions" },
+            { id: "3.2", title: "JS Objects" },
+            { id: "3.3", title: "JS Events" },
+            { id: "3.4", title: "JS Strings" },
+            { id: "3.5", title: "JS String Methods" },
+            { id: "3.6", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "4. JS Arrays & Loops",
+        topics: [
+            { id: "4.1", title: "JS Arrays" },
+            { id: "4.2", title: "JS Array Methods" },
+            { id: "4.3", title: "JS Array Sort" },
+            { id: "4.4", title: "JS Array Iteration" },
+            { id: "4.5", title: "JS For Loop" },
+            { id: "4.6", title: "JS While Loop" },
+            { id: "4.7", title: "JS Break/Continue" },
+            { id: "4.8", title: "Practice Questions" },
+        ],
+    },
+    {
+        title: "5. JS DOM & Async",
+        topics: [
+            { id: "5.1", title: "JS HTML DOM" },
+            { id: "5.2", title: "JS DOM Elements" },
+            { id: "5.3", title: "JS DOM HTML/CSS" },
+            { id: "5.4", title: "JS DOM Events" },
+            { id: "5.5", title: "JS Async/Await" },
+            { id: "5.6", title: "JS Promises" },
+            { id: "5.7", title: "Practice Questions" },
+        ],
+    },
+];

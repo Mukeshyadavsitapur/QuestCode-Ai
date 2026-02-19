@@ -832,17 +832,51 @@ function App() {
               </div>
 
               <div style={{ display: viewMode === "docs" ? "flex" : "none", flex: 1, flexDirection: "column" }}>
-                <iframe
-                  src={
-                    language === "rust" ? "https://doc.rust-lang.org/book/" :
-                      language === "python" ? "https://docs.python.org/3/" :
-                        language === "html" ? "https://developer.mozilla.org/en-US/docs/Web/HTML" :
-                          language === "css" ? "https://developer.mozilla.org/en-US/docs/Web/CSS" :
-                            "https://developer.mozilla.org/en-US/docs/Web/JavaScript"
-                  }
-                  title="Documentation"
-                  style={{ flex: 1, border: "none", width: "100%", height: "100%", backgroundColor: "var(--bg-color)" }}
-                />
+                {(language === "rust" || language === "python") ? (
+                  <iframe
+                    src={language === "rust" ? "https://doc.rust-lang.org/book/" : "https://docs.python.org/3/"}
+                    title="Documentation"
+                    style={{ flex: 1, border: "none", width: "100%", height: "100%", backgroundColor: "var(--bg-color)" }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 24,
+                      textAlign: "center",
+                      height: "100%"
+                    }}
+                  >
+                    <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
+                      <Book size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
+                      <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Official Documentation</h3>
+                      <p style={{ color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.5 }}>
+                        MDN documentation cannot be embedded directly. Please open it in your browser.
+                      </p>
+                      <button
+                        className="btn btn-primary"
+                        style={{ width: "100%", justifyContent: "center" }}
+                        onClick={async () => {
+                          const url =
+                            language === "html" ? "https://developer.mozilla.org/en-US/docs/Web/HTML" :
+                              language === "css" ? "https://developer.mozilla.org/en-US/docs/Web/CSS" :
+                                "https://developer.mozilla.org/en-US/docs/Web/JavaScript";
+                          try {
+                            await openUrl(url);
+                          } catch (e) {
+                            window.open(url, "_blank");
+                          }
+                        }}
+                      >
+                        <Globe size={16} style={{ marginRight: 8 }} /> Open {language.toUpperCase()} Docs
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: viewMode === "shortcuts" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
@@ -863,6 +897,7 @@ function App() {
               </div>
 
 
+
               {/* Shared AI Controls */}
               {((viewMode === "ai" && aiService === "api") || viewMode === "learning") && (
                 <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px" }}>
@@ -881,6 +916,8 @@ function App() {
               )}
             </div>
           </Panel>
+
+
 
           <PanelResizeHandle className="resizer horizontal" />
 

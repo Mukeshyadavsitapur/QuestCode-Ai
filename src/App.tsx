@@ -13,7 +13,8 @@ import {
   ChevronRight,
   ChevronDown,
   Square,
-  ArrowLeft
+  ArrowLeft,
+  Eye
 } from "lucide-react";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
@@ -526,6 +527,11 @@ function App() {
               } else if (newLang === "css") {
                 setWebPreviewContent(`<html><head><style>${newCode}</style></head><body><h1>CSS Preview</h1><div class="box">Box</div></body></html>`);
               }
+
+              // Auto-open preview for HTML/CSS
+              if (newLang === "html" || newLang === "css") {
+                setIsTerminalVisible(true);
+              }
             }}
             className="language-select"
             style={{
@@ -556,15 +562,6 @@ function App() {
             style={{ marginRight: 10, border: "none", color: "var(--text-muted)" }}
           >
             <Settings size={20} />
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleExplain}
-            disabled={isExplaining || aiService === "web"}
-            style={{ opacity: aiService === "web" ? 0.5 : 1, cursor: aiService === "web" ? "not-allowed" : "pointer" }}
-          >
-            {isExplaining ? <Sparkles className="animate-pulse" /> : <Code2 />}
-            {isExplaining ? "Thinking..." : "Explain Code"}
           </button>
         </div>
       </header>
@@ -975,12 +972,27 @@ function App() {
                         <Layout size={14} />
                       </button>
                       <button
-                        className={`tab-btn ${isTerminalVisible || (language === "html" || language === "css") ? "active" : ""}`}
+                        className={`tab-btn ${isTerminalVisible ? "active" : ""}`}
                         title={language === "html" || language === "css" ? "Toggle Preview" : (isTerminalVisible ? "Hide Terminal" : "Show Terminal")}
                         onClick={() => setIsTerminalVisible(!isTerminalVisible)}
                         style={{ padding: "4px 8px" }}
                       >
-                        {language === "html" || language === "css" ? <Layout size={14} /> : <TerminalIcon size={14} />}
+                        {language === "html" || language === "css" ? <Eye size={14} /> : <TerminalIcon size={14} />}
+                      </button>
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={handleExplain}
+                        disabled={isExplaining || aiService === "web"}
+                        style={{
+                          marginRight: 8,
+                          padding: "4px 12px",
+                          fontSize: "0.8rem",
+                          opacity: aiService === "web" ? 0.5 : 1,
+                          cursor: aiService === "web" ? "not-allowed" : "pointer"
+                        }}
+                      >
+                        {isExplaining ? <Sparkles size={14} className="animate-pulse" /> : <Code2 size={14} />}
+                        <span style={{ marginLeft: 6 }}>{isExplaining ? "Thinking..." : "Explain Code"}</span>
                       </button>
                       <button
                         className="btn btn-sm btn-primary"
@@ -995,7 +1007,7 @@ function App() {
                         {isRunning ? (
                           <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /> Stop</>
                         ) : (language === "html" || language === "css") ? (
-                          <><Globe size={12} style={{ marginRight: 6 }} /> Live Preview Active</>
+                          <><Globe size={12} style={{ marginRight: 6 }} /> Preview</>
                         ) : (
                           "Run Code"
                         )}
@@ -1023,7 +1035,7 @@ function App() {
                 </div>
               </Panel>
 
-              {(isTerminalVisible || (language === "html" || language === "css")) && (
+              {isTerminalVisible && (
                 <>
                   <PanelResizeHandle className="resizer vertical" />
                   <Panel defaultSize={30} minSize={15}>

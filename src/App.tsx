@@ -44,18 +44,26 @@ interface ChatSession {
 const INITIAL_DESCRIPTION = "# Getting Started\n\nWelcome! Type some code on the left and click **'Explain Code'** to get an AI-powered breakdown of what's happening.\n\nYou can also ask specific questions using the chat bar below.";
 
 function App() {
+  // Helper to get default code for a language
+  const getDefaultCode = (lang: string) => {
+    if (lang === "rust") return DEFAULT_RUST_CODE;
+    if (lang === "html") return DEFAULT_HTML_CODE;
+    if (lang === "css") return DEFAULT_CSS_CODE;
+    if (lang === "javascript") return DEFAULT_JS_CODE;
+    if (lang === "ml") return DEFAULT_ML_CODE;
+    return DEFAULT_PYTHON_CODE;
+  };
+
   const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml">(() => {
     return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml") || "python";
   });
+
+  // Initialize code from localStorage based on valid language
   const [code, setCode] = useState(() => {
-    const savedLanguage = localStorage.getItem("language");
-    if (savedLanguage === "rust") return DEFAULT_RUST_CODE;
-    if (savedLanguage === "html") return DEFAULT_HTML_CODE;
-    if (savedLanguage === "css") return DEFAULT_CSS_CODE;
-    if (savedLanguage === "javascript") return DEFAULT_JS_CODE;
-    if (savedLanguage === "ml") return DEFAULT_ML_CODE;
-    return DEFAULT_PYTHON_CODE;
+    const savedCode = localStorage.getItem(`code_${language}`);
+    return savedCode || getDefaultCode(language);
   });
+
   const [description, setDescription] = useState(INITIAL_DESCRIPTION);
   const [input, setInput] = useState("");
   const [isExplaining, setIsExplaining] = useState(false);
@@ -79,8 +87,15 @@ function App() {
   }, [description, viewMode]);
 
   // Learning State
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(() => {
+    const saved = localStorage.getItem(`topic_${language}`);
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(() => {
+    // Optional: Persist selected group too if needed, or derive/reset
+    // For now, let's reset or try to recover if we wanted to be very precise
+    return null;
+  });
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Update default expanded groups when language changes
@@ -96,6 +111,21 @@ function App() {
 
     setExpandedGroups(new Set(topics.map(t => t.title)));
   }, [language]);
+
+  // Persist Code per Language
+  useEffect(() => {
+    localStorage.setItem(`code_${language}`, code);
+  }, [code, language]);
+
+  // Persist Topic per Language
+  useEffect(() => {
+    if (selectedTopic) {
+      localStorage.setItem(`topic_${language}`, JSON.stringify(selectedTopic));
+    } else {
+      localStorage.removeItem(`topic_${language}`);
+    }
+  }, [selectedTopic, language]);
+
 
   // AI Service Mode (API or Web)
   const [aiService, setAiService] = useState<"api" | "web">("api");
@@ -479,22 +509,22 @@ function App() {
               const newLang = e.target.value as any;
               setLanguage(newLang);
               localStorage.setItem("language", newLang);
-              // Also update code to default if empty or matches default of previous lang? 
-              // For simplicity, let's set to default of new lang
-              if (newLang === "rust") {
-                setCode(DEFAULT_RUST_CODE);
-              } else if (newLang === "html") {
-                setCode(DEFAULT_HTML_CODE);
-                setWebPreviewContent(DEFAULT_HTML_CODE);
+
+              // Load saved code for new language or default
+              const savedCode = localStorage.getItem(`code_${newLang}`);
+              const newCode = savedCode || getDefaultCode(newLang);
+              setCode(newCode);
+
+              // Load saved topic for new language or default
+              const savedTopicParams = localStorage.getItem(`topic_${newLang}`);
+              const savedTopic = savedTopicParams ? JSON.parse(savedTopicParams) : null;
+              setSelectedTopic(savedTopic);
+
+              // Trigger Preview Update if needed (done by useEffect)
+              if (newLang === "html") {
+                setWebPreviewContent(newCode);
               } else if (newLang === "css") {
-                setCode(DEFAULT_CSS_CODE);
-                setWebPreviewContent(`<html><head><style>${DEFAULT_CSS_CODE}</style></head><body><h1>CSS Preview</h1><div class="box">Box</div></body></html>`);
-              } else if (newLang === "javascript") {
-                setCode(DEFAULT_JS_CODE);
-              } else if (newLang === "ml") {
-                setCode(DEFAULT_ML_CODE);
-              } else {
-                setCode(DEFAULT_PYTHON_CODE);
+                setWebPreviewContent(`<html><head><style>${newCode}</style></head><body><h1>CSS Preview</h1><div class="box">Box</div></body></html>`);
               }
             }}
             className="language-select"

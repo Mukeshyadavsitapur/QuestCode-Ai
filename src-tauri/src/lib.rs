@@ -439,6 +439,63 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
                 Ok("Execution Stopped by User.".to_string())
             }
         }
+    } else if language.to_lowercase() == "javascript" {
+        let file_path = temp_dir.join("script.js");
+
+        if let Err(e) = std::fs::write(&file_path, &code) {
+             return Err(format!("Failed to write code: {}", e));
+        }
+
+        let mut cmd = TokioCommand::new("node"); // Assumes node is in PATH
+        cmd.arg(&file_path)
+           .stdout(Stdio::piped())
+           .stderr(Stdio::piped())
+           .kill_on_drop(true);
+
+        let child = cmd.spawn()
+            .map_err(|e| format!("Failed to run node: {}. Is Node.js installed?", e))?;
+
+        tokio::select! {
+             output_res = child.wait_with_output() => {
+                match output_res {
+                    Ok(output) => {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        if !stderr.is_empty() {
+                            Ok(format!("Output:\n{}\n\nErrors:\n{}", stdout, stderr))
+                        } else {
+                            Ok(stdout.to_string())
+                        }
+                    }
+                    Err(e) => Err(format!("Execution failed: {}", e))
+                }
+            }
+            _ = rx => {
+                Ok("Execution Stopped by User.".to_string())
+            }
+        }
+    } else if language.to_lowercase() == "html" {
+        let file_path = temp_dir.join("index.html");
+        if let Err(e) = std::fs::write(&file_path, &code) {
+             return Err(format!("Failed to write code: {}", e));
+        }
+        
+        // Open the file in the default browser using 'start' command on Windows
+        // For cross-platform, we might need different commands (open on Mac, xdg-open on Linux)
+        // Since user is on Windows:
+        let mut cmd = TokioCommand::new("cmd");
+        cmd.arg("/C")
+           .arg("start")
+           .arg(&file_path)
+           .kill_on_drop(true);
+
+        match cmd.spawn() {
+            Ok(_) => Ok("Opened index.html in your default browser.".to_string()),
+            Err(e) => Err(format!("Failed to open browser: {}", e))
+        }
+
+    } else if language.to_lowercase() == "css" {
+        Ok("CSS cannot be executed directly. Please create an HTML file and link this CSS (or use <style> tags) to view changes.".to_string())
     } else {
         Err(format!("Unsupported language: {}", language))
     };

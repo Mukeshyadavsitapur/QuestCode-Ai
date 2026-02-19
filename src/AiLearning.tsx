@@ -28,6 +28,94 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
     const [error, setError] = useState<string | null>(null);
     const [temperature, setTemperature] = useState<number>(0.3);
 
+    const markdownComponents = useMemo(() => ({
+        pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+        code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
+            const match = /language-(\w+)/.exec(className || "");
+            const isInline = !match;
+            const codeText = String(children).replace(/\n$/, "");
+
+            if (isInline) {
+                return (
+                    <code className={className} {...props} style={{
+                        background: "rgba(88, 166, 255, 0.1)",
+                        color: "var(--accent-text)",
+                        padding: "2px 5px",
+                        borderRadius: "4px",
+                        fontSize: "0.9em",
+                        fontFamily: "var(--font-mono)"
+                    }}>
+                        {children}
+                    </code>
+                );
+            }
+
+            return (
+                <div style={{ position: "relative", margin: "1.5em 0" }}>
+                    <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: "var(--panel-bg)",
+                        padding: "8px 12px",
+                        borderTopLeftRadius: "8px",
+                        borderTopRightRadius: "8px",
+                        border: "1px solid var(--border-color)",
+                        borderBottom: "none",
+                        fontSize: "0.75rem",
+                        fontFamily: "var(--font-sans)",
+                        color: "var(--text-muted)",
+                        fontWeight: 600
+                    }}>
+                        <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
+                        <div style={{ display: "flex", gap: "12px" }}>
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(codeText);
+                                }}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                                title="Copy to Clipboard"
+                                className="code-action-btn"
+                            >
+                                <Copy size={13} /> Copy
+                            </button>
+                            <button
+                                onClick={() => {
+                                    onApplyCode(codeText);
+                                }}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-text)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                                title="Replace Editor Content"
+                                className="code-action-btn"
+                            >
+                                <TerminalIcon size={13} /> Apply
+                            </button>
+                        </div>
+                    </div>
+                    <pre style={{
+                        background: "#1e1e1e", // Force dark bg for code
+                        padding: "16px",
+                        borderBottomLeftRadius: "8px",
+                        borderBottomRightRadius: "8px",
+                        border: "1px solid var(--border-color)",
+                        overflowX: "auto",
+                        margin: 0
+                    }} className={className}>
+                        <code className={className} {...props} style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.9rem",
+                            color: "#e5e5e5",
+                            whiteSpace: "pre",
+                            textAlign: "left",
+                            display: "block"
+                        }}>
+                            {children}
+                        </code>
+                    </pre>
+                </div>
+            );
+        }
+    }), []);
+
     useImperativeHandle(ref, () => ({
         askQuestion: async (question: string) => {
             if (!topic) return;
@@ -268,93 +356,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                 ) : (
                     <div className="markdown-body">
                         <ReactMarkdown
-                            components={useMemo(() => ({
-                                pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-                                code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
-                                    const match = /language-(\w+)/.exec(className || "");
-                                    const isInline = !match;
-                                    const codeText = String(children).replace(/\n$/, "");
-
-                                    if (isInline) {
-                                        return (
-                                            <code className={className} {...props} style={{
-                                                background: "rgba(88, 166, 255, 0.1)",
-                                                color: "var(--accent-text)",
-                                                padding: "2px 5px",
-                                                borderRadius: "4px",
-                                                fontSize: "0.9em",
-                                                fontFamily: "var(--font-mono)"
-                                            }}>
-                                                {children}
-                                            </code>
-                                        );
-                                    }
-
-                                    return (
-                                        <div style={{ position: "relative", margin: "1.5em 0" }}>
-                                            <div style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "center",
-                                                background: "var(--panel-bg)",
-                                                padding: "8px 12px",
-                                                borderTopLeftRadius: "8px",
-                                                borderTopRightRadius: "8px",
-                                                border: "1px solid var(--border-color)",
-                                                borderBottom: "none",
-                                                fontSize: "0.75rem",
-                                                fontFamily: "var(--font-sans)",
-                                                color: "var(--text-muted)",
-                                                fontWeight: 600
-                                            }}>
-                                                <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
-                                                <div style={{ display: "flex", gap: "12px" }}>
-                                                    <button
-                                                        onClick={() => {
-                                                            navigator.clipboard.writeText(codeText);
-                                                        }}
-                                                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
-                                                        title="Copy to Clipboard"
-                                                        className="code-action-btn"
-                                                    >
-                                                        <Copy size={13} /> Copy
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            onApplyCode(codeText);
-                                                        }}
-                                                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-text)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
-                                                        title="Replace Editor Content"
-                                                        className="code-action-btn"
-                                                    >
-                                                        <TerminalIcon size={13} /> Apply
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <pre style={{
-                                                background: "#1e1e1e", // Force dark bg for code
-                                                padding: "16px",
-                                                borderBottomLeftRadius: "8px",
-                                                borderBottomRightRadius: "8px",
-                                                border: "1px solid var(--border-color)",
-                                                overflowX: "auto",
-                                                margin: 0
-                                            }} className={className}>
-                                                <code className={className} {...props} style={{
-                                                    fontFamily: "var(--font-mono)",
-                                                    fontSize: "0.9rem",
-                                                    color: "#e5e5e5",
-                                                    whiteSpace: "pre",
-                                                    textAlign: "left",
-                                                    display: "block"
-                                                }}>
-                                                    {children}
-                                                </code>
-                                            </pre>
-                                        </div>
-                                    );
-                                }
-                            }), [])}
+                            components={markdownComponents}
                         >
                             {content}
                         </ReactMarkdown>

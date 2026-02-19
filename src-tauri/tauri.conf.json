@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
+  "productName": "QuestCode AI",
   "version": "0.1.0",
-  "identifier": "com.mkysi.tauri-app",
+  "identifier": "com.mkysi.questcode-ai",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
+        "title": "QuestCode AI",
         "width": 800,
         "height": 600
       }

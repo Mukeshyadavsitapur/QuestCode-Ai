@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import ReactMarkdown from "react-markdown";
 import { Sparkles, Loader2, RefreshCw, BookOpen, Copy, Terminal as TerminalIcon } from "lucide-react";
@@ -7,6 +7,10 @@ import "prismjs/themes/prism-tomorrow.css"; // Basic dark theme, can be overridd
 import "prismjs/components/prism-rust";
 import "prismjs/components/prism-python";
 import { Topic } from "./learningData";
+
+export interface AiLearningHandle {
+    askQuestion: (question: string) => Promise<void>;
+}
 
 interface AiLearningProps {
     language: "rust" | "python" | "dsa";
@@ -18,11 +22,57 @@ interface AiLearningProps {
     onApplyCode: (code: string) => void;
 }
 
-export function AiLearning({ language, apiKey, selectedModel, topic, groupTitle, onBack, onApplyCode }: AiLearningProps) {
+export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ language, apiKey, selectedModel, topic, groupTitle, onBack, onApplyCode }, ref) => {
     const [content, setContent] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [temperature, setTemperature] = useState<number>(0.3);
+
+    useImperativeHandle(ref, () => ({
+        askQuestion: async (question: string) => {
+            if (!topic) return;
+
+            const timestamp = new Date().toLocaleTimeString();
+            const newContent = content + `\n\n**You (${timestamp}):** ${question}\n\n*Thinking...*`;
+            setContent(newContent);
+
+            try {
+                // Construct prompt with context
+                // Truncate content if too long to avoid token limits, but keep recent context
+                const contextContent = content.length > 8000 ? "..." + content.slice(-8000) : content;
+
+                const prompt = `Regarding the topic '${topic.title}' in the ${language} course.
+The current content is:
+${contextContent}
+
+User Question: ${question}
+
+Answer the user's question in the context of this topic. Be concise and helpful. Use Markdown.`;
+
+                const response: { content: string; model: string } = await invoke("ask_question", {
+                    req: {
+                        api_key: apiKey,
+                        code: "",
+                        question: prompt,
+                        language: language === "dsa" ? "python" : language,
+                        selected_model: selectedModel
+                    }
+                });
+
+                const finalContent = newContent.replace("*Thinking...*", "") + `\n\n**AI:** ${response.content}`;
+                setContent(finalContent);
+
+                // Update Cache
+                const cacheKey = `ai_learning_${language}_${topic.id}`;
+                localStorage.setItem(cacheKey, finalContent);
+
+            } catch (err) {
+                console.error(err);
+                const errorMsg = String(err);
+                setContent(newContent.replace("*Thinking...*", "") + `\n\n**Error:** Failed to get response. ${errorMsg}`);
+            }
+        }
+    }));
 
     useEffect(() => {
         if (topic) {
@@ -301,4 +351,4 @@ export function AiLearning({ language, apiKey, selectedModel, topic, groupTitle,
             </div>
         </div>
     );
-}
+});

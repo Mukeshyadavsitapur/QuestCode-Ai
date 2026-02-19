@@ -19,7 +19,7 @@ import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
 import { themes } from "./themes";
 import { Terminal } from "./Terminal"; // Import Terminal
-import { AiLearning } from "./AiLearning";
+import { AiLearning, AiLearningHandle } from "./AiLearning";
 import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, Topic } from "./learningData";
 import "./App.css";
 import Prism from "prismjs";
@@ -182,14 +182,7 @@ function App() {
           base: ["day", "sepia", "yellow", "ocean", "slate"].includes(t.id) ? "vs" : "vs-dark",
           inherit: true,
           rules: [
-            { token: "", foreground: t.text.replace("#", "") },
-            { token: "comment", foreground: t.secondary.replace("#", "") },
-            { token: "keyword", foreground: t.primary.replace("#", "") },
-            { token: "delimiter", foreground: t.text.replace("#", "") },
-            { token: "operator", foreground: t.primary.replace("#", "") },
-            { token: "string", foreground: t.activeWord.replace("#", "") },
-            { token: "number", foreground: t.secondary.replace("#", "") },
-            { token: "type", foreground: t.primaryText.replace("#", "") },
+            { token: "", foreground: t.text.replace("#", "") }, // Match base text to theme
           ],
           colors: {
             "editor.background": t.bg,
@@ -207,6 +200,7 @@ function App() {
 
   // Sidebar Ref for click outside
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const learningRef = useRef<AiLearningHandle>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -328,10 +322,13 @@ function App() {
 
     let userQuestion = input;
 
-    // If we are in learning mode, switch to AI mode and contextually update the question
+    // If we are in learning mode, use persistent Q&A
     if (viewMode === "learning" && selectedTopic) {
-      userQuestion = `Regarding the topic '${selectedTopic.title}' in the ${language} course: ${input}`;
-      setViewMode("ai");
+      if (learningRef.current) {
+        await learningRef.current.askQuestion(input);
+        setInput("");
+        return;
+      }
     }
 
     setInput("");
@@ -782,6 +779,7 @@ function App() {
 
               <div style={{ display: viewMode === "learning" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
                 <AiLearning
+                  ref={learningRef}
                   language={language}
                   apiKey={apiKey}
                   selectedModel={selectedModel}

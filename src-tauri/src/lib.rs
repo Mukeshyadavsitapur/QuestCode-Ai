@@ -73,44 +73,126 @@ struct AppState {
     stop_tx: Mutex<Option<oneshot::Sender<()>>>,
 }
 
+async fn fetch_gemini_models_raw(api_key: &str) -> Result<Vec<String>, String> {
+    let client = Client::new();
+    let url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models?key={}",
+        api_key
+    );
+
+    let response = client.get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if !response.status().is_success() {
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(format!("API Error: {}", error_text));
+    }
+
+    let model_list: GeminiModelList = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+    
+    // Basic structural filter for "generateContent" and Gemini naming
+    let models: Vec<String> = model_list.models.into_iter()
+        .filter(|m| {
+            let name = m.name.to_lowercase();
+            m.supported_generation_methods.contains(&"generateContent".to_string()) &&
+            !name.contains("tts") &&
+            !name.contains("embedding") &&
+            name.contains("gemini")
+        })
+        .map(|m| m.name.replace("models/", ""))
+        .collect();
+
+    Ok(models)
+}
+
 async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
     if api_key.trim().is_empty() {
         return Err("API Key is missing. Please add it in Settings.".to_string());
     }
 
-    // Default sequence of models to try if rate limited (429)
-    // The user asked for "gemini 2.5 model" as default instead of 2.0.
-    let mut models = vec![
-        "gemini-2.5-flash".to_string(),
-        "gemini-2.0-flash".to_string(), 
-        "gemini-1.5-flash".to_string(), 
-        "gemini-1.5-pro".to_string()
-    ];
-    
-    // If user has a selected model, try it first
-    if let Some(m) = selected_model {
-        println!("User selected model: {}", m);
-        // Strip the "models/" prefix if it exists in the API return but not our internal strings
-        let m_clean = m.replace("models/", "");
-        if !models.contains(&m_clean) {
-            models.insert(0, m_clean);
-        } else {
-            // Move it to front
-            models.retain(|x| x != &m_clean);
-            models.insert(0, m_clean);
+    // 1. Fetch all available models properly
+    // If fetching fails, we start with a small hardcoded safe-list to not completely fail
+    let all_models = match fetch_gemini_models_raw(api_key).await {
+        Ok(m) => m,
+        Err(e) => {
+            println!("⚠️ Failed to fetch models dynamically: {}. Using hardcoded fallbacks.", e);
+            vec![
+                "gemini-2.0-flash".to_string(), 
+                "gemini-1.5-flash".to_string()
+            ]
         }
+    };
+
+    println!("Available models from API: {:?}", all_models);
+
+    // 2. Build the "Smart Chain"
+    let mut execution_chain = Vec::new();
+
+    // Strategy:
+    // Priority 1: User Selected Model (Specific)
+    // Priority 2: All models in the SAME version family as selected (e.g. all 2.5s)
+    // Priority 3: 3.0 Family
+    // Priority 4: 2.5 Family
+    // Priority 5: 2.0 Family
+    // Priority 6: 1.5 Family (Deep fallback)
+
+    let mut selected_family = None;
+    if let Some(ref m) = selected_model {
+        let m_clean = m.replace("models/", "");
+        if m_clean.contains("1.5") { selected_family = Some("1.5"); }
+        else if m_clean.contains("2.0") { selected_family = Some("2.0"); }
+        else if m_clean.contains("2.5") { selected_family = Some("2.5"); }
+        else if m_clean.contains("3.0") { selected_family = Some("3.0"); }
+        
+        // Add specific selected model first (Priority 1)
+        execution_chain.push(m_clean);
     }
 
-    println!("Model chain to try: {:?}", models);
+    // Helper to add unique models from a family
+    let mut add_family = |chain: &mut Vec<String>, family: &str| {
+        let mut family_models: Vec<String> = all_models.iter()
+            .filter(|m| m.contains(family))
+            .cloned()
+            .collect();
+        
+        // Sort effectively (newest/longest names often implies specific versions, but simple iterate is fine)
+        // Reverse alphabetical often puts "pro" before "flash" or "newer" dates first if YYYYMMDD
+        family_models.sort_by(|a, b| b.cmp(a)); 
+
+        for m in family_models {
+            if !chain.contains(&m) {
+                chain.push(m);
+            }
+        }
+    };
+
+    // Priority 2: Selected Family
+    if let Some(fam) = selected_family {
+        add_family(&mut execution_chain, fam);
+    }
+
+    // Priority 3-6: Default Cascade (3.0 -> 2.5 -> 2.0 -> 1.5)
+    // We add them in order. The 'add_family' helper ensures no duplicates if they were already added.
+    let default_order = vec!["3.0", "2.5", "2.0", "1.5"];
+    for fam in default_order {
+        add_family(&mut execution_chain, fam);
+    }
+
+    println!("🔗 Final Execution Chain: {:?}", execution_chain);
 
     let mut last_error = "No response generated.".to_string();
 
-    for model in &models {
+    for model in &execution_chain {
         println!("Attempting request with model: {}, temp: {:?}", model, temperature);
         let client = Client::new();
+        // Ensure "models/" prefix is present for the URL construction if missing
+        let model_path = if model.starts_with("models/") { model.to_string() } else { format!("models/{}", model) };
+        
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
-            model, api_key
+            "https://generativelanguage.googleapis.com/v1beta/{}:generateContent?key={}",
+            model_path, api_key
         );
 
         let mut request_body = GeminiRequest {
@@ -123,12 +205,9 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
         };
 
         if let Some(temp) = temperature {
-             println!("Using temperature: {}", temp);
              request_body.generation_config = Some(GenerationConfig {
                 temperature: Some(temp),
             });
-        } else {
-             println!("Using default temperature (None)");
         }
 
         let response_res = client.post(&url)
@@ -140,7 +219,7 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
             Ok(resp) => resp,
             Err(e) => {
                 last_error = format!("Network error for {}: {}", model, e);
-                continue; // Try next model on network error as well
+                continue; // Try next model
             }
         };
 
@@ -164,16 +243,17 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
             let error_text = response.text().await.unwrap_or_default();
             last_error = format!("Model {} Error ({}): {}", model, status, error_text);
             
-            // Only fallback if status is 429 (Too Many Requests) or a network error occurred
-            if status.as_u16() != 429 {
-                println!("❌ ERROR: Model {} failed with {}. No fallback triggered.", model, status);
-                return Err(last_error);
+            // Fallback on 429 OR 404/503/etc since we want to try everything in the list
+            // User requested "application automatically choose next model as fallback... until all model give api key error"
+            // So we basically fallback on ANY error.
+            if status.is_success() {
+                 return Err(last_error);
             }
-            println!("🔄 FALLBACK: Model {} rate-limited (429). Trying next in chain...", model);
+            println!("🔄 FALLBACK: Model {} failed with {}. Trying next...", model, status);
         }
     }
 
-    Err(format!("Request failed after trying multiple models. Last error: {}", last_error))
+    Err(format!("Request failed after trying chain: {:?}. Last error: {}", execution_chain, last_error))
 }
 
 #[tauri::command]
@@ -182,40 +262,18 @@ async fn get_available_models(api_key: String) -> Result<Vec<String>, String> {
         return Err("API Key is missing.".to_string());
     }
 
-    let client = Client::new();
-    let url = format!(
-        "https://generativelanguage.googleapis.com/v1beta/models?key={}",
-        api_key
-    );
+    let all_models = fetch_gemini_models_raw(&api_key).await?;
 
-    let response = client.get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {}", e))?;
-
-    if !response.status().is_success() {
-        let error_text = response.text().await.unwrap_or_default();
-        return Err(format!("API Error: {}", error_text));
-    }
-
-    let model_list: GeminiModelList = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
-    
-    // Filter for models that:
-    // 1. Are "gemini" models
-    // 2. Support "generateContent"
-    // 3. Are NOT specifically for TTS or other non-text modalities
-    let models: Vec<String> = model_list.models.into_iter()
-        .filter(|m| {
-            let name = m.name.to_lowercase();
-            m.supported_generation_methods.contains(&"generateContent".to_string()) &&
-            !name.contains("tts") &&
-            !name.contains("embedding") &&
-            name.contains("gemini")
+    // Filter for UI: Keep 2.5 and newer (exclude 1.0, 1.5, 2.0)
+    let ui_models: Vec<String> = all_models.into_iter()
+        .filter(|name| {
+            !name.contains("1.0") &&
+            !name.contains("1.5") &&
+            !name.contains("2.0")
         })
-        .map(|m| m.name.replace("models/", ""))
         .collect();
 
-    Ok(models)
+    Ok(ui_models)
 }
 
 #[derive(Deserialize)]

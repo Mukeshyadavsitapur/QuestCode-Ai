@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -29,6 +29,24 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [temperature, setTemperature] = useState<number>(0.3);
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    const scrollToLatestMessage = () => {
+        setTimeout(() => {
+            if (scrollRef.current) {
+                const latestQuestion = scrollRef.current.querySelector('.latest-question-anchor');
+                if (latestQuestion) {
+                    setTimeout(() => {
+                        if (scrollRef.current && latestQuestion) {
+                            scrollRef.current.scrollTop = (latestQuestion as HTMLElement).offsetTop;
+                        }
+                    }, 10);
+                } else {
+                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                }
+            }
+        }, 50);
+    };
 
     const markdownComponents = useMemo(() => ({
         table: ({ node, ...props }: any) => (
@@ -137,8 +155,10 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
             if (!topic) return;
 
             const timestamp = new Date().toLocaleTimeString();
-            const newContent = content + `\n\n**You (${timestamp}):** ${question}\n\n*Thinking...*`;
+            const cleanContent = content.replace(/<span class="latest-question-anchor"><\/span>/g, "");
+            const newContent = cleanContent + (cleanContent ? "\n\n--- \n\n" : "") + `<span class="latest-question-anchor"></span>**You (${timestamp}):** ${question}\n\n*Thinking...*`;
             setContent(newContent);
+            scrollToLatestMessage();
 
             try {
                 // Construct prompt with context
@@ -356,7 +376,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                 </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px" }} className="custom-markdown-content">
+            <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px" }} className="custom-markdown-content" ref={scrollRef}>
                 {isLoading ? (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", minHeight: "300px" }}>
                         <Loader2 className="animate-spin" size={48} style={{ marginBottom: "24px", color: "var(--accent-text)" }} />

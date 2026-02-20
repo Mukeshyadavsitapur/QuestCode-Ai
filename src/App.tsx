@@ -170,6 +170,29 @@ function App() {
     setExpandedGroups(new Set(topics.map(t => t.title)));
   }, [language]);
 
+  // Scroll Refs
+  const mainChatScrollRef = useRef<HTMLDivElement>(null);
+  const quickChatScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollToLatestMessage = (ref: React.RefObject<HTMLDivElement | null>) => {
+    setTimeout(() => {
+      if (ref.current) {
+        const latestQuestion = ref.current.querySelector('.latest-question-anchor');
+        if (latestQuestion) {
+          // Wait for a tiny bit for render to finish
+          setTimeout(() => {
+            if (ref.current && latestQuestion) {
+              ref.current.scrollTop = (latestQuestion as HTMLElement).offsetTop;
+            }
+          }, 10);
+        } else {
+          // Fallback
+          ref.current.scrollTop = ref.current.scrollHeight;
+        }
+      }
+    }, 50);
+  };
+
   // Persist Code per Language
   useEffect(() => {
     localStorage.setItem(`code_${language}`, code);
@@ -458,9 +481,10 @@ function App() {
     setQuickChatInput("");
 
     const isFirstMessage = quickChatDescription === INITIAL_QUICK_CHAT_DESCRIPTION;
-    const cleanDescription = isFirstMessage ? "" : quickChatDescription;
-    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `**You asked:** ${userQuestion}\n\n*Thinking...*`;
+    const cleanDescription = isFirstMessage ? "" : quickChatDescription.replace(/<span class="latest-question-anchor"><\/span>/g, ""); // Remove previous anchors
+    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `<span class="latest-question-anchor"></span>**You asked:** ${userQuestion}\n\n*Thinking...*`;
     setQuickChatDescription(newDescription);
+    scrollToLatestMessage(quickChatScrollRef);
 
     if (!isTauri()) {
       setTimeout(() => {
@@ -587,9 +611,10 @@ function App() {
     setInput("");
 
     const isFirstMessage = description === INITIAL_DESCRIPTION;
-    const cleanDescription = isFirstMessage ? "" : description;
-    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `**You asked:** ${input}\n\n*Thinking...*`; // Display original input to user
+    const cleanDescription = isFirstMessage ? "" : description.replace(/<span class="latest-question-anchor"><\/span>/g, ""); // Remove previous anchors
+    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `<span class="latest-question-anchor"></span>**You asked:** ${input}\n\n*Thinking...*`; // Display original input to user
     setDescription(newDescription);
+    scrollToLatestMessage(mainChatScrollRef);
 
     if (!isTauri()) {
       setTimeout(() => {
@@ -1240,7 +1265,7 @@ function App() {
               <div style={{ display: viewMode === "ai" ? "flex" : "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
                 {aiService === "api" ? (
                   <>
-                    <div className="description-container">
+                    <div className="description-container" ref={mainChatScrollRef}>
                       <ReactMarkdown
                         components={markdownComponents}
                         remarkPlugins={[remarkGfm]}
@@ -1709,7 +1734,7 @@ function App() {
                   </button>
                 </div>
               </div>
-              <div className="description-container" style={{ flex: 1, padding: "16px", overflowY: "auto" }} onPointerDown={(e) => e.stopPropagation()}>
+              <div className="description-container" style={{ flex: 1, padding: "16px", overflowY: "auto" }} onPointerDown={(e) => e.stopPropagation()} ref={quickChatScrollRef}>
                 <ReactMarkdown
                   components={quickChatMarkdownComponents}
                   remarkPlugins={[remarkGfm]}

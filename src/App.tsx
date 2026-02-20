@@ -18,7 +18,9 @@ import {
   ArrowLeft,
   Eye,
   Zap,
-  X
+  X,
+  PanelBottom,
+  PanelRight
 } from "lucide-react";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
@@ -209,8 +211,15 @@ function App() {
   const [terminalOutput, setTerminalOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [isTerminalVisible, setIsTerminalVisible] = useState(true);
+  const [terminalLayout, setTerminalLayout] = useState<"vertical" | "horizontal">(() => {
+    return (localStorage.getItem("terminalLayout") as "vertical" | "horizontal") || "vertical";
+  });
   const [webPreviewContent, setWebPreviewContent] = useState("");
   const [isMinimapVisible, setIsMinimapVisible] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("terminalLayout", terminalLayout);
+  }, [terminalLayout]);
 
   // Settings State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -1367,7 +1376,7 @@ function App() {
           <PanelResizeHandle className="resizer horizontal" />
 
           <Panel defaultSize={50} minSize={30}>
-            <PanelGroup orientation="vertical">
+            <PanelGroup orientation={terminalLayout}>
               <Panel defaultSize={70} minSize={20}>
                 <div className="panel">
                   <div className="panel-header">
@@ -1515,6 +1524,14 @@ function App() {
                         <Layout size={14} />
                       </button>
                       <button
+                        className={`tab-btn`}
+                        title={terminalLayout === "vertical" ? "Move Terminal to Right" : "Move Terminal to Bottom"}
+                        onClick={() => setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical")}
+                        style={{ padding: "4px 8px" }}
+                      >
+                        {terminalLayout === "vertical" ? <PanelRight size={14} /> : <PanelBottom size={14} />}
+                      </button>
+                      <button
                         className={`tab-btn ${isTerminalVisible ? "active" : ""}`}
                         title={language === "html" || language === "css" ? "Toggle Preview" : (isTerminalVisible ? "Hide Terminal" : "Show Terminal")}
                         onClick={() => setIsTerminalVisible(!isTerminalVisible)}
@@ -1606,7 +1623,7 @@ function App() {
 
               {isTerminalVisible && (
                 <>
-                  <PanelResizeHandle className="resizer vertical" />
+                  <PanelResizeHandle className={`resizer ${terminalLayout}`} />
                   <Panel defaultSize={30} minSize={15}>
                     <div className="panel" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
                       {(language === "html" || language === "css") ? (

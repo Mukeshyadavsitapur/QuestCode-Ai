@@ -844,6 +844,9 @@ function App() {
     pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
       const match = /language-(\w+)/.exec(className || "");
+      let displayLang = match ? match[1] : "";
+      if (displayLang === "ml" || displayLang === "dsa") displayLang = "python";
+      const mappedClassName = displayLang ? `language-${displayLang}` : className;
       const isInline = !match;
       const codeText = String(children).replace(/\n$/, "");
 
@@ -879,7 +882,7 @@ function App() {
             color: "var(--text-muted)",
             fontWeight: 600
           }}>
-            <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
+            <span style={{ textTransform: "uppercase" }}>{displayLang || "Code"}</span>
             <div style={{ display: "flex", gap: "12px" }}>
               <button
                 onClick={() => {
@@ -912,8 +915,8 @@ function App() {
             border: "1px solid var(--border-color)",
             overflowX: "auto",
             margin: 0 // Remove default pre margin
-          }} className={className}>
-            <code className={className} {...props} style={{
+          }} className={mappedClassName}>
+            <code className={mappedClassName} {...props} style={{
               fontFamily: "var(--font-mono)",
               fontSize: "0.9rem",
               color: "#e5e5e5",
@@ -947,6 +950,9 @@ function App() {
     pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
       const match = /language-(\w+)/.exec(className || "");
+      let displayLang = match ? match[1] : "";
+      if (displayLang === "ml" || displayLang === "dsa") displayLang = "python";
+      const mappedClassName = displayLang ? `language-${displayLang}` : className;
       const isInline = !match;
       const codeText = String(children).replace(/\n$/, "");
 
@@ -982,7 +988,7 @@ function App() {
             color: "var(--text-muted)",
             fontWeight: 600
           }}>
-            <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
+            <span style={{ textTransform: "uppercase" }}>{displayLang || "Code"}</span>
             <div style={{ display: "flex", gap: "12px" }}>
               <button
                 onClick={() => {
@@ -1014,8 +1020,8 @@ function App() {
             border: "1px solid var(--border-color)",
             overflowX: "auto",
             margin: 0
-          }} className={className}>
-            <code className={className} {...props} style={{
+          }} className={mappedClassName}>
+            <code className={mappedClassName} {...props} style={{
               fontFamily: "var(--font-mono)",
               fontSize: "0.9rem",
               color: "#e5e5e5",
@@ -1602,7 +1608,7 @@ function App() {
                     ) : (
                       <Editor
                         height="100%"
-                        language={language}
+                        language={language === "ml" || language === "dsa" ? "python" : language}
                         theme={theme}
                         value={code}
                         onChange={(value) => setCode(value || "")}

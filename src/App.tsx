@@ -193,7 +193,7 @@ function App() {
   const [isRunning, setIsRunning] = useState(false);
   const [isTerminalVisible, setIsTerminalVisible] = useState(true);
   const [webPreviewContent, setWebPreviewContent] = useState("");
-  const [isMinimapVisible, setIsMinimapVisible] = useState(true);
+  const [isMinimapVisible, setIsMinimapVisible] = useState(false);
 
   // Settings State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -628,31 +628,84 @@ function App() {
     if (language === "html") {
       setWebPreviewContent(code);
     } else if (language === "css") {
-      setWebPreviewContent(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <style>
-              ${code}
-            </style>
-          </head>
-          <body>
-            <h1>CSS Preview</h1>
-            <p>The CSS you wrote is applied to this page.</p>
-            <div class="container">
-                <div class="box">Sample Box</div>
-                <button>Sample Button</button>
-                <input type="text" placeholder="Sample Input" />
-            </div>
-            <hr />
-            <h2>Common Elements</h2>
-            <ul>
-                <li>List Item 1</li>
-                <li>List Item 2</li>
-            </ul>
-          </body>
-        </html>
-      `);
+      // Check if the user pasted an entire HTML document into the CSS editor
+      const hasHtmlStructure = /<html|<body|<head/i.test(code);
+
+      if (hasHtmlStructure) {
+        let contentToRender = code;
+        const htmlMatch = code.match(/([\s\S]*<\/(?:html|body)>)([\s\S]*)/i);
+
+        if (htmlMatch) {
+          const htmlPart = htmlMatch[1];
+          const cssPart = htmlMatch[2].trim();
+          if (cssPart.length > 0) {
+            const headEndIndex = htmlPart.toLowerCase().indexOf('</head>');
+            if (headEndIndex !== -1) {
+              contentToRender = htmlPart.substring(0, headEndIndex) + `\n<style>\n${cssPart}\n</style>\n` + htmlPart.substring(headEndIndex);
+            } else {
+              contentToRender = htmlPart + `\n<style>\n${cssPart}\n</style>`;
+            }
+          }
+        }
+        setWebPreviewContent(contentToRender);
+      } else {
+        setWebPreviewContent(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <style>
+                ${code}
+              </style>
+            </head>
+            <body>
+              <div class="preview-container">
+                <header class="preview-header">
+                  <h1>Web Component Preview</h1>
+                  <p>Edit the CSS on the left to style these elements dynamically.</p>
+                </header>
+
+                <div class="grid-layout">
+                  <main class="main-card">
+                    <h2>Main Content Area</h2>
+                    <p>This is a primary card component demonstrating standard text typography and spacing.</p>
+                    
+                    <div class="form-group">
+                      <label for="example-input">Email Address</label>
+                      <input type="email" id="example-input" placeholder="Enter your email" />
+                    </div>
+                    
+                    <div class="button-group">
+                      <button class="btn btn-primary">Primary Action</button>
+                      <button class="btn btn-secondary">Secondary Action</button>
+                    </div>
+                  </main>
+
+                  <aside class="sidebar-card">
+                    <h3>Quick Links</h3>
+                    <ul class="nav-list">
+                      <li><a href="#" class="nav-link active">Dashboard</a></li>
+                      <li><a href="#" class="nav-link">Settings</a></li>
+                      <li><a href="#" class="nav-link">Profile</a></li>
+                      <li><a href="#" class="nav-link">Messages</a></li>
+                    </ul>
+                  </aside>
+                </div>
+
+                <section class="features-section">
+                  <div class="feature-badge">New Feature</div>
+                  <h3>Interactive Elements</h3>
+                  <p>Hover over the elements or focus the input to test your pseudo-class styling.</p>
+                  
+                  <div class="toggle-switch">
+                    <input type="checkbox" id="toggle" />
+                    <label for="toggle">Enable notifications</label>
+                  </div>
+                </section>
+              </div>
+            </body>
+          </html>
+        `);
+      }
     }
   }, [code, language]);
 
@@ -1363,7 +1416,81 @@ function App() {
                         if (newLang === "html") {
                           setWebPreviewContent(newCode);
                         } else if (newLang === "css") {
-                          setWebPreviewContent(`<html><head><style>${newCode}</style></head><body><h1>CSS Preview</h1><div class="box">Box</div></body></html>`);
+                          const hasHtmlStructure = /<html|<body|<head/i.test(newCode);
+
+                          if (hasHtmlStructure) {
+                            let contentToRender = newCode;
+                            const htmlMatch = newCode.match(/([\s\S]*<\/(?:html|body)>)([\s\S]*)/i);
+
+                            if (htmlMatch) {
+                              const htmlPart = htmlMatch[1];
+                              const cssPart = htmlMatch[2].trim();
+                              if (cssPart.length > 0) {
+                                const headEndIndex = htmlPart.toLowerCase().indexOf('</head>');
+                                if (headEndIndex !== -1) {
+                                  contentToRender = htmlPart.substring(0, headEndIndex) + `\n<style>\n${cssPart}\n</style>\n` + htmlPart.substring(headEndIndex);
+                                } else {
+                                  contentToRender = htmlPart + `\n<style>\n${cssPart}\n</style>`;
+                                }
+                              }
+                            }
+                            setWebPreviewContent(contentToRender);
+                          } else {
+                            setWebPreviewContent(`
+                              <!DOCTYPE html>
+                              <html>
+                                <head>
+                                  <style>${newCode}</style>
+                                </head>
+                                <body>
+                                  <div class="preview-container">
+                                    <header class="preview-header">
+                                      <h1>Web Component Preview</h1>
+                                      <p>Edit the CSS on the left to style these elements dynamically.</p>
+                                    </header>
+
+                                    <div class="grid-layout">
+                                      <main class="main-card">
+                                        <h2>Main Content Area</h2>
+                                        <p>This is a primary card component demonstrating standard text typography and spacing.</p>
+                                        
+                                        <div class="form-group">
+                                          <label for="example-input">Email Address</label>
+                                          <input type="email" id="example-input" placeholder="Enter your email" />
+                                        </div>
+                                        
+                                        <div class="button-group">
+                                          <button class="btn btn-primary">Primary Action</button>
+                                          <button class="btn btn-secondary">Secondary Action</button>
+                                        </div>
+                                      </main>
+
+                                      <aside class="sidebar-card">
+                                        <h3>Quick Links</h3>
+                                        <ul class="nav-list">
+                                          <li><a href="#" class="nav-link active">Dashboard</a></li>
+                                          <li><a href="#" class="nav-link">Settings</a></li>
+                                          <li><a href="#" class="nav-link">Profile</a></li>
+                                          <li><a href="#" class="nav-link">Messages</a></li>
+                                        </ul>
+                                      </aside>
+                                    </div>
+
+                                    <section class="features-section">
+                                      <div class="feature-badge">New Feature</div>
+                                      <h3>Interactive Elements</h3>
+                                      <p>Hover over the elements or focus the input to test your pseudo-class styling.</p>
+                                      
+                                      <div class="toggle-switch">
+                                        <input type="checkbox" id="toggle" />
+                                        <label for="toggle">Enable notifications</label>
+                                      </div>
+                                    </section>
+                                  </div>
+                                </body>
+                              </html>
+                            `);
+                          }
                         }
 
                         // Auto-open preview for HTML/CSS

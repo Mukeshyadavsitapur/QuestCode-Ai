@@ -113,6 +113,29 @@ function App() {
   });
   const [isQuickChatExplaining, setIsQuickChatExplaining] = useState(false);
 
+  // Quick Chat Window Geometry State
+  const [quickChatGeometry, setQuickChatGeometry] = useState(() => {
+    const saved = localStorage.getItem("quickChatGeometry");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse quickChatGeometry", e);
+      }
+    }
+    return {
+      x: window.innerWidth ? (window.innerWidth / 2) - 200 : 50,
+      y: window.innerHeight ? (window.innerHeight / 2) - 250 : 50,
+      width: 400,
+      height: 500
+    };
+  });
+
+  // Effect to save quick chat geometry 
+  useEffect(() => {
+    localStorage.setItem("quickChatGeometry", JSON.stringify(quickChatGeometry));
+  }, [quickChatGeometry]);
+
   // View Mode State (AI or Docs or Shortcuts or Learning)
   const [viewMode, setViewMode] = useState<"ai" | "docs" | "shortcuts" | "learning">("ai");
 
@@ -1439,11 +1462,17 @@ function App() {
         {/* Floating Quick Chat Modal - Moved to root of main-content to allow dragging anywhere */}
         {isQuickChatOpen && (
           <Rnd
-            default={{
-              x: document.querySelector('.main-content')?.clientWidth ? (document.querySelector('.main-content')!.clientWidth / 2) - 200 : 50,
-              y: document.querySelector('.main-content')?.clientHeight ? (document.querySelector('.main-content')!.clientHeight / 2) - 250 : 50,
-              width: 400,
-              height: 500
+            size={{ width: quickChatGeometry.width, height: quickChatGeometry.height }}
+            position={{ x: quickChatGeometry.x, y: quickChatGeometry.y }}
+            onDragStop={(_e, d) => {
+              setQuickChatGeometry((prev: any) => ({ ...prev, x: d.x, y: d.y }));
+            }}
+            onResizeStop={(_e, _direction, ref, _delta, position) => {
+              setQuickChatGeometry({
+                width: parseInt(ref.style.width, 10),
+                height: parseInt(ref.style.height, 10),
+                ...position
+              });
             }}
             minWidth={300}
             minHeight={300}

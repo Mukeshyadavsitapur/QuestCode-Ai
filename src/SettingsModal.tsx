@@ -132,16 +132,16 @@ export function SettingsModal({
     const displayModels = fetchedModels.length > 0 ? fetchedModels : availableModels;
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <div className="modal-header">
-                    <h2>Settings</h2>
-                    <button onClick={onClose} className="close-btn">
+        <div className="settings-container" style={{ width: '100%', height: '100%', overflowY: 'auto', background: 'var(--code-bg)' }}>
+            <div className="settings-content" style={{ maxWidth: '800px', margin: '0 auto', width: '100%', padding: '24px' }}>
+                <div className="settings-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '24px' }}>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-main)', margin: 0 }}>Settings</h2>
+                    <button onClick={onClose} className="close-btn" style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}>
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="modal-body">
+                <div className="settings-body" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     <div className="setting-group">
                         <label className="setting-label">
                             <Moon size={18} />
@@ -342,7 +342,7 @@ export function SettingsModal({
                     </div>
                 </div>
 
-                <div className="modal-footer">
+                <div className="settings-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                     <button onClick={onClose} className="btn btn-secondary">
                         Cancel
                     </button>

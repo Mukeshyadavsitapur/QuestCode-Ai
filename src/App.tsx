@@ -958,30 +958,6 @@ function App() {
     <div className="app-container">
 
 
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        llmProvider={llmProvider}
-        setLlmProvider={setLlmProvider}
-        apiKey={apiKey}
-        setApiKey={setApiKey}
-        openAiApiKey={openAiApiKey}
-        setOpenAiApiKey={setOpenAiApiKey}
-        anthropicApiKey={anthropicApiKey}
-        setAnthropicApiKey={setAnthropicApiKey}
-        groqApiKey={groqApiKey}
-        setGroqApiKey={setGroqApiKey}
-        huggingFaceApiKey={huggingFaceApiKey}
-        setHuggingFaceApiKey={setHuggingFaceApiKey}
-        theme={theme}
-        setTheme={setTheme}
-        onViewShortcuts={() => setViewMode("shortcuts")}
-        selectedModel={selectedModel}
-        availableModels={availableModels}
-        setSelectedModel={setSelectedModel}
-        activeModel={activeModel}
-      />
-
       <main className="main-content">
         <PanelGroup orientation="horizontal">
           <Panel defaultSize={50} minSize={30}>
@@ -1371,6 +1347,7 @@ function App() {
                         const newLang = e.target.value as any;
                         setLanguage(newLang);
                         localStorage.setItem("language", newLang);
+                        setIsSettingsOpen(false);
 
                         // Load saved code for new language or default
                         const savedCode = localStorage.getItem(`code_${newLang}`);
@@ -1476,23 +1453,49 @@ function App() {
                       </button>
                     </div>
                   </div>
-                  <div className="editor-container" style={{ flex: 1, position: "relative" }}>
-                    <Editor
-                      height="100%"
-                      language={language}
-                      theme={theme}
-                      value={code}
-                      onChange={(value) => setCode(value || "")}
-                      onMount={handleEditorMount}
-                      options={{
-                        minimap: { enabled: isMinimapVisible },
-                        fontSize: 14,
-                        fontFamily: '"JetBrains Mono", monospace',
-                        lineNumbers: "on",
-                        scrollBeyondLastLine: false,
-                        automaticLayout: true,
-                      }}
-                    />
+                  <div className="editor-container" style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column" }}>
+                    {isSettingsOpen ? (
+                      <SettingsModal
+                        isOpen={isSettingsOpen}
+                        onClose={() => setIsSettingsOpen(false)}
+                        llmProvider={llmProvider}
+                        setLlmProvider={setLlmProvider}
+                        apiKey={apiKey}
+                        setApiKey={setApiKey}
+                        openAiApiKey={openAiApiKey}
+                        setOpenAiApiKey={setOpenAiApiKey}
+                        anthropicApiKey={anthropicApiKey}
+                        setAnthropicApiKey={setAnthropicApiKey}
+                        groqApiKey={groqApiKey}
+                        setGroqApiKey={setGroqApiKey}
+                        huggingFaceApiKey={huggingFaceApiKey}
+                        setHuggingFaceApiKey={setHuggingFaceApiKey}
+                        theme={theme}
+                        setTheme={setTheme}
+                        onViewShortcuts={() => { setIsSettingsOpen(false); setViewMode("shortcuts"); }}
+                        selectedModel={selectedModel}
+                        availableModels={availableModels}
+                        setSelectedModel={setSelectedModel}
+                        activeModel={activeModel}
+                      />
+                    ) : (
+                      <Editor
+                        height="100%"
+                        language={language}
+                        theme={theme}
+                        value={code}
+                        onChange={(value) => setCode(value || "")}
+                        onMount={handleEditorMount}
+                        options={{
+                          minimap: { enabled: isMinimapVisible },
+                          fontSize: 14,
+                          fontFamily: '"JetBrains Mono", monospace',
+                          lineNumbers: "on",
+                          scrollBeyondLastLine: false,
+                          automaticLayout: true,
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               </Panel>

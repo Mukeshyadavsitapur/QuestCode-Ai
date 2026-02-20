@@ -85,6 +85,7 @@ function App() {
     return localStorage.getItem("current_chat_id");
   });
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [visibleChats, setVisibleChats] = useState(10);
 
   // Quick Chat State
   const [quickChats, setQuickChats] = useState<ChatSession[]>(() => {
@@ -96,6 +97,7 @@ function App() {
   });
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
   const [quickChatInput, setQuickChatInput] = useState("");
+  const [visibleQuickChats, setVisibleQuickChats] = useState(10);
   const INITIAL_QUICK_CHAT_DESCRIPTION = "## Quick Chat\n\nAsk me anything! Let me help you while you read the documentation.";
   const [quickChatDescription, setQuickChatDescription] = useState(() => {
     const savedId = localStorage.getItem("current_quick_chat_id");
@@ -369,7 +371,10 @@ function App() {
         description: newDescription,
         timestamp: Date.now(),
       };
-      setChats((prev) => [newChat, ...prev]);
+      setChats((prev) => {
+        const newChats = [newChat, ...prev];
+        return newChats.length > 500 ? newChats.slice(0, 500) : newChats;
+      });
       setCurrentChatId(newId);
     }
   };
@@ -441,7 +446,10 @@ function App() {
           description: finalDescription,
           timestamp: Date.now(),
         };
-        setQuickChats((prev) => [newChat, ...prev]);
+        setQuickChats((prev) => {
+          const newQuickChats = [newChat, ...prev];
+          return newQuickChats.length > 500 ? newQuickChats.slice(0, 500) : newQuickChats;
+        });
         setCurrentQuickChatId(newId);
       }
 
@@ -1056,7 +1064,7 @@ function App() {
                         {quickChats.length > 0 && (
                           <div style={{ marginBottom: "16px" }}>
                             <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Zap size={12} fill="currentColor" /> Recent Quick Chats</div>
-                            {quickChats.map((chat) => (
+                            {quickChats.slice(0, visibleQuickChats).map((chat) => (
                               <div key={chat.id} className={`history-item ${currentQuickChatId === chat.id ? "active" : ""}`} onClick={() => {
                                 setCurrentQuickChatId(chat.id);
                                 setQuickChatDescription(chat.description);
@@ -1078,6 +1086,15 @@ function App() {
                                 </button>
                               </div>
                             ))}
+                            {visibleQuickChats < quickChats.length && (
+                              <button
+                                className="btn btn-secondary"
+                                style={{ width: "100%", justifyContent: "center", marginTop: "8px", fontSize: "0.8rem", padding: "6px", border: "1px solid var(--border-color)" }}
+                                onClick={() => setVisibleQuickChats(prev => prev + 10)}
+                              >
+                                Load More
+                              </button>
+                            )}
                           </div>
                         )}
 
@@ -1085,15 +1102,26 @@ function App() {
                         {chats.length === 0 ? (
                           <div className="empty-history">No history yet</div>
                         ) : (
-                          chats.map((chat) => (
-                            <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
-                              <MessageSquare size={14} />
-                              <span className="history-title">{chat.title}</span>
-                              <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
-                                <Trash2 size={12} />
+                          <>
+                            {chats.slice(0, visibleChats).map((chat) => (
+                              <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
+                                <MessageSquare size={14} />
+                                <span className="history-title">{chat.title}</span>
+                                <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            ))}
+                            {visibleChats < chats.length && (
+                              <button
+                                className="btn btn-secondary"
+                                style={{ width: "100%", justifyContent: "center", marginTop: "8px", fontSize: "0.8rem", padding: "6px", border: "1px solid var(--border-color)" }}
+                                onClick={() => setVisibleChats(prev => prev + 10)}
+                              >
+                                Load More
                               </button>
-                            </div>
-                          ))
+                            )}
+                          </>
                         )}
                       </div>
                     </>

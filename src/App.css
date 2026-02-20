@@ -138,3 +138,46 @@ select option {
   background-color: var(--secondary-color);
   color: var(--text-main);
 }
+
+/* Enhanced Markdown Table Styling */
+.table-wrapper {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: var(--panel-bg);
+  border-radius: 0 0 8px 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.markdown-row {
+  transition: background 0.2s;
+}
+
+.markdown-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.markdown-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body.light-theme .markdown-row:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+body.light-theme .markdown-row:hover {
+  background: rgba(0, 0, 0, 0.05);
+}

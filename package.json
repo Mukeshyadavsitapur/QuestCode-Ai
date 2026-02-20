@@ -20,7 +20,8 @@
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^4.6.4",
     "react-rnd": "^10.5.2",
-    "react-simple-code-editor": "^0.14.1"
+    "react-simple-code-editor": "^0.14.1",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

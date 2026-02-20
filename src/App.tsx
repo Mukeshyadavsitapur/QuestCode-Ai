@@ -8,6 +8,7 @@ import {
 } from "react-resizable-panels";
 import Editor, { loader } from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Rnd } from "react-rnd";
 import {
   Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2,
@@ -116,7 +117,7 @@ function App() {
   // Highlight code in chat
   useEffect(() => {
     Prism.highlightAll();
-  }, [description, viewMode]);
+  }, [description, quickChatDescription, viewMode, isQuickChatOpen]);
 
   // Learning State
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(() => {
@@ -671,6 +672,211 @@ function App() {
     setIsHistoryOpen(false); // Close sidebar on selection logic can be here
   };
 
+  const markdownComponents = useMemo(() => ({
+    table: ({ node, ...props }: any) => (
+      <div className="table-wrapper" style={{ overflowX: "auto", margin: "1.5em 0", borderRadius: "8px", border: "1px solid var(--border-color)", background: "var(--panel-bg)" }}>
+        <table {...props} style={{ width: "100%", borderCollapse: "collapse", minWidth: "600px", margin: 0, border: "none" }} />
+      </div>
+    ),
+    th: ({ node, ...props }: any) => (
+      <th {...props} style={{ borderBottom: "2px solid var(--border-color)", borderRight: "1px solid var(--border-color)", padding: "12px 16px", textAlign: "left", background: "rgba(88, 166, 255, 0.15)", color: "var(--accent-text)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.8rem", letterSpacing: "0.05em", resize: "horizontal", overflow: "hidden", minWidth: "120px", position: "relative" }} />
+    ),
+    td: ({ node, ...props }: any) => (
+      <td {...props} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-color)", borderRight: "1px solid var(--border-color)", wordBreak: "break-word" }} />
+    ),
+    tr: ({ node, ...props }: any) => (
+      <tr {...props} className="markdown-row" />
+    ),
+    pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
+      const match = /language-(\w+)/.exec(className || "");
+      const isInline = !match;
+      const codeText = String(children).replace(/\n$/, "");
+
+      if (isInline) {
+        return (
+          <code className={className} {...props} style={{
+            background: "rgba(88, 166, 255, 0.1)",
+            color: "var(--accent-color)",
+            padding: "2px 5px",
+            borderRadius: "4px",
+            fontSize: "0.9em",
+            fontFamily: "var(--font-mono)"
+          }}>
+            {children}
+          </code>
+        );
+      }
+
+      return (
+        <div style={{ position: "relative", margin: "1.5em 0" }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: "var(--panel-bg)",
+            padding: "8px 12px",
+            borderTopLeftRadius: "8px",
+            borderTopRightRadius: "8px",
+            border: "1px solid var(--border-color)",
+            borderBottom: "none",
+            fontSize: "0.75rem",
+            fontFamily: "var(--font-sans)",
+            color: "var(--text-muted)",
+            fontWeight: 600
+          }}>
+            <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(codeText);
+                }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                title="Copy to Clipboard"
+                className="code-action-btn"
+              >
+                <Copy size={13} /> Copy
+              </button>
+              <button
+                onClick={() => {
+                  setCode(codeText);
+                  // Optional: Switch to editor view if on mobile or if needed
+                }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                title="Replace Editor Content"
+                className="code-action-btn"
+              >
+                <TerminalIcon size={13} /> Apply
+              </button>
+            </div>
+          </div>
+          <pre style={{
+            background: "#1e1e1e", // Force dark bg for code
+            padding: "16px",
+            borderBottomLeftRadius: "8px",
+            borderBottomRightRadius: "8px",
+            border: "1px solid var(--border-color)",
+            overflowX: "auto",
+            margin: 0 // Remove default pre margin
+          }} className={className}>
+            <code className={className} {...props} style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.9rem",
+              color: "#e5e5e5",
+              whiteSpace: "pre",
+              textAlign: "left",
+              display: "block"
+            }}>
+              {children}
+            </code>
+          </pre>
+        </div>
+      );
+    }
+  }), []);
+
+  const quickChatMarkdownComponents = useMemo(() => ({
+    table: ({ node, ...props }: any) => (
+      <div className="table-wrapper" style={{ overflowX: "auto", margin: "1.5em 0", borderRadius: "8px", border: "1px solid var(--border-color)", background: "var(--panel-bg)" }}>
+        <table {...props} style={{ width: "100%", borderCollapse: "collapse", minWidth: "600px", margin: 0, border: "none" }} />
+      </div>
+    ),
+    th: ({ node, ...props }: any) => (
+      <th {...props} style={{ borderBottom: "2px solid var(--border-color)", borderRight: "1px solid var(--border-color)", padding: "12px 16px", textAlign: "left", background: "rgba(88, 166, 255, 0.15)", color: "var(--accent-text)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.8rem", letterSpacing: "0.05em", resize: "horizontal", overflow: "hidden", minWidth: "120px", position: "relative" }} />
+    ),
+    td: ({ node, ...props }: any) => (
+      <td {...props} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-color)", borderRight: "1px solid var(--border-color)", wordBreak: "break-word" }} />
+    ),
+    tr: ({ node, ...props }: any) => (
+      <tr {...props} className="markdown-row" />
+    ),
+    pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
+      const match = /language-(\w+)/.exec(className || "");
+      const isInline = !match;
+      const codeText = String(children).replace(/\n$/, "");
+
+      if (isInline) {
+        return (
+          <code className={className} {...props} style={{
+            background: "rgba(88, 166, 255, 0.1)",
+            color: "var(--accent-color)",
+            padding: "2px 5px",
+            borderRadius: "4px",
+            fontSize: "0.9em",
+            fontFamily: "var(--font-mono)"
+          }}>
+            {children}
+          </code>
+        );
+      }
+
+      return (
+        <div style={{ position: "relative", margin: "1.5em 0" }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: "var(--panel-bg)",
+            padding: "8px 12px",
+            borderTopLeftRadius: "8px",
+            borderTopRightRadius: "8px",
+            border: "1px solid var(--border-color)",
+            borderBottom: "none",
+            fontSize: "0.75rem",
+            fontFamily: "var(--font-sans)",
+            color: "var(--text-muted)",
+            fontWeight: 600
+          }}>
+            <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(codeText);
+                }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                title="Copy to Clipboard"
+                className="code-action-btn"
+              >
+                <Copy size={13} /> Copy
+              </button>
+              <button
+                onClick={() => {
+                  setCode(codeText);
+                }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                title="Replace Editor Content"
+                className="code-action-btn"
+              >
+                <TerminalIcon size={13} /> Apply
+              </button>
+            </div>
+          </div>
+          <pre style={{
+            background: "#1e1e1e",
+            padding: "16px",
+            borderBottomLeftRadius: "8px",
+            borderBottomRightRadius: "8px",
+            border: "1px solid var(--border-color)",
+            overflowX: "auto",
+            margin: 0
+          }} className={className}>
+            <code className={className} {...props} style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.9rem",
+              color: "#e5e5e5",
+              whiteSpace: "pre",
+              textAlign: "left",
+              display: "block"
+            }}>
+              {children}
+            </code>
+          </pre>
+        </div>
+      );
+    }
+  }), []);
+
   return (
     <div className="app-container">
 
@@ -900,94 +1106,8 @@ function App() {
                   <>
                     <div className="description-container">
                       <ReactMarkdown
-                        components={useMemo(() => ({
-                          pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-                          code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
-                            const match = /language-(\w+)/.exec(className || "");
-                            const isInline = !match;
-                            const codeText = String(children).replace(/\n$/, "");
-
-                            if (isInline) {
-                              return (
-                                <code className={className} {...props} style={{
-                                  background: "rgba(88, 166, 255, 0.1)",
-                                  color: "var(--accent-color)",
-                                  padding: "2px 5px",
-                                  borderRadius: "4px",
-                                  fontSize: "0.9em",
-                                  fontFamily: "var(--font-mono)"
-                                }}>
-                                  {children}
-                                </code>
-                              );
-                            }
-
-                            return (
-                              <div style={{ position: "relative", margin: "1.5em 0" }}>
-                                <div style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  alignItems: "center",
-                                  background: "var(--panel-bg)",
-                                  padding: "8px 12px",
-                                  borderTopLeftRadius: "8px",
-                                  borderTopRightRadius: "8px",
-                                  border: "1px solid var(--border-color)",
-                                  borderBottom: "none",
-                                  fontSize: "0.75rem",
-                                  fontFamily: "var(--font-sans)",
-                                  color: "var(--text-muted)",
-                                  fontWeight: 600
-                                }}>
-                                  <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
-                                  <div style={{ display: "flex", gap: "12px" }}>
-                                    <button
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(codeText);
-                                      }}
-                                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
-                                      title="Copy to Clipboard"
-                                      className="code-action-btn"
-                                    >
-                                      <Copy size={13} /> Copy
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        setCode(codeText);
-                                        // Optional: Switch to editor view if on mobile or if needed
-                                      }}
-                                      style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
-                                      title="Replace Editor Content"
-                                      className="code-action-btn"
-                                    >
-                                      <TerminalIcon size={13} /> Apply
-                                    </button>
-                                  </div>
-                                </div>
-                                <pre style={{
-                                  background: "#1e1e1e", // Force dark bg for code
-                                  padding: "16px",
-                                  borderBottomLeftRadius: "8px",
-                                  borderBottomRightRadius: "8px",
-                                  border: "1px solid var(--border-color)",
-                                  overflowX: "auto",
-                                  margin: 0 // Remove default pre margin
-                                }} className={className}>
-                                  <code className={className} {...props} style={{
-                                    fontFamily: "var(--font-mono)",
-                                    fontSize: "0.9rem",
-                                    color: "#e5e5e5",
-                                    whiteSpace: "pre",
-                                    textAlign: "left",
-                                    display: "block"
-                                  }}>
-                                    {children}
-                                  </code>
-                                </pre>
-                              </div>
-                            );
-                          }
-                        }), [])}
+                        components={markdownComponents}
+                        remarkPlugins={[remarkGfm]}
                       >
                         {description}
                       </ReactMarkdown>
@@ -1089,13 +1209,24 @@ function App() {
               {/* Shared AI Controls */}
               {((viewMode === "ai" && aiService === "api") || viewMode === "learning") && (
                 <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px" }}>
-                  <input
-                    type="text"
+                  <textarea
                     className="ai-input"
                     placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                    onChange={(e) => {
+                      setInput(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
+                        e.preventDefault();
+                        handleSend();
+                        e.currentTarget.style.height = 'auto';
+                      }
+                    }}
+                    rows={1}
+                    style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden" }}
                   />
                   <button className="btn btn-primary" onClick={handleSend}>
                     <Send size={18} />
@@ -1324,96 +1455,32 @@ function App() {
               </div>
               <div className="description-container" style={{ flex: 1, padding: "16px", overflowY: "auto" }} onPointerDown={(e) => e.stopPropagation()}>
                 <ReactMarkdown
-                  components={{
-                    pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-                    code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
-                      const match = /language-(\w+)/.exec(className || "");
-                      const isInline = !match;
-                      const codeText = String(children).replace(/\n$/, "");
-
-                      if (isInline) {
-                        return (
-                          <code className={className} {...props} style={{
-                            background: "rgba(88, 166, 255, 0.1)",
-                            color: "var(--accent-color)",
-                            padding: "2px 5px",
-                            borderRadius: "4px",
-                            fontSize: "0.9em",
-                            fontFamily: "var(--font-mono)"
-                          }}>
-                            {children}
-                          </code>
-                        );
-                      }
-
-                      return (
-                        <div style={{ position: "relative", margin: "1.5em 0" }}>
-                          <div style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            background: "var(--panel-bg)",
-                            padding: "8px 12px",
-                            borderTopLeftRadius: "8px",
-                            borderTopRightRadius: "8px",
-                            border: "1px solid var(--border-color)",
-                            borderBottom: "none",
-                            fontSize: "0.75rem",
-                            fontFamily: "var(--font-sans)",
-                            color: "var(--text-muted)",
-                            fontWeight: 600
-                          }}>
-                            <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
-                            <div style={{ display: "flex", gap: "12px" }}>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(codeText);
-                                }}
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
-                                title="Copy to Clipboard"
-                                className="code-action-btn"
-                              >
-                                <Copy size={13} /> Copy
-                              </button>
-                            </div>
-                          </div>
-                          <pre style={{
-                            background: "#1e1e1e",
-                            padding: "16px",
-                            borderBottomLeftRadius: "8px",
-                            borderBottomRightRadius: "8px",
-                            border: "1px solid var(--border-color)",
-                            overflowX: "auto",
-                            margin: 0
-                          }} className={className}>
-                            <code className={className} {...props} style={{
-                              fontFamily: "var(--font-mono)",
-                              fontSize: "0.9rem",
-                              color: "#e5e5e5",
-                              whiteSpace: "pre",
-                              textAlign: "left",
-                              display: "block"
-                            }}>
-                              {children}
-                            </code>
-                          </pre>
-                        </div>
-                      );
-                    }
-                  }}
+                  components={quickChatMarkdownComponents}
+                  remarkPlugins={[remarkGfm]}
                 >
                   {quickChatDescription}
                 </ReactMarkdown>
               </div>
               <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", padding: "12px" }} onPointerDown={(e) => e.stopPropagation()}>
-                <input
-                  type="text"
+                <textarea
                   className="ai-input"
                   placeholder="Ask a quick question..."
                   value={quickChatInput}
-                  onChange={(e) => setQuickChatInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSendQuickChat()}
+                  onChange={(e) => {
+                    setQuickChatInput(e.target.value);
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !isQuickChatExplaining) {
+                      e.preventDefault();
+                      handleSendQuickChat();
+                      e.currentTarget.style.height = 'auto';
+                    }
+                  }}
                   disabled={isQuickChatExplaining}
+                  rows={1}
+                  style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden" }}
                 />
                 <button className="btn btn-primary" onClick={handleSendQuickChat} disabled={isQuickChatExplaining}>
                   {isQuickChatExplaining ? <Zap size={18} className="animate-pulse" /> : <Send size={18} />}

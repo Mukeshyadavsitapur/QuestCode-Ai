@@ -1,6 +1,7 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Sparkles, Loader2, RefreshCw, BookOpen, Copy, Terminal as TerminalIcon } from "lucide-react";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css"; // Basic dark theme, can be overridden by custom CSS
@@ -29,6 +30,20 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
     const [temperature, setTemperature] = useState<number>(0.3);
 
     const markdownComponents = useMemo(() => ({
+        table: ({ node, ...props }: any) => (
+            <div className="table-wrapper" style={{ overflowX: "auto", margin: "1.5em 0", borderRadius: "8px", border: "1px solid var(--border-color)", background: "var(--panel-bg)" }}>
+                <table {...props} style={{ width: "100%", borderCollapse: "collapse", minWidth: "600px", margin: 0, border: "none" }} />
+            </div>
+        ),
+        th: ({ node, ...props }: any) => (
+            <th {...props} style={{ borderBottom: "2px solid var(--border-color)", borderRight: "1px solid var(--border-color)", padding: "12px 16px", textAlign: "left", background: "rgba(88, 166, 255, 0.15)", color: "var(--accent-text)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.8rem", letterSpacing: "0.05em", resize: "horizontal", overflow: "hidden", minWidth: "120px", position: "relative" }} />
+        ),
+        td: ({ node, ...props }: any) => (
+            <td {...props} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-color)", borderRight: "1px solid var(--border-color)", wordBreak: "break-word" }} />
+        ),
+        tr: ({ node, ...props }: any) => (
+            <tr {...props} className="markdown-row" />
+        ),
         pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
         code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
             const match = /language-(\w+)/.exec(className || "");
@@ -357,6 +372,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                     <div className="markdown-body">
                         <ReactMarkdown
                             components={markdownComponents}
+                            remarkPlugins={[remarkGfm]}
                         >
                             {content}
                         </ReactMarkdown>

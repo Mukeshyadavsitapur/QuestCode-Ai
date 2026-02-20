@@ -85,19 +85,13 @@ function App() {
     return localStorage.getItem("current_chat_id");
   });
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [visibleChats, setVisibleChats] = useState(10);
+  const [visibleChats, setVisibleChats] = useState(20);
 
-  // Quick Chat State
-  const [quickChats, setQuickChats] = useState<ChatSession[]>(() => {
-    const saved = localStorage.getItem("ai_quick_chats");
-    return saved ? JSON.parse(saved) : [];
-  });
   const [currentQuickChatId, setCurrentQuickChatId] = useState<string | null>(() => {
     return localStorage.getItem("current_quick_chat_id");
   });
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
   const [quickChatInput, setQuickChatInput] = useState("");
-  const [visibleQuickChats, setVisibleQuickChats] = useState(10);
   const INITIAL_QUICK_CHAT_DESCRIPTION = "## Quick Chat\n\nAsk me anything! Let me help you while you read the documentation.";
   const [quickChatDescription, setQuickChatDescription] = useState(() => {
     const savedId = localStorage.getItem("current_quick_chat_id");
@@ -298,10 +292,6 @@ function App() {
       localStorage.removeItem("current_chat_id");
     }
   }, [currentChatId]);
-
-  useEffect(() => {
-    localStorage.setItem("ai_quick_chats", JSON.stringify(quickChats));
-  }, [quickChats]);
 
   useEffect(() => {
     if (currentQuickChatId) {
@@ -510,9 +500,9 @@ function App() {
       setQuickChatDescription(finalDescription);
       setActiveModel(response.model);
 
-      // Update Quick Chat History
+      // Save to main unified chat history directly
       if (currentQuickChatId) {
-        setQuickChats((prev) =>
+        setChats((prev) =>
           prev.map((chat) =>
             chat.id === currentQuickChatId
               ? {
@@ -530,9 +520,9 @@ function App() {
           description: finalDescription,
           timestamp: Date.now(),
         };
-        setQuickChats((prev) => {
-          const newQuickChats = [newChat, ...prev];
-          return newQuickChats.length > 500 ? newQuickChats.slice(0, 500) : newQuickChats;
+        setChats((prev) => {
+          const newChats = [newChat, ...prev];
+          return newChats.length > 500 ? newChats.slice(0, 500) : newChats;
         });
         setCurrentQuickChatId(newId);
       }
@@ -1193,45 +1183,7 @@ function App() {
                       </div>
                       <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
 
-                        {/* Recent Quick Chats Section */}
-                        {quickChats.length > 0 && (
-                          <div style={{ marginBottom: "16px" }}>
-                            <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Zap size={12} fill="currentColor" /> Recent Quick Chats</div>
-                            {quickChats.slice(0, visibleQuickChats).map((chat) => (
-                              <div key={chat.id} className={`history-item ${currentQuickChatId === chat.id ? "active" : ""}`} onClick={() => {
-                                setCurrentQuickChatId(chat.id);
-                                setQuickChatDescription(chat.description);
-                                setIsQuickChatOpen(true);
-                                setIsHistoryOpen(false);
-                              }}>
-                                <MessageSquare size={14} />
-                                <span className="history-title">{chat.title}</span>
-                                <button className="delete-btn" onClick={(e) => {
-                                  e.stopPropagation();
-                                  setQuickChats((prev) => prev.filter((c) => c.id !== chat.id));
-                                  if (currentQuickChatId === chat.id) {
-                                    setCurrentQuickChatId(null);
-                                    setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
-                                    setIsQuickChatOpen(false);
-                                  }
-                                }}>
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            ))}
-                            {visibleQuickChats < quickChats.length && (
-                              <button
-                                className="btn btn-secondary"
-                                style={{ width: "100%", justifyContent: "center", marginTop: "8px", fontSize: "0.8rem", padding: "6px", border: "1px solid var(--border-color)" }}
-                                onClick={() => setVisibleQuickChats(prev => prev + 10)}
-                              >
-                                Load More
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="sidebar-label">Recent Chats</div>
+                        <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: "8px" }}><MessageSquare size={12} /> Recent Activity</div>
                         {chats.length === 0 ? (
                           <div className="empty-history">No history yet</div>
                         ) : (
@@ -1249,7 +1201,7 @@ function App() {
                               <button
                                 className="btn btn-secondary"
                                 style={{ width: "100%", justifyContent: "center", marginTop: "8px", fontSize: "0.8rem", padding: "6px", border: "1px solid var(--border-color)" }}
-                                onClick={() => setVisibleChats(prev => prev + 10)}
+                                onClick={() => setVisibleChats(prev => prev + 20)}
                               >
                                 Load More
                               </button>

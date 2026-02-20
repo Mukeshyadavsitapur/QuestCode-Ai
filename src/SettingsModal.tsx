@@ -14,6 +14,10 @@ interface SettingsModalProps {
     setOpenAiApiKey: (key: string) => void;
     anthropicApiKey: string;
     setAnthropicApiKey: (key: string) => void;
+    groqApiKey: string;
+    setGroqApiKey: (key: string) => void;
+    huggingFaceApiKey: string;
+    setHuggingFaceApiKey: (key: string) => void;
     theme: string;
     setTheme: (theme: string) => void;
     onViewShortcuts: () => void;
@@ -34,6 +38,10 @@ export function SettingsModal({
     setOpenAiApiKey,
     anthropicApiKey,
     setAnthropicApiKey,
+    groqApiKey,
+    setGroqApiKey,
+    huggingFaceApiKey,
+    setHuggingFaceApiKey,
     theme,
     setTheme,
     onViewShortcuts,
@@ -46,6 +54,8 @@ export function SettingsModal({
     const [localKey, setLocalKey] = useState(apiKey);
     const [localOpenAiKey, setLocalOpenAiKey] = useState(openAiApiKey);
     const [localAnthropicKey, setLocalAnthropicKey] = useState(anthropicApiKey);
+    const [localGroqKey, setLocalGroqKey] = useState(groqApiKey);
+    const [localHuggingFaceKey, setLocalHuggingFaceKey] = useState(huggingFaceApiKey);
     const [fetchedModels, setFetchedModels] = useState<string[]>([]);
     const [isLoadingModels, setIsLoadingModels] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -55,7 +65,9 @@ export function SettingsModal({
         setLocalKey(apiKey);
         setLocalOpenAiKey(openAiApiKey);
         setLocalAnthropicKey(anthropicApiKey);
-    }, [llmProvider, apiKey, openAiApiKey, anthropicApiKey]);
+        setLocalGroqKey(groqApiKey);
+        setLocalHuggingFaceKey(huggingFaceApiKey);
+    }, [llmProvider, apiKey, openAiApiKey, anthropicApiKey, groqApiKey, huggingFaceApiKey]);
 
     // Debounce and fetch models when localKey or localProvider changes
     useEffect(() => {
@@ -103,6 +115,8 @@ export function SettingsModal({
         setApiKey(localKey);
         setOpenAiApiKey(localOpenAiKey);
         setAnthropicApiKey(localAnthropicKey);
+        setGroqApiKey(localGroqKey);
+        setHuggingFaceApiKey(localHuggingFaceKey);
         // Clear selected model if provider changed to avoid invalid model selection
         if (localProvider !== llmProvider) {
             setSelectedModel(null);
@@ -161,23 +175,27 @@ export function SettingsModal({
                             <option value="gemini">Google Gemini</option>
                             <option value="openai">OpenAI (ChatGPT)</option>
                             <option value="anthropic">Anthropic (Claude)</option>
+                            <option value="groq">Groq</option>
+                            <option value="huggingface">Hugging Face</option>
                         </select>
                     </div>
 
                     <div className="setting-group">
                         <label className="setting-label">
                             <Key size={18} />
-                            <span>{localProvider === 'gemini' ? 'Gemini ' : localProvider === 'openai' ? 'OpenAI ' : 'Anthropic '}API Key</span>
+                            <span>{localProvider === 'gemini' ? 'Gemini ' : localProvider === 'openai' ? 'OpenAI ' : localProvider === 'anthropic' ? 'Anthropic ' : localProvider === 'groq' ? 'Groq ' : 'Hugging Face '}API Key</span>
                         </label>
                         <input
                             type="password"
                             className="settings-input"
-                            placeholder={`Enter your ${localProvider === 'gemini' ? 'Gemini' : localProvider === 'openai' ? 'OpenAI' : 'Anthropic'} API Key`}
-                            value={localProvider === 'gemini' ? localKey : localProvider === 'openai' ? localOpenAiKey : localAnthropicKey}
+                            placeholder={`Enter your ${localProvider === 'gemini' ? 'Gemini' : localProvider === 'openai' ? 'OpenAI' : localProvider === 'anthropic' ? 'Anthropic' : localProvider === 'groq' ? 'Groq' : 'Hugging Face'} API Key`}
+                            value={localProvider === 'gemini' ? localKey : localProvider === 'openai' ? localOpenAiKey : localProvider === 'anthropic' ? localAnthropicKey : localProvider === 'groq' ? localGroqKey : localHuggingFaceKey}
                             onChange={(e) => {
                                 if (localProvider === 'gemini') setLocalKey(e.target.value);
                                 else if (localProvider === 'openai') setLocalOpenAiKey(e.target.value);
-                                else setLocalAnthropicKey(e.target.value);
+                                else if (localProvider === 'anthropic') setLocalAnthropicKey(e.target.value);
+                                else if (localProvider === 'groq') setLocalGroqKey(e.target.value);
+                                else setLocalHuggingFaceKey(e.target.value);
                             }}
                         />
                         {fetchError && localProvider === "gemini" && (
@@ -226,6 +244,32 @@ export function SettingsModal({
                                     </a>
                                 </>
                             )}
+                            {localProvider === "groq" && (
+                                <>
+                                    <br />
+                                    <a
+                                        href="https://console.groq.com/keys"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ color: 'var(--accent-text)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
+                                    >
+                                        Get a Groq API Key →
+                                    </a>
+                                </>
+                            )}
+                            {localProvider === "huggingface" && (
+                                <>
+                                    <br />
+                                    <a
+                                        href="https://huggingface.co/settings/tokens"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ color: 'var(--accent-text)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
+                                    >
+                                        Get a Hugging Face Access Token →
+                                    </a>
+                                </>
+                            )}
                         </p>
                     </div>
 
@@ -262,7 +306,7 @@ export function SettingsModal({
                             )}
                         </div>
                         <p className="setting-hint">
-                            {isLoadingModels && localProvider === "gemini" ? "Checking availability..." : `Choose a specific ${localProvider === 'gemini' ? 'Gemini' : localProvider === 'openai' ? 'OpenAI' : 'Anthropic'} model or let the system auto-select.`}
+                            {isLoadingModels && localProvider === "gemini" ? "Checking availability..." : `Choose a specific ${localProvider === 'gemini' ? 'Gemini' : localProvider === 'openai' ? 'OpenAI' : localProvider === 'anthropic' ? 'Anthropic' : localProvider === 'groq' ? 'Groq' : 'Hugging Face'} model or let the system auto-select.`}
                         </p>
                         {activeModel && (
                             <div

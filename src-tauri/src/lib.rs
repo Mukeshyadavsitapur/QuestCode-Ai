@@ -406,6 +406,92 @@ async fn call_anthropic(api_key: &str, prompt: &str, selected_model: Option<Stri
     }
 }
 
+// --- Groq Support ---
+async fn call_groq(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+    if api_key.trim().is_empty() {
+        return Err("Groq API Key is missing.".to_string());
+    }
+
+    let client = Client::new();
+    let model = selected_model.unwrap_or_else(|| "llama-3.3-70b-versatile".to_string());
+
+    let request_body = OpenAIRequest {
+        model: model.clone(),
+        messages: vec![OpenAIMessage {
+            role: "user".to_string(),
+            content: prompt.to_string(),
+        }],
+        temperature,
+    };
+
+    let response = client.post("https://api.groq.com/openai/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if response.status().is_success() {
+        let groq_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+        if let Some(choice) = groq_resp.choices.first() {
+            return Ok(AIResponse {
+                content: choice.message.content.clone(),
+                model,
+            });
+        }
+        Err("Successfully called Groq, but no valid choices returned.".to_string())
+    } else {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        Err(format!("Groq API Error ({}): {}", status, error_text))
+    }
+}
+
+// --- Hugging Face Support ---
+async fn call_huggingface(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+    if api_key.trim().is_empty() {
+        return Err("Hugging Face API Key is missing.".to_string());
+    }
+
+    let client = Client::new();
+    let model = selected_model.unwrap_or_else(|| "meta-llama/Llama-3.3-70B-Instruct".to_string());
+
+    let request_body = OpenAIRequest {
+        model: model.clone(), 
+        messages: vec![OpenAIMessage {
+            role: "user".to_string(),
+            content: prompt.to_string(),
+        }],
+        temperature: temperature.or(Some(0.1)), // HF often requires this
+    };
+
+    let url = "https://router.huggingface.co/v1/chat/completions";
+
+    let response = client.post(url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if response.status().is_success() {
+        let hf_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+        if let Some(choice) = hf_resp.choices.first() {
+            return Ok(AIResponse {
+                content: choice.message.content.clone(),
+                model,
+            });
+        }
+        Err("Successfully called Hugging Face, but no valid choices returned.".to_string())
+    } else {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        Err(format!("Hugging Face API Error ({}): {}", status, error_text))
+    }
+}
+
 #[derive(Deserialize)]
 struct AIRequest {
     api_key: String,
@@ -434,6 +520,8 @@ async fn explain_code(req: AIRequest) -> Result<AIResponse, String> {
     match provider {
         "openai" => call_openai(&req.api_key, &prompt, req.selected_model, req.temperature).await,
         "anthropic" => call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "groq" => call_groq(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "huggingface" => call_huggingface(&req.api_key, &prompt, req.selected_model, req.temperature).await,
         _ => call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await,
     }
 }
@@ -445,6 +533,8 @@ async fn ask_question(req: QuestionRequest) -> Result<AIResponse, String> {
     match provider {
         "openai" => call_openai(&req.api_key, &prompt, req.selected_model, req.temperature).await,
         "anthropic" => call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "groq" => call_groq(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "huggingface" => call_huggingface(&req.api_key, &prompt, req.selected_model, req.temperature).await,
         _ => call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await,
     }
 }

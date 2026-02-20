@@ -201,6 +201,8 @@ function App() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("apiKey") || "");
   const [openAiApiKey, setOpenAiApiKey] = useState(() => localStorage.getItem("openAiApiKey") || "");
   const [anthropicApiKey, setAnthropicApiKey] = useState(() => localStorage.getItem("anthropicApiKey") || "");
+  const [groqApiKey, setGroqApiKey] = useState(() => localStorage.getItem("groqApiKey") || "");
+  const [huggingFaceApiKey, setHuggingFaceApiKey] = useState(() => localStorage.getItem("huggingFaceApiKey") || "");
   const [theme, setTheme] = useState<string>(() =>
     localStorage.getItem("theme") || "day"
   );
@@ -215,6 +217,8 @@ function App() {
     localStorage.setItem("apiKey", apiKey);
     localStorage.setItem("openAiApiKey", openAiApiKey);
     localStorage.setItem("anthropicApiKey", anthropicApiKey);
+    localStorage.setItem("groqApiKey", groqApiKey);
+    localStorage.setItem("huggingFaceApiKey", huggingFaceApiKey);
     if (llmProvider === "gemini") {
       if (apiKey) {
         if (!isTauri()) {
@@ -232,8 +236,12 @@ function App() {
       setAvailableModels(["gpt-4o", "chatgpt-4o-latest", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]);
     } else if (llmProvider === "anthropic") {
       setAvailableModels(["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]);
+    } else if (llmProvider === "groq") {
+      setAvailableModels(["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]);
+    } else if (llmProvider === "huggingface") {
+      setAvailableModels(["meta-llama/Llama-3.3-70B-Instruct", "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", "Qwen/Qwen2.5-72B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1"]);
     }
-  }, [llmProvider, apiKey, openAiApiKey, anthropicApiKey]);
+  }, [llmProvider, apiKey, openAiApiKey, anthropicApiKey, groqApiKey, huggingFaceApiKey]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -450,7 +458,7 @@ function App() {
 
     setIsQuickChatExplaining(true);
     try {
-      const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : apiKey;
+      const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
       const response: { content: string; model: string } = await invoke("ask_question", {
         req: {
           api_key: currentApiKey,
@@ -526,7 +534,7 @@ function App() {
     }
 
     console.log("Explaining code. Selection:", selectedModel);
-    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : apiKey;
+    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
     try {
       const response: { content: string; model: string } = await invoke("explain_code", {
         req: {
@@ -578,7 +586,7 @@ function App() {
     }
 
     console.log("Asking question. Selection:", selectedModel);
-    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : apiKey;
+    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
     try {
       const response: { content: string; model: string } = await invoke("ask_question", {
         req: {
@@ -943,6 +951,10 @@ function App() {
         setOpenAiApiKey={setOpenAiApiKey}
         anthropicApiKey={anthropicApiKey}
         setAnthropicApiKey={setAnthropicApiKey}
+        groqApiKey={groqApiKey}
+        setGroqApiKey={setGroqApiKey}
+        huggingFaceApiKey={huggingFaceApiKey}
+        setHuggingFaceApiKey={setHuggingFaceApiKey}
         theme={theme}
         setTheme={setTheme}
         onViewShortcuts={() => setViewMode("shortcuts")}
@@ -1272,7 +1284,7 @@ function App() {
                 <AiLearning
                   ref={learningRef}
                   language={language}
-                  apiKey={llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : apiKey}
+                  apiKey={llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey}
                   provider={llmProvider}
                   selectedModel={selectedModel}
                   topic={selectedTopic}

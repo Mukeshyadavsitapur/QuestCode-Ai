@@ -208,6 +208,17 @@ function App() {
   const [theme, setTheme] = useState<string>(() =>
     localStorage.getItem("theme") || "day"
   );
+
+  const [webLlm, setWebLlm] = useState<string>(() => localStorage.getItem("webLlm") || llmProvider);
+
+  useEffect(() => {
+    localStorage.setItem("webLlm", webLlm);
+  }, [webLlm]);
+
+  // Sync webLlm when llmProvider changes if they want it to default
+  useEffect(() => {
+    setWebLlm(llmProvider);
+  }, [llmProvider]);
   const [activeModel, setActiveModel] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string | null>(() => {
     return localStorage.getItem("selected_model");
@@ -683,17 +694,22 @@ function App() {
   };
 
 
-  const handleOpenGeminiWeb = async () => {
+  const handleOpenWebLlm = async () => {
     try {
       await navigator.clipboard.writeText(code);
-      const url = "https://gemini.google.com/app";
+      let url = "https://gemini.google.com/app";
+      if (webLlm === "openai") url = "https://chatgpt.com/";
+      else if (webLlm === "anthropic") url = "https://claude.ai/new";
+      else if (webLlm === "groq") url = "https://groq.com/";
+      else if (webLlm === "huggingface") url = "https://huggingface.co/chat/";
+
       try {
         await openUrl(url);
       } catch (e) {
         window.open(url, "_blank");
       }
     } catch (error) {
-      console.error("Failed to open Gemini Web:", error);
+      console.error("Failed to open Web LLM:", error);
     }
   };
 
@@ -1010,7 +1026,7 @@ function App() {
                       {aiService === "api" ? (
                         <><Bot size={12} style={{ marginRight: 6 }} /> QuestCode AI</>
                       ) : (
-                        <><Globe size={12} style={{ marginRight: 6 }} /> Gemini Web</>
+                        <><Globe size={12} style={{ marginRight: 6 }} /> {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"} Web</>
                       )}
                     </button>
                   </div>
@@ -1218,12 +1234,24 @@ function App() {
                   >
                     <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
                       <Globe size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
-                      <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Open Gemini Web</h3>
-                      <p style={{ color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.5 }}>
-                        Use the web version of Gemini to chat, analyze images, and more. We'll copy your code to the clipboard for you.
+                      <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Open Web LLM</h3>
+                      <p style={{ color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>
+                        Select your preferred web LLM to chat, analyze images, and more. We'll copy your code to the clipboard for you.
                       </p>
-                      <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleOpenGeminiWeb}>
-                        <Copy size={16} /> Copy Code & Open Gemini
+                      <select
+                        className="settings-input"
+                        style={{ appearance: 'auto', WebkitAppearance: 'auto' as any, marginBottom: 24, padding: "8px 12px", width: "100%", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-color)", borderRadius: 4 }}
+                        value={webLlm}
+                        onChange={(e) => setWebLlm(e.target.value)}
+                      >
+                        <option value="groq">Groq</option>
+                        <option value="huggingface">Hugging Face</option>
+                        <option value="gemini">Google Gemini</option>
+                        <option value="openai">OpenAI (ChatGPT)</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                      </select>
+                      <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleOpenWebLlm}>
+                        <Copy size={16} /> Copy Code & Open {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"}
                       </button>
                     </div>
                   </div>

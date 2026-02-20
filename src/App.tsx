@@ -602,14 +602,7 @@ function App() {
                   <button className={`tab-btn ${viewMode === "ai" ? "active" : ""}`} onClick={() => setViewMode("ai")}>
                     <MessageSquare size={14} /> AI Assistant
                   </button>
-                  <button
-                    className="tab-btn"
-                    onClick={() => setIsSettingsOpen(true)}
-                    style={{ border: "none", color: "var(--text-muted)", padding: "4px" }}
-                    title="Settings"
-                  >
-                    <Settings size={16} />
-                  </button>
+
                 </div>
 
                 {viewMode === "ai" && (
@@ -1025,6 +1018,14 @@ function App() {
                       <option value="ml">🤖 Machine Learning</option>
                     </select>
                     <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        className="tab-btn"
+                        onClick={() => setIsSettingsOpen(true)}
+                        style={{ border: "none", color: "var(--text-muted)", padding: "4px 8px" }}
+                        title="Settings"
+                      >
+                        <Settings size={16} />
+                      </button>
                       <button
                         className={`tab-btn ${isMinimapVisible ? "active" : ""}`}
                         title={isMinimapVisible ? "Hide Minimap" : "Show Minimap"}

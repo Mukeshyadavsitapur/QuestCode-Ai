@@ -301,40 +301,78 @@ async fn call_openai(api_key: &str, prompt: &str, selected_model: Option<String>
         return Err("OpenAI API Key is missing. Please add it in Settings.".to_string());
     }
 
-    let client = Client::new();
-    let model = selected_model.unwrap_or_else(|| "gpt-4o".to_string());
+    let default_models = vec![
+        "gpt-4o".to_string(),
+        "chatgpt-4o-latest".to_string(),
+        "gpt-4-turbo".to_string(),
+        "gpt-4".to_string(),
+        "gpt-3.5-turbo".to_string(),
+    ];
 
-    let request_body = OpenAIRequest {
-        model: model.clone(),
-        messages: vec![OpenAIMessage {
-            role: "user".to_string(),
-            content: prompt.to_string(),
-        }],
-        temperature,
-    };
+    let mut execution_chain = Vec::new();
 
-    let response = client.post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request_body)
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {}", e))?;
-
-    if response.status().is_success() {
-        let openai_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
-        if let Some(choice) = openai_resp.choices.first() {
-            return Ok(AIResponse {
-                content: choice.message.content.clone(),
-                model,
-            });
-        }
-        Err("Successfully called OpenAI, but no valid choices returned.".to_string())
-    } else {
-        let status = response.status();
-        let error_text = response.text().await.unwrap_or_default();
-        Err(format!("OpenAI API Error ({}): {}", status, error_text))
+    if let Some(ref m) = selected_model {
+        let m_clean = m.trim().to_string();
+        execution_chain.push(m_clean);
     }
+
+    for m in default_models {
+        if !execution_chain.contains(&m) {
+            execution_chain.push(m);
+        }
+    }
+
+    println!("🔗 OpenAI Execution Chain: {:?}", execution_chain);
+    let mut last_error = "No response generated.".to_string();
+
+    for model in execution_chain {
+        println!("Attempting OpenAI request with model: {}, temp: {:?}", model, temperature);
+        let client = Client::new();
+
+        let request_body = OpenAIRequest {
+            model: model.clone(),
+            messages: vec![OpenAIMessage {
+                role: "user".to_string(),
+                content: prompt.to_string(),
+            }],
+            temperature,
+        };
+
+        let response_res = client.post("https://api.openai.com/v1/chat/completions")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_body)
+            .send()
+            .await;
+
+        let response = match response_res {
+            Ok(resp) => resp,
+            Err(e) => {
+                last_error = format!("Network error for {}: {}", model, e);
+                continue;
+            }
+        };
+
+        if response.status().is_success() {
+            let openai_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+            if let Some(choice) = openai_resp.choices.first() {
+                println!("✅ SUCCESS: Response received from OpenAI model: {}", model);
+                return Ok(AIResponse {
+                    content: choice.message.content.clone(),
+                    model,
+                });
+            }
+            println!("⚠️ WARNING: Parse success but no valid choices returned for {}", model);
+        } else {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            last_error = format!("Model {} Error ({}): {}", model, status, error_text);
+            
+            println!("🔄 FALLBACK: OpenAI model {} failed with {}. Trying next...", model, status);
+        }
+    }
+
+    Err(format!("OpenAI request failed after trying chain. Last error: {}", last_error))
 }
 
 // --- Anthropic Support ---
@@ -368,42 +406,80 @@ async fn call_anthropic(api_key: &str, prompt: &str, selected_model: Option<Stri
         return Err("Anthropic API Key is missing. Please add it in Settings.".to_string());
     }
 
-    let client = Client::new();
-    let model = selected_model.unwrap_or_else(|| "claude-3-5-sonnet-20241022".to_string());
+    let default_models = vec![
+        "claude-3-5-sonnet-20241022".to_string(),
+        "claude-3-5-haiku-20241022".to_string(),
+        "claude-3-opus-20240229".to_string(),
+        "claude-3-sonnet-20240229".to_string(),
+        "claude-3-haiku-20240307".to_string(),
+    ];
 
-    let request_body = AnthropicRequest {
-        model: model.clone(),
-        messages: vec![AnthropicMessage {
-            role: "user".to_string(),
-            content: prompt.to_string(),
-        }],
-        max_tokens: 4096,
-        temperature,
-    };
+    let mut execution_chain = Vec::new();
 
-    let response = client.post("https://api.anthropic.com/v1/messages")
-        .header("x-api-key", api_key)
-        .header("anthropic-version", "2023-06-01")
-        .header("content-type", "application/json")
-        .json(&request_body)
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {}", e))?;
-
-    if response.status().is_success() {
-        let anthropic_resp: AnthropicResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
-        if let Some(block) = anthropic_resp.content.first() {
-            return Ok(AIResponse {
-                content: block.text.clone(),
-                model,
-            });
-        }
-        Err("Successfully called Anthropic, but no content returned.".to_string())
-    } else {
-        let status = response.status();
-        let error_text = response.text().await.unwrap_or_default();
-        Err(format!("Anthropic API Error ({}): {}", status, error_text))
+    if let Some(ref m) = selected_model {
+        let m_clean = m.trim().to_string();
+        execution_chain.push(m_clean);
     }
+
+    for m in default_models {
+        if !execution_chain.contains(&m) {
+            execution_chain.push(m);
+        }
+    }
+
+    println!("🔗 Anthropic Execution Chain: {:?}", execution_chain);
+    let mut last_error = "No response generated.".to_string();
+
+    for model in execution_chain {
+        println!("Attempting Anthropic request with model: {}, temp: {:?}", model, temperature);
+        let client = Client::new();
+
+        let request_body = AnthropicRequest {
+            model: model.clone(),
+            messages: vec![AnthropicMessage {
+                role: "user".to_string(),
+                content: prompt.to_string(),
+            }],
+            max_tokens: 4096,
+            temperature,
+        };
+
+        let response_res = client.post("https://api.anthropic.com/v1/messages")
+            .header("x-api-key", api_key)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .json(&request_body)
+            .send()
+            .await;
+
+        let response = match response_res {
+            Ok(resp) => resp,
+            Err(e) => {
+                last_error = format!("Network error for {}: {}", model, e);
+                continue; // Try next model
+            }
+        };
+
+        if response.status().is_success() {
+            let anthropic_resp: AnthropicResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+            if let Some(block) = anthropic_resp.content.first() {
+                println!("✅ SUCCESS: Response received from Anthropic model: {}", model);
+                return Ok(AIResponse {
+                    content: block.text.clone(),
+                    model,
+                });
+            }
+            println!("⚠️ WARNING: Parse success but no content returned for {}", model);
+        } else {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            last_error = format!("Model {} Error ({}): {}", model, status, error_text);
+            
+            println!("🔄 FALLBACK: Anthropic model {} failed with {}. Trying next...", model, status);
+        }
+    }
+    
+    Err(format!("Anthropic request failed after trying chain. Last error: {}", last_error))
 }
 
 // --- Groq Support ---
@@ -412,40 +488,77 @@ async fn call_groq(api_key: &str, prompt: &str, selected_model: Option<String>, 
         return Err("Groq API Key is missing.".to_string());
     }
 
-    let client = Client::new();
-    let model = selected_model.unwrap_or_else(|| "llama-3.3-70b-versatile".to_string());
+    let default_models = vec![
+        "llama-3.3-70b-versatile".to_string(),
+        "llama-3.1-8b-instant".to_string(),
+        "mixtral-8x7b-32768".to_string(),
+        "gemma2-9b-it".to_string(),
+    ];
 
-    let request_body = OpenAIRequest {
-        model: model.clone(),
-        messages: vec![OpenAIMessage {
-            role: "user".to_string(),
-            content: prompt.to_string(),
-        }],
-        temperature,
-    };
+    let mut execution_chain = Vec::new();
 
-    let response = client.post("https://api.groq.com/openai/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request_body)
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {}", e))?;
-
-    if response.status().is_success() {
-        let groq_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
-        if let Some(choice) = groq_resp.choices.first() {
-            return Ok(AIResponse {
-                content: choice.message.content.clone(),
-                model,
-            });
-        }
-        Err("Successfully called Groq, but no valid choices returned.".to_string())
-    } else {
-        let status = response.status();
-        let error_text = response.text().await.unwrap_or_default();
-        Err(format!("Groq API Error ({}): {}", status, error_text))
+    if let Some(ref m) = selected_model {
+        let m_clean = m.trim().to_string();
+        execution_chain.push(m_clean);
     }
+
+    for m in default_models {
+        if !execution_chain.contains(&m) {
+            execution_chain.push(m);
+        }
+    }
+
+    println!("🔗 Groq Execution Chain: {:?}", execution_chain);
+    let mut last_error = "No response generated.".to_string();
+
+    for model in execution_chain {
+        println!("Attempting Groq request with model: {}, temp: {:?}", model, temperature);
+        let client = Client::new();
+
+        let request_body = OpenAIRequest {
+            model: model.clone(),
+            messages: vec![OpenAIMessage {
+                role: "user".to_string(),
+                content: prompt.to_string(),
+            }],
+            temperature,
+        };
+
+        let response_res = client.post("https://api.groq.com/openai/v1/chat/completions")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_body)
+            .send()
+            .await;
+
+        let response = match response_res {
+            Ok(resp) => resp,
+            Err(e) => {
+                last_error = format!("Network error for {}: {}", model, e);
+                continue;
+            }
+        };
+
+        if response.status().is_success() {
+            let groq_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+            if let Some(choice) = groq_resp.choices.first() {
+                println!("✅ SUCCESS: Response received from Groq model: {}", model);
+                return Ok(AIResponse {
+                    content: choice.message.content.clone(),
+                    model,
+                });
+            }
+            println!("⚠️ WARNING: Parse success but no valid choices returned for {}", model);
+        } else {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            last_error = format!("Model {} Error ({}): {}", model, status, error_text);
+            
+            println!("🔄 FALLBACK: Groq model {} failed with {}. Trying next...", model, status);
+        }
+    }
+
+    Err(format!("Groq request failed after trying chain. Last error: {}", last_error))
 }
 
 // --- Hugging Face Support ---
@@ -454,42 +567,79 @@ async fn call_huggingface(api_key: &str, prompt: &str, selected_model: Option<St
         return Err("Hugging Face API Key is missing.".to_string());
     }
 
-    let client = Client::new();
-    let model = selected_model.unwrap_or_else(|| "meta-llama/Llama-3.3-70B-Instruct".to_string());
+    let default_models = vec![
+        "meta-llama/Llama-3.3-70B-Instruct".to_string(),
+        "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B".to_string(),
+        "Qwen/Qwen2.5-72B-Instruct".to_string(),
+        "mistralai/Mixtral-8x7B-Instruct-v0.1".to_string(),
+    ];
 
-    let request_body = OpenAIRequest {
-        model: model.clone(), 
-        messages: vec![OpenAIMessage {
-            role: "user".to_string(),
-            content: prompt.to_string(),
-        }],
-        temperature: temperature.or(Some(0.1)), // HF often requires this
-    };
+    let mut execution_chain = Vec::new();
+
+    if let Some(ref m) = selected_model {
+        let m_clean = m.trim().to_string();
+        execution_chain.push(m_clean);
+    }
+
+    for m in default_models {
+        if !execution_chain.contains(&m) {
+            execution_chain.push(m);
+        }
+    }
+
+    println!("🔗 Hugging Face Execution Chain: {:?}", execution_chain);
+    let mut last_error = "No response generated.".to_string();
 
     let url = "https://router.huggingface.co/v1/chat/completions";
 
-    let response = client.post(url)
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request_body)
-        .send()
-        .await
-        .map_err(|e| format!("Network error: {}", e))?;
+    for model in execution_chain {
+        println!("Attempting Hugging Face request with model: {}, temp: {:?}", model, temperature);
+        let client = Client::new();
 
-    if response.status().is_success() {
-        let hf_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
-        if let Some(choice) = hf_resp.choices.first() {
-            return Ok(AIResponse {
-                content: choice.message.content.clone(),
-                model,
-            });
+        let request_body = OpenAIRequest {
+            model: model.clone(), 
+            messages: vec![OpenAIMessage {
+                role: "user".to_string(),
+                content: prompt.to_string(),
+            }],
+            temperature: temperature.or(Some(0.1)), // HF often requires this
+        };
+
+        let response_res = client.post(url)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&request_body)
+            .send()
+            .await;
+
+        let response = match response_res {
+            Ok(resp) => resp,
+            Err(e) => {
+                last_error = format!("Network error for {}: {}", model, e);
+                continue;
+            }
+        };
+
+        if response.status().is_success() {
+            let hf_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+            if let Some(choice) = hf_resp.choices.first() {
+                println!("✅ SUCCESS: Response received from Hugging Face model: {}", model);
+                return Ok(AIResponse {
+                    content: choice.message.content.clone(),
+                    model,
+                });
+            }
+            println!("⚠️ WARNING: Parse success but no valid choices returned for {}", model);
+        } else {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            last_error = format!("Model {} Error ({}): {}", model, status, error_text);
+            
+            println!("🔄 FALLBACK: Hugging Face model {} failed with {}. Trying next...", model, status);
         }
-        Err("Successfully called Hugging Face, but no valid choices returned.".to_string())
-    } else {
-        let status = response.status();
-        let error_text = response.text().await.unwrap_or_default();
-        Err(format!("Hugging Face API Error ({}): {}", status, error_text))
     }
+
+    Err(format!("Hugging Face request failed after trying chain. Last error: {}", last_error))
 }
 
 #[derive(Deserialize)]

@@ -197,7 +197,9 @@ function App() {
 
   // Settings State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [llmProvider, setLlmProvider] = useState(() => localStorage.getItem("llmProvider") || "gemini");
+  const [llmProvider, setLlmProvider] = useState<string>(() =>
+    localStorage.getItem("llmProvider") || "groq"
+  );
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("apiKey") || "");
   const [openAiApiKey, setOpenAiApiKey] = useState(() => localStorage.getItem("openAiApiKey") || "");
   const [anthropicApiKey, setAnthropicApiKey] = useState(() => localStorage.getItem("anthropicApiKey") || "");

@@ -516,7 +516,7 @@ struct QuestionRequest {
 #[tauri::command]
 async fn explain_code(req: AIRequest) -> Result<AIResponse, String> {
     let prompt = format!("Explain this {} code in markdown format:\n\n```{}\n{}\n```", req.language, req.language, req.code);
-    let provider = req.provider.as_deref().unwrap_or("gemini");
+    let provider = req.provider.as_deref().unwrap_or("groq");
     match provider {
         "openai" => call_openai(&req.api_key, &prompt, req.selected_model, req.temperature).await,
         "anthropic" => call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await,
@@ -529,7 +529,7 @@ async fn explain_code(req: AIRequest) -> Result<AIResponse, String> {
 #[tauri::command]
 async fn ask_question(req: QuestionRequest) -> Result<AIResponse, String> {
     let prompt = format!("Given this {} code:\n\n```{}\n{}\n```\n\nQuestion: {}\n\nAnswer in markdown:", req.language, req.language, req.code, req.question);
-    let provider = req.provider.as_deref().unwrap_or("gemini");
+    let provider = req.provider.as_deref().unwrap_or("groq");
     match provider {
         "openai" => call_openai(&req.api_key, &prompt, req.selected_model, req.temperature).await,
         "anthropic" => call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await,

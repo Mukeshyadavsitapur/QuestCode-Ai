@@ -168,15 +168,19 @@ export function SettingsModal({
                         </label>
                         <select
                             className="settings-input"
-                            style={{ width: '100%', padding: '8px', borderRadius: '4px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+                            style={{ appearance: 'auto', WebkitAppearance: 'auto' as any, backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
                             value={localProvider}
-                            onChange={(e) => setLocalProvider(e.target.value)}
+                            onChange={(e) => {
+                                setLocalProvider(e.target.value);
+                                setLocalKey(e.target.value === 'gemini' ? apiKey : e.target.value === 'openai' ? openAiApiKey : e.target.value === 'anthropic' ? anthropicApiKey : e.target.value === 'groq' ? groqApiKey : huggingFaceApiKey);
+                                setFetchError(null);
+                            }}
                         >
+                            <option value="groq">Groq</option>
+                            <option value="huggingface">Hugging Face</option>
                             <option value="gemini">Google Gemini</option>
                             <option value="openai">OpenAI (ChatGPT)</option>
                             <option value="anthropic">Anthropic (Claude)</option>
-                            <option value="groq">Groq</option>
-                            <option value="huggingface">Hugging Face</option>
                         </select>
                     </div>
 

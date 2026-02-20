@@ -6,8 +6,14 @@ import { themes } from "./themes";
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
+    llmProvider: string;
+    setLlmProvider: (provider: string) => void;
     apiKey: string;
     setApiKey: (key: string) => void;
+    openAiApiKey: string;
+    setOpenAiApiKey: (key: string) => void;
+    anthropicApiKey: string;
+    setAnthropicApiKey: (key: string) => void;
     theme: string;
     setTheme: (theme: string) => void;
     onViewShortcuts: () => void;
@@ -20,8 +26,14 @@ interface SettingsModalProps {
 export function SettingsModal({
     isOpen,
     onClose,
+    llmProvider,
+    setLlmProvider,
     apiKey,
     setApiKey,
+    openAiApiKey,
+    setOpenAiApiKey,
+    anthropicApiKey,
+    setAnthropicApiKey,
     theme,
     setTheme,
     onViewShortcuts,
@@ -30,18 +42,30 @@ export function SettingsModal({
     setSelectedModel,
     activeModel,
 }: SettingsModalProps) {
+    const [localProvider, setLocalProvider] = useState(llmProvider);
     const [localKey, setLocalKey] = useState(apiKey);
+    const [localOpenAiKey, setLocalOpenAiKey] = useState(openAiApiKey);
+    const [localAnthropicKey, setLocalAnthropicKey] = useState(anthropicApiKey);
     const [fetchedModels, setFetchedModels] = useState<string[]>([]);
     const [isLoadingModels, setIsLoadingModels] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
 
     useEffect(() => {
+        setLocalProvider(llmProvider);
         setLocalKey(apiKey);
-    }, [apiKey]);
+        setLocalOpenAiKey(openAiApiKey);
+        setLocalAnthropicKey(anthropicApiKey);
+    }, [llmProvider, apiKey, openAiApiKey, anthropicApiKey]);
 
-    // Debounce and fetch models when localKey changes
+    // Debounce and fetch models when localKey or localProvider changes
     useEffect(() => {
         const fetchModels = async () => {
+            if (localProvider !== "gemini") {
+                setFetchedModels([]);
+                setFetchError(null);
+                return;
+            }
+
             if (!localKey.trim()) {
                 setFetchedModels([]);
                 setFetchError(null);
@@ -72,10 +96,17 @@ export function SettingsModal({
         const timer = setTimeout(fetchModels, 800); // 800ms debounce
 
         return () => clearTimeout(timer);
-    }, [localKey, apiKey, availableModels]); // Depend on availableModels to sync initial state
+    }, [localKey, apiKey, availableModels, localProvider]); // Depend on availableModels to sync initial state
 
     const handleSave = () => {
+        setLlmProvider(localProvider);
         setApiKey(localKey);
+        setOpenAiApiKey(localOpenAiKey);
+        setAnthropicApiKey(localAnthropicKey);
+        // Clear selected model if provider changed to avoid invalid model selection
+        if (localProvider !== llmProvider) {
+            setSelectedModel(null);
+        }
         onClose();
     };
 
@@ -118,32 +149,83 @@ export function SettingsModal({
 
                     <div className="setting-group">
                         <label className="setting-label">
+                            <Sparkles size={18} />
+                            <span>LLM Provider</span>
+                        </label>
+                        <select
+                            className="settings-input"
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', background: 'var(--panel-bg)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+                            value={localProvider}
+                            onChange={(e) => setLocalProvider(e.target.value)}
+                        >
+                            <option value="gemini">Google Gemini</option>
+                            <option value="openai">OpenAI (ChatGPT)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                        </select>
+                    </div>
+
+                    <div className="setting-group">
+                        <label className="setting-label">
                             <Key size={18} />
-                            <span>API Key</span>
+                            <span>{localProvider === 'gemini' ? 'Gemini ' : localProvider === 'openai' ? 'OpenAI ' : 'Anthropic '}API Key</span>
                         </label>
                         <input
                             type="password"
                             className="settings-input"
-                            placeholder="Enter your API Key"
-                            value={localKey}
-                            onChange={(e) => setLocalKey(e.target.value)}
+                            placeholder={`Enter your ${localProvider === 'gemini' ? 'Gemini' : localProvider === 'openai' ? 'OpenAI' : 'Anthropic'} API Key`}
+                            value={localProvider === 'gemini' ? localKey : localProvider === 'openai' ? localOpenAiKey : localAnthropicKey}
+                            onChange={(e) => {
+                                if (localProvider === 'gemini') setLocalKey(e.target.value);
+                                else if (localProvider === 'openai') setLocalOpenAiKey(e.target.value);
+                                else setLocalAnthropicKey(e.target.value);
+                            }}
                         />
-                        {fetchError && (
+                        {fetchError && localProvider === "gemini" && (
                             <div style={{ color: "#ff6b6b", fontSize: "0.8rem", marginTop: 4 }}>
                                 ⚠️ {fetchError}
                             </div>
                         )}
                         <p className="setting-hint">
                             Your key is stored locally on your device.
-                            <br />
-                            <a
-                                href="https://aistudio.google.com/app/apikey"
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{ color: 'var(--accent-text)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
-                            >
-                                Get a Gemini API Key mapped →
-                            </a>
+                            {localProvider === "gemini" && (
+                                <>
+                                    <br />
+                                    <a
+                                        href="https://aistudio.google.com/app/apikey"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ color: 'var(--accent-text)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
+                                    >
+                                        Get a Gemini API Key mapped →
+                                    </a>
+                                </>
+                            )}
+                            {localProvider === "openai" && (
+                                <>
+                                    <br />
+                                    <a
+                                        href="https://platform.openai.com/api-keys"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ color: 'var(--accent-text)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
+                                    >
+                                        Get an OpenAI API Key →
+                                    </a>
+                                </>
+                            )}
+                            {localProvider === "anthropic" && (
+                                <>
+                                    <br />
+                                    <a
+                                        href="https://console.anthropic.com/settings/keys"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{ color: 'var(--accent-text)', textDecoration: 'none', marginTop: 4, display: 'inline-block' }}
+                                    >
+                                        Get an Anthropic API Key →
+                                    </a>
+                                </>
+                            )}
                         </p>
                     </div>
 
@@ -173,14 +255,14 @@ export function SettingsModal({
                                     <option key={model} value={model}>{model}</option>
                                 ))}
                             </select>
-                            {isLoadingModels && (
+                            {isLoadingModels && localProvider === "gemini" && (
                                 <div style={{ position: 'absolute', right: 30, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                                     <Loader2 className="animate-spin" size={16} color="var(--text-muted)" />
                                 </div>
                             )}
                         </div>
                         <p className="setting-hint">
-                            {isLoadingModels ? "Checking availability..." : "Choose a specific Gemini model or let the system auto-select."}
+                            {isLoadingModels && localProvider === "gemini" ? "Checking availability..." : `Choose a specific ${localProvider === 'gemini' ? 'Gemini' : localProvider === 'openai' ? 'OpenAI' : 'Anthropic'} model or let the system auto-select.`}
                         </p>
                         {activeModel && (
                             <div

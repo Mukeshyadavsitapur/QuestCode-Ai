@@ -197,7 +197,10 @@ function App() {
 
   // Settings State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [llmProvider, setLlmProvider] = useState(() => localStorage.getItem("llmProvider") || "gemini");
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("apiKey") || "");
+  const [openAiApiKey, setOpenAiApiKey] = useState(() => localStorage.getItem("openAiApiKey") || "");
+  const [anthropicApiKey, setAnthropicApiKey] = useState(() => localStorage.getItem("anthropicApiKey") || "");
   const [theme, setTheme] = useState<string>(() =>
     localStorage.getItem("theme") || "day"
   );
@@ -208,18 +211,29 @@ function App() {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
 
   useEffect(() => {
+    localStorage.setItem("llmProvider", llmProvider);
     localStorage.setItem("apiKey", apiKey);
-    if (apiKey) {
-      if (!isTauri()) {
-        console.warn("Not in Tauri environment, skipping model fetch");
-        setAvailableModels(["gemini-2.0-flash", "gemini-1.5-flash"]); // Fallback for browser demo
-        return;
+    localStorage.setItem("openAiApiKey", openAiApiKey);
+    localStorage.setItem("anthropicApiKey", anthropicApiKey);
+    if (llmProvider === "gemini") {
+      if (apiKey) {
+        if (!isTauri()) {
+          console.warn("Not in Tauri environment, skipping model fetch");
+          setAvailableModels(["gemini-2.0-flash", "gemini-1.5-flash"]); // Fallback for browser demo
+          return;
+        }
+        invoke("get_available_models", { apiKey })
+          .then((m: any) => setAvailableModels(m))
+          .catch(console.error);
+      } else {
+        setAvailableModels([]);
       }
-      invoke("get_available_models", { apiKey })
-        .then((m: any) => setAvailableModels(m))
-        .catch(console.error);
+    } else if (llmProvider === "openai") {
+      setAvailableModels(["gpt-4o", "chatgpt-4o-latest", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]);
+    } else if (llmProvider === "anthropic") {
+      setAvailableModels(["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]);
     }
-  }, [apiKey]);
+  }, [llmProvider, apiKey, openAiApiKey, anthropicApiKey]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -436,9 +450,11 @@ function App() {
 
     setIsQuickChatExplaining(true);
     try {
+      const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : apiKey;
       const response: { content: string; model: string } = await invoke("ask_question", {
         req: {
-          api_key: apiKey,
+          api_key: currentApiKey,
+          provider: llmProvider,
           code: code,
           question: userQuestion,
           language: (language === "dsa" || language === "ml") ? "python" : language,
@@ -510,10 +526,12 @@ function App() {
     }
 
     console.log("Explaining code. Selection:", selectedModel);
+    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : apiKey;
     try {
       const response: { content: string; model: string } = await invoke("explain_code", {
         req: {
-          api_key: apiKey,
+          api_key: currentApiKey,
+          provider: llmProvider,
           code: code,
           language: (language === "dsa" || language === "ml") ? "python" : language,
           selected_model: selectedModel
@@ -560,10 +578,12 @@ function App() {
     }
 
     console.log("Asking question. Selection:", selectedModel);
+    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : apiKey;
     try {
       const response: { content: string; model: string } = await invoke("ask_question", {
         req: {
-          api_key: apiKey,
+          api_key: currentApiKey,
+          provider: llmProvider,
           code: code,
           question: userQuestion, // Send context-enhanced question to AI
           language: (language === "dsa" || language === "ml") ? "python" : language,
@@ -915,8 +935,14 @@ function App() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        llmProvider={llmProvider}
+        setLlmProvider={setLlmProvider}
         apiKey={apiKey}
         setApiKey={setApiKey}
+        openAiApiKey={openAiApiKey}
+        setOpenAiApiKey={setOpenAiApiKey}
+        anthropicApiKey={anthropicApiKey}
+        setAnthropicApiKey={setAnthropicApiKey}
         theme={theme}
         setTheme={setTheme}
         onViewShortcuts={() => setViewMode("shortcuts")}
@@ -1246,7 +1272,8 @@ function App() {
                 <AiLearning
                   ref={learningRef}
                   language={language}
-                  apiKey={apiKey}
+                  apiKey={llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : apiKey}
+                  provider={llmProvider}
                   selectedModel={selectedModel}
                   topic={selectedTopic}
                   groupTitle={selectedGroup}

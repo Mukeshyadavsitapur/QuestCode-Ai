@@ -271,9 +271,145 @@ async fn get_available_models(api_key: String) -> Result<Vec<String>, String> {
     Ok(ui_models)
 }
 
+// --- OpenAI Support ---
+#[derive(Serialize, Deserialize)]
+struct OpenAIMessage {
+    role: String,
+    content: String,
+}
+
+#[derive(Serialize)]
+struct OpenAIRequest {
+    model: String,
+    messages: Vec<OpenAIMessage>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
+}
+
+#[derive(Deserialize)]
+struct OpenAIChoice {
+    message: OpenAIMessage,
+}
+
+#[derive(Deserialize)]
+struct OpenAIResponse {
+    choices: Vec<OpenAIChoice>,
+}
+
+async fn call_openai(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+    if api_key.trim().is_empty() {
+        return Err("OpenAI API Key is missing. Please add it in Settings.".to_string());
+    }
+
+    let client = Client::new();
+    let model = selected_model.unwrap_or_else(|| "gpt-4o".to_string());
+
+    let request_body = OpenAIRequest {
+        model: model.clone(),
+        messages: vec![OpenAIMessage {
+            role: "user".to_string(),
+            content: prompt.to_string(),
+        }],
+        temperature,
+    };
+
+    let response = client.post("https://api.openai.com/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if response.status().is_success() {
+        let openai_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+        if let Some(choice) = openai_resp.choices.first() {
+            return Ok(AIResponse {
+                content: choice.message.content.clone(),
+                model,
+            });
+        }
+        Err("Successfully called OpenAI, but no valid choices returned.".to_string())
+    } else {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        Err(format!("OpenAI API Error ({}): {}", status, error_text))
+    }
+}
+
+// --- Anthropic Support ---
+#[derive(Serialize)]
+struct AnthropicMessage {
+    role: String,
+    content: String,
+}
+
+#[derive(Serialize)]
+struct AnthropicRequest {
+    model: String,
+    messages: Vec<AnthropicMessage>,
+    max_tokens: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f32>,
+}
+
+#[derive(Deserialize)]
+struct AnthropicContentBlock {
+    text: String,
+}
+
+#[derive(Deserialize)]
+struct AnthropicResponse {
+    content: Vec<AnthropicContentBlock>,
+}
+
+async fn call_anthropic(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+    if api_key.trim().is_empty() {
+        return Err("Anthropic API Key is missing. Please add it in Settings.".to_string());
+    }
+
+    let client = Client::new();
+    let model = selected_model.unwrap_or_else(|| "claude-3-5-sonnet-20241022".to_string());
+
+    let request_body = AnthropicRequest {
+        model: model.clone(),
+        messages: vec![AnthropicMessage {
+            role: "user".to_string(),
+            content: prompt.to_string(),
+        }],
+        max_tokens: 4096,
+        temperature,
+    };
+
+    let response = client.post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if response.status().is_success() {
+        let anthropic_resp: AnthropicResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+        if let Some(block) = anthropic_resp.content.first() {
+            return Ok(AIResponse {
+                content: block.text.clone(),
+                model,
+            });
+        }
+        Err("Successfully called Anthropic, but no content returned.".to_string())
+    } else {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        Err(format!("Anthropic API Error ({}): {}", status, error_text))
+    }
+}
+
 #[derive(Deserialize)]
 struct AIRequest {
     api_key: String,
+    provider: Option<String>,
     code: String,
     language: String,
     selected_model: Option<String>,
@@ -283,6 +419,7 @@ struct AIRequest {
 #[derive(Deserialize)]
 struct QuestionRequest {
     api_key: String,
+    provider: Option<String>,
     code: String,
     question: String,
     language: String,
@@ -293,13 +430,23 @@ struct QuestionRequest {
 #[tauri::command]
 async fn explain_code(req: AIRequest) -> Result<AIResponse, String> {
     let prompt = format!("Explain this {} code in markdown format:\n\n```{}\n{}\n```", req.language, req.language, req.code);
-    call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await
+    let provider = req.provider.as_deref().unwrap_or("gemini");
+    match provider {
+        "openai" => call_openai(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "anthropic" => call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        _ => call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+    }
 }
 
 #[tauri::command]
 async fn ask_question(req: QuestionRequest) -> Result<AIResponse, String> {
     let prompt = format!("Given this {} code:\n\n```{}\n{}\n```\n\nQuestion: {}\n\nAnswer in markdown:", req.language, req.language, req.code, req.question);
-    call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await
+    let provider = req.provider.as_deref().unwrap_or("gemini");
+    match provider {
+        "openai" => call_openai(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "anthropic" => call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        _ => call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+    }
 }
 
 #[tauri::command]

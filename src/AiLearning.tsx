@@ -16,6 +16,7 @@ export interface AiLearningHandle {
 interface AiLearningProps {
     language: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml";
     apiKey: string;
+    provider: string;
     selectedModel: string | null;
     topic: Topic | null;
     groupTitle: string | null;
@@ -23,7 +24,7 @@ interface AiLearningProps {
     onApplyCode: (code: string) => void;
 }
 
-export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ language, apiKey, selectedModel, topic, groupTitle, onBack, onApplyCode }, ref) => {
+export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ language, apiKey, provider, selectedModel, topic, groupTitle, onBack, onApplyCode }, ref) => {
     const [content, setContent] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -155,6 +156,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                 const response: { content: string; model: string } = await invoke("ask_question", {
                     req: {
                         api_key: apiKey,
+                        provider: provider,
                         code: "",
                         question: prompt,
                         language: language === "dsa" ? "python" : language,
@@ -261,6 +263,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
             const response: { content: string; model: string } = await invoke("ask_question", {
                 req: {
                     api_key: apiKey,
+                    provider: provider,
                     code: "", // No context code needed
                     question: prompt,
                     language: language === "dsa" ? "python" : language,

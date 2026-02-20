@@ -8,13 +8,16 @@ import {
 } from "react-resizable-panels";
 import Editor, { loader } from "@monaco-editor/react";
 import ReactMarkdown from "react-markdown";
+import { Rnd } from "react-rnd";
 import {
   Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2,
   ChevronRight,
   ChevronDown,
   Square,
   ArrowLeft,
-  Eye
+  Eye,
+  Zap,
+  X
 } from "lucide-react";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
@@ -81,6 +84,31 @@ function App() {
     return localStorage.getItem("current_chat_id");
   });
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  // Quick Chat State
+  const [quickChats, setQuickChats] = useState<ChatSession[]>(() => {
+    const saved = localStorage.getItem("ai_quick_chats");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [currentQuickChatId, setCurrentQuickChatId] = useState<string | null>(() => {
+    return localStorage.getItem("current_quick_chat_id");
+  });
+  const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
+  const [quickChatInput, setQuickChatInput] = useState("");
+  const INITIAL_QUICK_CHAT_DESCRIPTION = "## Quick Chat\n\nAsk me anything! Let me help you while you read the documentation.";
+  const [quickChatDescription, setQuickChatDescription] = useState(() => {
+    const savedId = localStorage.getItem("current_quick_chat_id");
+    if (savedId) {
+      const savedChats = localStorage.getItem("ai_quick_chats");
+      if (savedChats) {
+        const parsedChats: ChatSession[] = JSON.parse(savedChats);
+        const currentChat = parsedChats.find(c => c.id === savedId);
+        if (currentChat) return currentChat.description;
+      }
+    }
+    return INITIAL_QUICK_CHAT_DESCRIPTION;
+  });
+  const [isQuickChatExplaining, setIsQuickChatExplaining] = useState(false);
 
   // View Mode State (AI or Docs or Shortcuts or Learning)
   const [viewMode, setViewMode] = useState<"ai" | "docs" | "shortcuts" | "learning">("ai");
@@ -186,6 +214,18 @@ function App() {
       localStorage.removeItem("current_chat_id");
     }
   }, [currentChatId]);
+
+  useEffect(() => {
+    localStorage.setItem("ai_quick_chats", JSON.stringify(quickChats));
+  }, [quickChats]);
+
+  useEffect(() => {
+    if (currentQuickChatId) {
+      localStorage.setItem("current_quick_chat_id", currentQuickChatId);
+    } else {
+      localStorage.removeItem("current_quick_chat_id");
+    }
+  }, [currentQuickChatId]);
 
   useEffect(() => {
     localStorage.setItem("theme", theme);
@@ -345,6 +385,71 @@ function App() {
     setDescription(chat.description);
     setIsHistoryOpen(false);
     setViewMode("ai");
+  };
+
+  const handleSendQuickChat = async () => {
+    if (!quickChatInput.trim() || aiService === "web") return;
+
+    let userQuestion = quickChatInput;
+    setQuickChatInput("");
+
+    const isFirstMessage = quickChatDescription === INITIAL_QUICK_CHAT_DESCRIPTION;
+    const cleanDescription = isFirstMessage ? "" : quickChatDescription;
+    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `**You asked:** ${userQuestion}\n\n*Thinking...*`;
+    setQuickChatDescription(newDescription);
+
+    if (!isTauri()) {
+      setTimeout(() => {
+        setQuickChatDescription((prev: string) => prev.replace("*Thinking...*", "\n\n**Browser Mode:** AI Chat requires the desktop application to access the backend."));
+      }, 500);
+      return;
+    }
+
+    setIsQuickChatExplaining(true);
+    try {
+      const response: { content: string; model: string } = await invoke("ask_question", {
+        req: {
+          api_key: apiKey,
+          code: code,
+          question: userQuestion,
+          language: (language === "dsa" || language === "ml") ? "python" : language,
+          selected_model: selectedModel
+        }
+      });
+      const finalDescription = newDescription.replace("*Thinking...*", response.content);
+      setQuickChatDescription(finalDescription);
+      setActiveModel(response.model);
+
+      // Update Quick Chat History
+      if (currentQuickChatId) {
+        setQuickChats((prev) =>
+          prev.map((chat) =>
+            chat.id === currentQuickChatId
+              ? {
+                ...chat,
+                description: finalDescription,
+              }
+              : chat
+          )
+        );
+      } else {
+        const newId = Date.now().toString();
+        const newChat: ChatSession = {
+          id: newId,
+          title: userQuestion.substring(0, 40) || "Quick Chat",
+          description: finalDescription,
+          timestamp: Date.now(),
+        };
+        setQuickChats((prev) => [newChat, ...prev]);
+        setCurrentQuickChatId(newId);
+      }
+
+    } catch (error) {
+      console.error("Failed to ask quick question:", error);
+      setQuickChatDescription((prev: string) => prev.replace("*Thinking...*", `\n\n**Error:** ${error}`));
+    } finally {
+      setIsQuickChatExplaining(false);
+    }
   };
 
   const handleDeleteChat = (e: React.MouseEvent, id: string) => {
@@ -602,6 +707,19 @@ function App() {
                   <button className={`tab-btn ${viewMode === "ai" ? "active" : ""}`} onClick={() => setViewMode("ai")}>
                     <MessageSquare size={14} /> AI Assistant
                   </button>
+                  <button
+                    className={`tab-btn ${isQuickChatOpen ? "active" : ""}`}
+                    onClick={() => {
+                      setIsQuickChatOpen(!isQuickChatOpen);
+                      if (!isQuickChatOpen && !currentQuickChatId) {
+                        setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
+                      }
+                    }}
+                    style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
+                    title="Quick Chat"
+                  >
+                    <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>Quick Chat</span>
+                  </button>
 
                 </div>
 
@@ -726,7 +844,37 @@ function App() {
                           <Sparkles size={16} /> Getting Started with AI
                         </button>
                       </div>
-                      <div className="sidebar-content">
+                      <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+
+                        {/* Recent Quick Chats Section */}
+                        {quickChats.length > 0 && (
+                          <div style={{ marginBottom: "16px" }}>
+                            <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Zap size={12} fill="currentColor" /> Recent Quick Chats</div>
+                            {quickChats.map((chat) => (
+                              <div key={chat.id} className={`history-item ${currentQuickChatId === chat.id ? "active" : ""}`} onClick={() => {
+                                setCurrentQuickChatId(chat.id);
+                                setQuickChatDescription(chat.description);
+                                setIsQuickChatOpen(true);
+                                setIsHistoryOpen(false);
+                              }}>
+                                <MessageSquare size={14} />
+                                <span className="history-title">{chat.title}</span>
+                                <button className="delete-btn" onClick={(e) => {
+                                  e.stopPropagation();
+                                  setQuickChats((prev) => prev.filter((c) => c.id !== chat.id));
+                                  if (currentQuickChatId === chat.id) {
+                                    setCurrentQuickChatId(null);
+                                    setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
+                                    setIsQuickChatOpen(false);
+                                  }
+                                }}>
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         <div className="sidebar-label">Recent Chats</div>
                         {chats.length === 0 ? (
                           <div className="empty-history">No history yet</div>
@@ -954,10 +1102,10 @@ function App() {
                   </button>
                 </div>
               )}
+
+              {/* Removed duplicate Floating Quick Chat Modal here */}
             </div>
           </Panel >
-
-
 
           <PanelResizeHandle className="resizer horizontal" />
 
@@ -1128,6 +1276,153 @@ function App() {
             </PanelGroup>
           </Panel>
         </PanelGroup >
+
+        {/* Floating Quick Chat Modal - Moved to root of main-content to allow dragging anywhere */}
+        {isQuickChatOpen && (
+          <Rnd
+            default={{
+              x: document.querySelector('.main-content')?.clientWidth ? (document.querySelector('.main-content')!.clientWidth / 2) - 200 : 50,
+              y: document.querySelector('.main-content')?.clientHeight ? (document.querySelector('.main-content')!.clientHeight / 2) - 250 : 50,
+              width: 400,
+              height: 500
+            }}
+            minWidth={300}
+            minHeight={300}
+            bounds="parent"
+            dragHandleClassName="quick-chat-drag-handle"
+            style={{
+              zIndex: 1000,
+              position: 'fixed'
+            }}
+          >
+            <div style={{
+              width: "100%",
+              height: "100%",
+              background: "var(--bg-color)",
+              border: "1px solid var(--border-color)",
+              borderRadius: "12px",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden"
+            }}>
+              <div className="quick-chat-drag-handle" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--border-color)", background: "var(--panel-bg)", cursor: "move" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-color)", fontWeight: "bold" }}>
+                  <Zap size={16} fill="currentColor" /> Quick Chat
+                </div>
+                <div style={{ display: "flex", gap: "8px" }} onPointerDown={(e) => e.stopPropagation()}>
+                  <button onClick={() => {
+                    setCurrentQuickChatId(null);
+                    setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
+                  }} className="btn btn-secondary" style={{ padding: "4px 8px", fontSize: "0.8rem" }}>
+                    <Plus size={14} /> New
+                  </button>
+                  <button onClick={() => setIsQuickChatOpen(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+              <div className="description-container" style={{ flex: 1, padding: "16px", overflowY: "auto" }} onPointerDown={(e) => e.stopPropagation()}>
+                <ReactMarkdown
+                  components={{
+                    pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+                    code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
+                      const match = /language-(\w+)/.exec(className || "");
+                      const isInline = !match;
+                      const codeText = String(children).replace(/\n$/, "");
+
+                      if (isInline) {
+                        return (
+                          <code className={className} {...props} style={{
+                            background: "rgba(88, 166, 255, 0.1)",
+                            color: "var(--accent-color)",
+                            padding: "2px 5px",
+                            borderRadius: "4px",
+                            fontSize: "0.9em",
+                            fontFamily: "var(--font-mono)"
+                          }}>
+                            {children}
+                          </code>
+                        );
+                      }
+
+                      return (
+                        <div style={{ position: "relative", margin: "1.5em 0" }}>
+                          <div style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            background: "var(--panel-bg)",
+                            padding: "8px 12px",
+                            borderTopLeftRadius: "8px",
+                            borderTopRightRadius: "8px",
+                            border: "1px solid var(--border-color)",
+                            borderBottom: "none",
+                            fontSize: "0.75rem",
+                            fontFamily: "var(--font-sans)",
+                            color: "var(--text-muted)",
+                            fontWeight: 600
+                          }}>
+                            <span style={{ textTransform: "uppercase" }}>{match ? match[1] : "Code"}</span>
+                            <div style={{ display: "flex", gap: "12px" }}>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(codeText);
+                                }}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                                title="Copy to Clipboard"
+                                className="code-action-btn"
+                              >
+                                <Copy size={13} /> Copy
+                              </button>
+                            </div>
+                          </div>
+                          <pre style={{
+                            background: "#1e1e1e",
+                            padding: "16px",
+                            borderBottomLeftRadius: "8px",
+                            borderBottomRightRadius: "8px",
+                            border: "1px solid var(--border-color)",
+                            overflowX: "auto",
+                            margin: 0
+                          }} className={className}>
+                            <code className={className} {...props} style={{
+                              fontFamily: "var(--font-mono)",
+                              fontSize: "0.9rem",
+                              color: "#e5e5e5",
+                              whiteSpace: "pre",
+                              textAlign: "left",
+                              display: "block"
+                            }}>
+                              {children}
+                            </code>
+                          </pre>
+                        </div>
+                      );
+                    }
+                  }}
+                >
+                  {quickChatDescription}
+                </ReactMarkdown>
+              </div>
+              <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", padding: "12px" }} onPointerDown={(e) => e.stopPropagation()}>
+                <input
+                  type="text"
+                  className="ai-input"
+                  placeholder="Ask a quick question..."
+                  value={quickChatInput}
+                  onChange={(e) => setQuickChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendQuickChat()}
+                  disabled={isQuickChatExplaining}
+                />
+                <button className="btn btn-primary" onClick={handleSendQuickChat} disabled={isQuickChatExplaining}>
+                  {isQuickChatExplaining ? <Zap size={18} className="animate-pulse" /> : <Send size={18} />}
+                </button>
+              </div>
+            </div>
+          </Rnd>
+        )}
+
       </main >
     </div >
   );

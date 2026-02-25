@@ -12,7 +12,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Rnd } from "react-rnd";
 import {
-  Code2, Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2,
+  Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2,
   ChevronRight,
   ChevronDown,
   Square,
@@ -756,6 +756,116 @@ function App() {
     }
   }, [code, language]);
 
+  const handleLanguageChange = (newLang: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml") => {
+    setLanguage(newLang);
+    localStorage.setItem("language", newLang);
+    setIsSettingsOpen(false);
+
+    // Load saved code for new language or default
+    const savedCode = localStorage.getItem(`code_${newLang}`);
+    const newCode = savedCode || getDefaultCode(newLang);
+    setCode(newCode);
+
+    // Load saved topic for new language or default
+    const savedTopicParams = localStorage.getItem(`topic_${newLang}`);
+    const savedTopic = savedTopicParams ? JSON.parse(savedTopicParams) : null;
+    setSelectedTopic(savedTopic);
+
+    // Trigger Preview Update if needed
+    if (newLang === "html") {
+      setWebPreviewContent(newCode);
+    } else if (newLang === "css") {
+      const hasHtmlStructure = /<html|<body|<head/i.test(newCode);
+
+      if (hasHtmlStructure) {
+        let contentToRender = newCode;
+        const htmlMatch = newCode.match(/([\s\S]*<\/(?:html|body)>)([\s\S]*)/i);
+
+        if (htmlMatch) {
+          const htmlPart = htmlMatch[1];
+          const cssPart = htmlMatch[2].trim();
+          if (cssPart.length > 0) {
+            const headEndIndex = htmlPart.toLowerCase().indexOf('</head>');
+            if (headEndIndex !== -1) {
+              contentToRender = htmlPart.substring(0, headEndIndex) + `\n<style>\n${cssPart}\n</style>\n` + htmlPart.substring(headEndIndex);
+            } else {
+              contentToRender = htmlPart + `\n<style>\n${cssPart}\n</style>`;
+            }
+          }
+        }
+        setWebPreviewContent(contentToRender);
+      } else {
+        setWebPreviewContent(`
+                              <!DOCTYPE html>
+                              <html>
+                                <head>
+                                  <style>${newCode}</style>
+                                </head>
+                                <body>
+                                  <div class="preview-container">
+                                    <header class="preview-header">
+                                      <h1>Web Component Preview</h1>
+                                      <p>Edit the CSS on the left to style these elements dynamically.</p>
+                                    </header>
+
+                                    <div class="grid-layout">
+                                      <main class="main-card">
+                                        <h2>Main Content Area</h2>
+                                        <p>This is a primary card component demonstrating standard text typography and spacing.</p>
+                                        
+                                        <div class="form-group">
+                                          <label for="example-input">Email Address</label>
+                                          <input type="email" id="example-input" placeholder="Enter your email" />
+                                        </div>
+                                        
+                                        <div class="button-group">
+                                          <button class="btn btn-primary">Primary Action</button>
+                                          <button class="btn btn-secondary">Secondary Action</button>
+                                        </div>
+                                      </main>
+
+                                      <aside class="sidebar-card">
+                                        <h3>Quick Links</h3>
+                                        <ul class="nav-list">
+                                          <li><a href="#" class="nav-link active">Dashboard</a></li>
+                                          <li><a href="#" class="nav-link">Settings</a></li>
+                                          <li><a href="#" class="nav-link">Profile</a></li>
+                                          <li><a href="#" class="nav-link">Messages</a></li>
+                                        </ul>
+                                      </aside>
+                                    </div>
+
+                                    <section class="features-section">
+                                      <div class="feature-badge">New Feature</div>
+                                      <h3>Interactive Elements</h3>
+                                      <p>Hover over the elements or focus the input to test your pseudo-class styling.</p>
+                                      
+                                      <div class="toggle-switch">
+                                        <input type="checkbox" id="toggle" />
+                                        <label for="toggle">Enable notifications</label>
+                                      </div>
+                                    </section>
+                                  </div>
+                                </body>
+                              </html>
+                            `);
+      }
+    }
+
+    // Auto-open preview for HTML/CSS
+    if (newLang === "html" || newLang === "css") {
+      setIsTerminalVisible(true);
+    }
+  };
+
+  const handleCycleLanguage = () => {
+    const languages: ("python" | "rust" | "dsa" | "html" | "css" | "javascript" | "ml")[] =
+      ["python", "rust", "dsa", "html", "css", "javascript", "ml"];
+    const currentIndex = languages.indexOf(language);
+    const nextIndex = (currentIndex + 1) % languages.length;
+    handleLanguageChange(languages[nextIndex]);
+  };
+
   const handleRunCode = async () => {
     if (isRunning) {
       // If already running, treating this as a STOP request
@@ -814,14 +924,14 @@ function App() {
   };
 
   const handleRunCodeRef = useRef(handleRunCode);
+  const handleExplainRef = useRef(handleExplain);
+  const handleCycleLanguageRef = useRef(handleCycleLanguage);
+
   useEffect(() => {
     handleRunCodeRef.current = handleRunCode;
-  }, [handleRunCode]);
-
-  const handleExplainRef = useRef(handleExplain);
-  useEffect(() => {
     handleExplainRef.current = handleExplain;
-  }, [handleExplain]);
+    handleCycleLanguageRef.current = handleCycleLanguage;
+  }, [handleRunCode, handleExplain, handleCycleLanguage]);
 
   // Global Keyboard Shortcuts (VS Code style)
   useEffect(() => {
@@ -893,6 +1003,12 @@ function App() {
       if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === "KeyC") {
         e.preventDefault();
         handleExplainRef.current();
+      }
+
+      // Ctrl + Tab: Switch Language
+      if ((e.ctrlKey || e.metaKey) && e.key === "Tab") {
+        e.preventDefault();
+        handleCycleLanguageRef.current();
       }
     };
 
@@ -1004,6 +1120,11 @@ function App() {
     // Ctrl + S to (hypothetically) save or just prevent default
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       console.log("Save shortcut pressed - not implemented but captured");
+    });
+
+    // Ctrl + Tab to Cycle Language
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Tab, () => {
+      handleCycleLanguageRef.current();
     });
   };
 
@@ -1598,108 +1719,7 @@ function App() {
                     <div className="panel-header">
                       <select
                         value={language}
-                        onChange={(e) => {
-                          const newLang = e.target.value as any;
-                          setLanguage(newLang);
-                          localStorage.setItem("language", newLang);
-                          setIsSettingsOpen(false);
-
-                          // Load saved code for new language or default
-                          const savedCode = localStorage.getItem(`code_${newLang}`);
-                          const newCode = savedCode || getDefaultCode(newLang);
-                          setCode(newCode);
-
-                          // Load saved topic for new language or default
-                          const savedTopicParams = localStorage.getItem(`topic_${newLang}`);
-                          const savedTopic = savedTopicParams ? JSON.parse(savedTopicParams) : null;
-                          setSelectedTopic(savedTopic);
-
-                          // Trigger Preview Update if needed (done by useEffect)
-                          if (newLang === "html") {
-                            setWebPreviewContent(newCode);
-                          } else if (newLang === "css") {
-                            const hasHtmlStructure = /<html|<body|<head/i.test(newCode);
-
-                            if (hasHtmlStructure) {
-                              let contentToRender = newCode;
-                              const htmlMatch = newCode.match(/([\s\S]*<\/(?:html|body)>)([\s\S]*)/i);
-
-                              if (htmlMatch) {
-                                const htmlPart = htmlMatch[1];
-                                const cssPart = htmlMatch[2].trim();
-                                if (cssPart.length > 0) {
-                                  const headEndIndex = htmlPart.toLowerCase().indexOf('</head>');
-                                  if (headEndIndex !== -1) {
-                                    contentToRender = htmlPart.substring(0, headEndIndex) + `\n<style>\n${cssPart}\n</style>\n` + htmlPart.substring(headEndIndex);
-                                  } else {
-                                    contentToRender = htmlPart + `\n<style>\n${cssPart}\n</style>`;
-                                  }
-                                }
-                              }
-                              setWebPreviewContent(contentToRender);
-                            } else {
-                              setWebPreviewContent(`
-                              <!DOCTYPE html>
-                              <html>
-                                <head>
-                                  <style>${newCode}</style>
-                                </head>
-                                <body>
-                                  <div class="preview-container">
-                                    <header class="preview-header">
-                                      <h1>Web Component Preview</h1>
-                                      <p>Edit the CSS on the left to style these elements dynamically.</p>
-                                    </header>
-
-                                    <div class="grid-layout">
-                                      <main class="main-card">
-                                        <h2>Main Content Area</h2>
-                                        <p>This is a primary card component demonstrating standard text typography and spacing.</p>
-                                        
-                                        <div class="form-group">
-                                          <label for="example-input">Email Address</label>
-                                          <input type="email" id="example-input" placeholder="Enter your email" />
-                                        </div>
-                                        
-                                        <div class="button-group">
-                                          <button class="btn btn-primary">Primary Action</button>
-                                          <button class="btn btn-secondary">Secondary Action</button>
-                                        </div>
-                                      </main>
-
-                                      <aside class="sidebar-card">
-                                        <h3>Quick Links</h3>
-                                        <ul class="nav-list">
-                                          <li><a href="#" class="nav-link active">Dashboard</a></li>
-                                          <li><a href="#" class="nav-link">Settings</a></li>
-                                          <li><a href="#" class="nav-link">Profile</a></li>
-                                          <li><a href="#" class="nav-link">Messages</a></li>
-                                        </ul>
-                                      </aside>
-                                    </div>
-
-                                    <section class="features-section">
-                                      <div class="feature-badge">New Feature</div>
-                                      <h3>Interactive Elements</h3>
-                                      <p>Hover over the elements or focus the input to test your pseudo-class styling.</p>
-                                      
-                                      <div class="toggle-switch">
-                                        <input type="checkbox" id="toggle" />
-                                        <label for="toggle">Enable notifications</label>
-                                      </div>
-                                    </section>
-                                  </div>
-                                </body>
-                              </html>
-                            `);
-                            }
-                          }
-
-                          // Auto-open preview for HTML/CSS
-                          if (newLang === "html" || newLang === "css") {
-                            setIsTerminalVisible(true);
-                          }
-                        }}
+                        onChange={(e) => handleLanguageChange(e.target.value as any)}
                         className="language-select"
                         style={{
                           background: "transparent",
@@ -1776,8 +1796,7 @@ function App() {
                             cursor: aiService === "web" ? "not-allowed" : "pointer"
                           }}
                         >
-                          {isExplaining ? <Sparkles size={14} className="animate-pulse" /> : <Code2 size={14} />}
-                          <span style={{ marginLeft: 6 }}>{isExplaining ? "Thinking..." : "Explain Code"}</span>
+                          <span style={{ marginLeft: 0 }}>{isExplaining ? <><Sparkles size={14} className="animate-pulse" style={{ marginRight: 6 }} /> Thinking...</> : "Explain Code"}</span>
                         </button>
                         <button
                           className="btn btn-sm btn-primary"

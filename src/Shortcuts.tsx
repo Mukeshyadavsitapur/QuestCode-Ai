@@ -11,6 +11,7 @@ export function Shortcuts() {
         { key: "Ctrl + P", desc: "Quick Chat" },
         { key: "F4", desc: "Toggle Editor" },
         { key: "F7", desc: "Move Terminal" },
+        { key: "Ctrl + Tab", desc: "Switch Programming Language" },
         { key: "Ctrl + Alt + B", desc: "Toggle AI Assistant" },
         { key: "Ctrl + Alt + C", desc: "Explain Code" },
         { key: "Ctrl + Enter", desc: "Run Code (Editor)" },

@@ -207,6 +207,9 @@ function App() {
   // AI Service Mode (API or Web)
   const [aiService, setAiService] = useState<"api" | "web">("api");
 
+  // Editor State
+  const [isEditorVisible, setIsEditorVisible] = useState(true);
+
   // Terminal State
   const [terminalOutput, setTerminalOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -1087,6 +1090,14 @@ function App() {
                   >
                     <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>Quick Chat</span>
                   </button>
+                  <button
+                    className={`tab-btn ${!isEditorVisible ? "active" : ""}`}
+                    onClick={() => setIsEditorVisible(!isEditorVisible)}
+                    style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
+                    title={isEditorVisible ? "Hide Editor" : "Show Editor"}
+                  >
+                    <PanelRight size={14} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>{isEditorVisible ? "Hide Editor" : "Show Editor"}</span>
+                  </button>
 
                 </div>
 
@@ -1394,56 +1405,57 @@ function App() {
             </div>
           </Panel >
 
-          <PanelResizeHandle className="resizer horizontal" />
+          {isEditorVisible && <PanelResizeHandle className="resizer horizontal" />}
 
-          <Panel defaultSize={50} minSize={30}>
-            <PanelGroup orientation={terminalLayout}>
-              <Panel defaultSize={70} minSize={20}>
-                <div className="panel">
-                  <div className="panel-header">
-                    <select
-                      value={language}
-                      onChange={(e) => {
-                        const newLang = e.target.value as any;
-                        setLanguage(newLang);
-                        localStorage.setItem("language", newLang);
-                        setIsSettingsOpen(false);
+          {isEditorVisible && (
+            <Panel defaultSize={50} minSize={30}>
+              <PanelGroup orientation={terminalLayout}>
+                <Panel defaultSize={70} minSize={20}>
+                  <div className="panel">
+                    <div className="panel-header">
+                      <select
+                        value={language}
+                        onChange={(e) => {
+                          const newLang = e.target.value as any;
+                          setLanguage(newLang);
+                          localStorage.setItem("language", newLang);
+                          setIsSettingsOpen(false);
 
-                        // Load saved code for new language or default
-                        const savedCode = localStorage.getItem(`code_${newLang}`);
-                        const newCode = savedCode || getDefaultCode(newLang);
-                        setCode(newCode);
+                          // Load saved code for new language or default
+                          const savedCode = localStorage.getItem(`code_${newLang}`);
+                          const newCode = savedCode || getDefaultCode(newLang);
+                          setCode(newCode);
 
-                        // Load saved topic for new language or default
-                        const savedTopicParams = localStorage.getItem(`topic_${newLang}`);
-                        const savedTopic = savedTopicParams ? JSON.parse(savedTopicParams) : null;
-                        setSelectedTopic(savedTopic);
+                          // Load saved topic for new language or default
+                          const savedTopicParams = localStorage.getItem(`topic_${newLang}`);
+                          const savedTopic = savedTopicParams ? JSON.parse(savedTopicParams) : null;
+                          setSelectedTopic(savedTopic);
 
-                        // Trigger Preview Update if needed (done by useEffect)
-                        if (newLang === "html") {
-                          setWebPreviewContent(newCode);
-                        } else if (newLang === "css") {
-                          const hasHtmlStructure = /<html|<body|<head/i.test(newCode);
+                          // Trigger Preview Update if needed (done by useEffect)
+                          if (newLang === "html") {
+                            setWebPreviewContent(newCode);
+                          } else if (newLang === "css") {
+                            const hasHtmlStructure = /<html|<body|<head/i.test(newCode);
 
-                          if (hasHtmlStructure) {
-                            let contentToRender = newCode;
-                            const htmlMatch = newCode.match(/([\s\S]*<\/(?:html|body)>)([\s\S]*)/i);
+                            if (hasHtmlStructure) {
+                              let contentToRender = newCode;
+                              const htmlMatch = newCode.match(/([\s\S]*<\/(?:html|body)>)([\s\S]*)/i);
 
-                            if (htmlMatch) {
-                              const htmlPart = htmlMatch[1];
-                              const cssPart = htmlMatch[2].trim();
-                              if (cssPart.length > 0) {
-                                const headEndIndex = htmlPart.toLowerCase().indexOf('</head>');
-                                if (headEndIndex !== -1) {
-                                  contentToRender = htmlPart.substring(0, headEndIndex) + `\n<style>\n${cssPart}\n</style>\n` + htmlPart.substring(headEndIndex);
-                                } else {
-                                  contentToRender = htmlPart + `\n<style>\n${cssPart}\n</style>`;
+                              if (htmlMatch) {
+                                const htmlPart = htmlMatch[1];
+                                const cssPart = htmlMatch[2].trim();
+                                if (cssPart.length > 0) {
+                                  const headEndIndex = htmlPart.toLowerCase().indexOf('</head>');
+                                  if (headEndIndex !== -1) {
+                                    contentToRender = htmlPart.substring(0, headEndIndex) + `\n<style>\n${cssPart}\n</style>\n` + htmlPart.substring(headEndIndex);
+                                  } else {
+                                    contentToRender = htmlPart + `\n<style>\n${cssPart}\n</style>`;
+                                  }
                                 }
                               }
-                            }
-                            setWebPreviewContent(contentToRender);
-                          } else {
-                            setWebPreviewContent(`
+                              setWebPreviewContent(contentToRender);
+                            } else {
+                              setWebPreviewContent(`
                               <!DOCTYPE html>
                               <html>
                                 <head>
@@ -1497,180 +1509,181 @@ function App() {
                                 </body>
                               </html>
                             `);
+                            }
                           }
-                        }
 
-                        // Auto-open preview for HTML/CSS
-                        if (newLang === "html" || newLang === "css") {
-                          setIsTerminalVisible(true);
-                        }
-                      }}
-                      className="language-select"
-                      style={{
-                        background: "transparent",
-                        color: "var(--text-main)",
-                        border: "none",
-                        padding: "4px 8px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        outline: "none",
-                        fontWeight: "600",
-                        fontSize: "0.85rem",
-                        marginTop: -2
-                      }}
-                    >
-                      <option value="python">🐍 Python</option>
-                      <option value="rust">🦀 Rust</option>
-                      <option value="dsa">📊 DSA</option>
-                      <option value="html">🌐 HTML</option>
-                      <option value="css">🎨 CSS</option>
-                      <option value="javascript">⚡ JavaScript</option>
-                      <option value="ml">🤖 Machine Learning</option>
-                    </select>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        className="tab-btn"
-                        onClick={() => setIsSettingsOpen(true)}
-                        style={{ border: "none", color: "var(--text-muted)", padding: "4px 8px" }}
-                        title="Settings"
-                      >
-                        <Settings size={16} />
-                      </button>
-                      <button
-                        className={`tab-btn ${isMinimapVisible ? "active" : ""}`}
-                        title={isMinimapVisible ? "Hide Minimap" : "Show Minimap"}
-                        onClick={() => setIsMinimapVisible(!isMinimapVisible)}
-                        style={{ padding: "4px 8px" }}
-                      >
-                        <Layout size={14} />
-                      </button>
-                      <button
-                        className={`tab-btn`}
-                        title={terminalLayout === "vertical" ? "Move Terminal to Right" : "Move Terminal to Bottom"}
-                        onClick={() => setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical")}
-                        style={{ padding: "4px 8px" }}
-                      >
-                        {terminalLayout === "vertical" ? <PanelRight size={14} /> : <PanelBottom size={14} />}
-                      </button>
-                      <button
-                        className={`tab-btn ${isTerminalVisible ? "active" : ""}`}
-                        title={language === "html" || language === "css" ? "Toggle Preview" : (isTerminalVisible ? "Hide Terminal" : "Show Terminal")}
-                        onClick={() => setIsTerminalVisible(!isTerminalVisible)}
-                        style={{ padding: "4px 8px" }}
-                      >
-                        {language === "html" || language === "css" ? <Eye size={14} /> : <TerminalIcon size={14} />}
-                      </button>
-                      <button
-                        className="btn btn-sm btn-primary"
-                        onClick={handleExplain}
-                        disabled={isExplaining || aiService === "web"}
+                          // Auto-open preview for HTML/CSS
+                          if (newLang === "html" || newLang === "css") {
+                            setIsTerminalVisible(true);
+                          }
+                        }}
+                        className="language-select"
                         style={{
-                          marginRight: 8,
-                          padding: "4px 12px",
-                          fontSize: "0.8rem",
-                          opacity: aiService === "web" ? 0.5 : 1,
-                          cursor: aiService === "web" ? "not-allowed" : "pointer"
+                          background: "transparent",
+                          color: "var(--text-main)",
+                          border: "none",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                          cursor: "pointer",
+                          outline: "none",
+                          fontWeight: "600",
+                          fontSize: "0.85rem",
+                          marginTop: -2
                         }}
                       >
-                        {isExplaining ? <Sparkles size={14} className="animate-pulse" /> : <Code2 size={14} />}
-                        <span style={{ marginLeft: 6 }}>{isExplaining ? "Thinking..." : "Explain Code"}</span>
-                      </button>
-                      <button
-                        className="btn btn-sm btn-primary"
-                        onClick={handleRunCode}
-                        style={{
-                          padding: "4px 12px",
-                          fontSize: "0.8rem",
-                          backgroundColor: isRunning ? "#ef4444" : "var(--accent-color)", // Red when running
-                          transition: "background-color 0.2s"
-                        }}
-                      >
-                        {isRunning ? (
-                          <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /> Stop</>
-                        ) : (language === "html" || language === "css") ? (
-                          <><Globe size={12} style={{ marginRight: 6 }} /> Preview</>
-                        ) : (
-                          "Run Code"
-                        )}
-                      </button>
+                        <option value="python">🐍 Python</option>
+                        <option value="rust">🦀 Rust</option>
+                        <option value="dsa">📊 DSA</option>
+                        <option value="html">🌐 HTML</option>
+                        <option value="css">🎨 CSS</option>
+                        <option value="javascript">⚡ JavaScript</option>
+                        <option value="ml">🤖 Machine Learning</option>
+                      </select>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          className="tab-btn"
+                          onClick={() => setIsSettingsOpen(true)}
+                          style={{ border: "none", color: "var(--text-muted)", padding: "4px 8px" }}
+                          title="Settings"
+                        >
+                          <Settings size={16} />
+                        </button>
+                        <button
+                          className={`tab-btn ${isMinimapVisible ? "active" : ""}`}
+                          title={isMinimapVisible ? "Hide Minimap" : "Show Minimap"}
+                          onClick={() => setIsMinimapVisible(!isMinimapVisible)}
+                          style={{ padding: "4px 8px" }}
+                        >
+                          <Layout size={14} />
+                        </button>
+                        <button
+                          className={`tab-btn`}
+                          title={terminalLayout === "vertical" ? "Move Terminal to Right" : "Move Terminal to Bottom"}
+                          onClick={() => setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical")}
+                          style={{ padding: "4px 8px" }}
+                        >
+                          {terminalLayout === "vertical" ? <PanelRight size={14} /> : <PanelBottom size={14} />}
+                        </button>
+                        <button
+                          className={`tab-btn ${isTerminalVisible ? "active" : ""}`}
+                          title={language === "html" || language === "css" ? "Toggle Preview" : (isTerminalVisible ? "Hide Terminal" : "Show Terminal")}
+                          onClick={() => setIsTerminalVisible(!isTerminalVisible)}
+                          style={{ padding: "4px 8px" }}
+                        >
+                          {language === "html" || language === "css" ? <Eye size={14} /> : <TerminalIcon size={14} />}
+                        </button>
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={handleExplain}
+                          disabled={isExplaining || aiService === "web"}
+                          style={{
+                            marginRight: 8,
+                            padding: "4px 12px",
+                            fontSize: "0.8rem",
+                            opacity: aiService === "web" ? 0.5 : 1,
+                            cursor: aiService === "web" ? "not-allowed" : "pointer"
+                          }}
+                        >
+                          {isExplaining ? <Sparkles size={14} className="animate-pulse" /> : <Code2 size={14} />}
+                          <span style={{ marginLeft: 6 }}>{isExplaining ? "Thinking..." : "Explain Code"}</span>
+                        </button>
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={handleRunCode}
+                          style={{
+                            padding: "4px 12px",
+                            fontSize: "0.8rem",
+                            backgroundColor: isRunning ? "#ef4444" : "var(--accent-color)", // Red when running
+                            transition: "background-color 0.2s"
+                          }}
+                        >
+                          {isRunning ? (
+                            <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /> Stop</>
+                          ) : (language === "html" || language === "css") ? (
+                            <><Globe size={12} style={{ marginRight: 6 }} /> Preview</>
+                          ) : (
+                            "Run Code"
+                          )}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="editor-container" style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column" }}>
-                    {isSettingsOpen ? (
-                      <SettingsModal
-                        isOpen={isSettingsOpen}
-                        onClose={() => setIsSettingsOpen(false)}
-                        llmProvider={llmProvider}
-                        setLlmProvider={setLlmProvider}
-                        apiKey={apiKey}
-                        setApiKey={setApiKey}
-                        openAiApiKey={openAiApiKey}
-                        setOpenAiApiKey={setOpenAiApiKey}
-                        anthropicApiKey={anthropicApiKey}
-                        setAnthropicApiKey={setAnthropicApiKey}
-                        groqApiKey={groqApiKey}
-                        setGroqApiKey={setGroqApiKey}
-                        huggingFaceApiKey={huggingFaceApiKey}
-                        setHuggingFaceApiKey={setHuggingFaceApiKey}
-                        theme={theme}
-                        setTheme={setTheme}
-                        onViewShortcuts={() => { setIsSettingsOpen(false); setViewMode("shortcuts"); }}
-                        selectedModel={selectedModel}
-                        availableModels={availableModels}
-                        setSelectedModel={setSelectedModel}
-                        activeModel={activeModel}
-                      />
-                    ) : (
-                      <Editor
-                        height="100%"
-                        language={language === "ml" || language === "dsa" ? "python" : language}
-                        theme={theme}
-                        value={code}
-                        onChange={(value) => setCode(value || "")}
-                        onMount={handleEditorMount}
-                        options={{
-                          minimap: { enabled: isMinimapVisible },
-                          fontSize: 14,
-                          fontFamily: '"JetBrains Mono", monospace',
-                          lineNumbers: "on",
-                          scrollBeyondLastLine: false,
-                          automaticLayout: true,
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-              </Panel>
-
-              {isTerminalVisible && (
-                <>
-                  <PanelResizeHandle className={`resizer ${terminalLayout}`} />
-                  <Panel defaultSize={30} minSize={15}>
-                    <div className="panel" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-                      {(language === "html" || language === "css") ? (
-                        <>
-                          <div className="panel-header" style={{ justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", padding: "8px 16px", background: "var(--panel-bg)" }}>
-                            <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "var(--text-main)" }}>WEB PREVIEW</span>
-                            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                              {language === "html" ? "index.html" : "style.css (Wrapped)"}
-                            </div>
-                          </div>
-                          <iframe
-                            srcDoc={webPreviewContent}
-                            title="Web Preview"
-                            style={{ flex: 1, border: "none", background: "white", width: "100%" }}
-                            sandbox="allow-scripts"
-                          />
-                        </>
+                    <div className="editor-container" style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column" }}>
+                      {isSettingsOpen ? (
+                        <SettingsModal
+                          isOpen={isSettingsOpen}
+                          onClose={() => setIsSettingsOpen(false)}
+                          llmProvider={llmProvider}
+                          setLlmProvider={setLlmProvider}
+                          apiKey={apiKey}
+                          setApiKey={setApiKey}
+                          openAiApiKey={openAiApiKey}
+                          setOpenAiApiKey={setOpenAiApiKey}
+                          anthropicApiKey={anthropicApiKey}
+                          setAnthropicApiKey={setAnthropicApiKey}
+                          groqApiKey={groqApiKey}
+                          setGroqApiKey={setGroqApiKey}
+                          huggingFaceApiKey={huggingFaceApiKey}
+                          setHuggingFaceApiKey={setHuggingFaceApiKey}
+                          theme={theme}
+                          setTheme={setTheme}
+                          onViewShortcuts={() => { setIsSettingsOpen(false); setViewMode("shortcuts"); }}
+                          selectedModel={selectedModel}
+                          availableModels={availableModels}
+                          setSelectedModel={setSelectedModel}
+                          activeModel={activeModel}
+                        />
                       ) : (
-                        <Terminal output={terminalOutput} isRunning={isRunning} onClear={() => setTerminalOutput("")} />
+                        <Editor
+                          height="100%"
+                          language={language === "ml" || language === "dsa" ? "python" : language}
+                          theme={theme}
+                          value={code}
+                          onChange={(value) => setCode(value || "")}
+                          onMount={handleEditorMount}
+                          options={{
+                            minimap: { enabled: isMinimapVisible },
+                            fontSize: 14,
+                            fontFamily: '"JetBrains Mono", monospace',
+                            lineNumbers: "on",
+                            scrollBeyondLastLine: false,
+                            automaticLayout: true,
+                          }}
+                        />
                       )}
                     </div>
-                  </Panel>
-                </>
-              )}
-            </PanelGroup>
-          </Panel>
+                  </div>
+                </Panel>
+
+                {isTerminalVisible && (
+                  <>
+                    <PanelResizeHandle className={`resizer ${terminalLayout}`} />
+                    <Panel defaultSize={30} minSize={15}>
+                      <div className="panel" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                        {(language === "html" || language === "css") ? (
+                          <>
+                            <div className="panel-header" style={{ justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", padding: "8px 16px", background: "var(--panel-bg)" }}>
+                              <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "var(--text-main)" }}>WEB PREVIEW</span>
+                              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                {language === "html" ? "index.html" : "style.css (Wrapped)"}
+                              </div>
+                            </div>
+                            <iframe
+                              srcDoc={webPreviewContent}
+                              title="Web Preview"
+                              style={{ flex: 1, border: "none", background: "white", width: "100%" }}
+                              sandbox="allow-scripts"
+                            />
+                          </>
+                        ) : (
+                          <Terminal output={terminalOutput} isRunning={isRunning} onClear={() => setTerminalOutput("")} />
+                        )}
+                      </div>
+                    </Panel>
+                  </>
+                )}
+              </PanelGroup>
+            </Panel>
+          )}
         </PanelGroup >
 
         {/* Floating Quick Chat Modal - Moved to root of main-content to allow dragging anywhere */}

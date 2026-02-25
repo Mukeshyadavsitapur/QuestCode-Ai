@@ -948,18 +948,40 @@ async fn execute_code(
             return Err(format!("Failed to write code: {}", e));
         }
 
-        let mut cmd = TokioCommand::new("python");
-        cmd.arg(&file_path)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .kill_on_drop(true);
+        let python_cmds = if cfg!(target_os = "windows") {
+            vec!["py", "python", "python3"]
+        } else {
+            vec!["python3", "python"]
+        };
 
-        #[cfg(target_os = "windows")]
-        cmd.creation_flags(0x08000000);
+        let mut child_opt = None;
+        let mut last_err = String::new();
 
-        let child = cmd
-            .spawn()
-            .map_err(|e| format!("Failed to run python: {}. Is Python installed?", e))?;
+        for cmd_name in python_cmds {
+            let mut cmd = TokioCommand::new(cmd_name);
+            cmd.arg(&file_path)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .kill_on_drop(true);
+
+            #[cfg(target_os = "windows")]
+            cmd.creation_flags(0x08000000);
+
+            match cmd.spawn() {
+                Ok(child) => {
+                    child_opt = Some(child);
+                    break;
+                }
+                Err(e) => {
+                    last_err = format!("Failed to start {}: {}", cmd_name, e);
+                }
+            }
+        }
+
+        let child = match child_opt {
+            Some(c) => c,
+            None => return Err(format!("Could not find a Python interpreter. {}", last_err)),
+        };
 
         tokio::select! {
              output_res = child.wait_with_output() => {
@@ -967,6 +989,14 @@ async fn execute_code(
                     Ok(output) => {
                         let stdout = String::from_utf8_lossy(&output.stdout);
                         let stderr = String::from_utf8_lossy(&output.stderr);
+
+                        // Check if Windows intercepted 'python' with the Store App Execution Alias
+                        let is_store_alias_error = stderr.contains("Python was not found") && stderr.contains("Microsoft Store");
+
+                        if is_store_alias_error {
+                            return Ok(format!("Execution failed because Windows intercepted the 'python' command.\n\nTo fix this:\n1. Open Windows Settings > Apps > Advanced app settings > App execution aliases\n2. Turn OFF the aliases for 'python.exe' and 'python3.exe'.\n\nOriginal Error:\n{}", stderr));
+                        }
+
                         if !stderr.is_empty() {
                             Ok(format!("Output:\n{}\n\nErrors:\n{}", stdout, stderr))
                         } else {

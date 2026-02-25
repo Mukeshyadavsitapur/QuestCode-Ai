@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   Panel,
@@ -813,12 +814,84 @@ function App() {
     handleRunCodeRef.current = handleRunCode;
   }, [handleRunCode]);
 
+  // Global Keyboard Shortcuts (VS Code style)
+  useEffect(() => {
+    const handleGlobalKeyDown = async (e: KeyboardEvent) => {
+      // F11: Full Screen
+      if (e.key === "F11") {
+        e.preventDefault();
+        if (isTauri()) {
+          const appWindow = getCurrentWindow();
+          const isFullscreen = await appWindow.isFullscreen();
+          await appWindow.setFullscreen(!isFullscreen);
+        }
+      }
+
+      // F5: Run Code
+      if (e.key === "F5") {
+        e.preventDefault();
+        handleRunCodeRef.current();
+      }
+
+      // F1: Command Palette / Settings
+      if (e.key === "F1") {
+        e.preventDefault();
+        setIsSettingsOpen(true);
+      }
+
+      // Ctrl/Cmd + B: Toggle Sidebar
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setIsHistoryOpen(prev => !prev);
+      }
+
+      // Ctrl/Cmd + ` : Toggle Terminal
+      if ((e.ctrlKey || e.metaKey) && (e.key === "`" || e.code === "Backquote")) {
+        e.preventDefault();
+        setIsTerminalVisible(prev => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
+
   const handleEditorMount = (editor: any, monaco: any) => {
     console.log("Editor mounted, registering shortcuts");
     // Ctrl + Enter to Run Code
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       console.log("Ctrl+Enter shortcut triggered");
       handleRunCodeRef.current();
+    });
+
+    // F5 to Run Code
+    editor.addCommand(monaco.KeyCode.F5, () => {
+      console.log("F5 shortcut triggered");
+      handleRunCodeRef.current();
+    });
+
+    // F11 to Toggle Full Screen
+    editor.addCommand(monaco.KeyCode.F11, async () => {
+      if (isTauri()) {
+        const appWindow = getCurrentWindow();
+        const isFullscreen = await appWindow.isFullscreen();
+        await appWindow.setFullscreen(!isFullscreen);
+      }
+    });
+
+    // F1 to Open Settings
+    editor.addCommand(monaco.KeyCode.F1, () => {
+      setIsSettingsOpen(true);
+    });
+
+    // Ctrl+B to Toggle Sidebar
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, () => {
+      setIsHistoryOpen(prev => !prev);
+    });
+
+    // Ctrl+` to Toggle Terminal (using backquote key code if available, otherwise rely on fallback)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.US_BACKTICK, () => {
+      setIsTerminalVisible(prev => !prev);
     });
 
     // Ctrl + S to (hypothetically) save or just prevent default

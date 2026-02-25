@@ -8,6 +8,11 @@ export function Shortcuts() {
         { key: "F11", desc: "Toggle Full Screen" },
         { key: "Ctrl + B", desc: "Toggle Sidebar" },
         { key: "Ctrl + `", desc: "Toggle Terminal" },
+        { key: "Ctrl + P", desc: "Quick Chat" },
+        { key: "F4", desc: "Toggle Editor" },
+        { key: "F7", desc: "Move Terminal" },
+        { key: "Ctrl + Alt + B", desc: "Toggle AI Assistant" },
+        { key: "Ctrl + Alt + C", desc: "Explain Code" },
         { key: "Ctrl + Enter", desc: "Run Code (Editor)" },
         { key: "Ctrl + /", desc: "Toggle Line Comment" },
         { key: "Ctrl + F", desc: "Find" },
@@ -15,7 +20,6 @@ export function Shortcuts() {
         { key: "Ctrl + D", desc: "Add Selection to Next Find Match" },
         { key: "Alt + Click", desc: "Insert Cursor" },
         { key: "Shift + Alt + F", desc: "Format Document" },
-        { key: "Ctrl + P", desc: "Quick Open" },
         { key: "Ctrl + Shift + L", desc: "Select All Occurrences" },
     ];
 

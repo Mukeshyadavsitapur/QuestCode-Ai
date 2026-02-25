@@ -818,6 +818,11 @@ function App() {
     handleRunCodeRef.current = handleRunCode;
   }, [handleRunCode]);
 
+  const handleExplainRef = useRef(handleExplain);
+  useEffect(() => {
+    handleExplainRef.current = handleExplain;
+  }, [handleExplain]);
+
   // Global Keyboard Shortcuts (VS Code style)
   useEffect(() => {
     const handleGlobalKeyDown = async (e: KeyboardEvent) => {
@@ -837,6 +842,18 @@ function App() {
         handleRunCodeRef.current();
       }
 
+      // F4: Toggle Editor
+      if (e.key === "F4") {
+        e.preventDefault();
+        setIsEditorVisible(prev => !prev);
+      }
+
+      // F7: Toggle Terminal Layout
+      if (e.key === "F7") {
+        e.preventDefault();
+        setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical");
+      }
+
       // F1: Command Palette / Settings
       if (e.key === "F1") {
         e.preventDefault();
@@ -844,15 +861,38 @@ function App() {
       }
 
       // Ctrl/Cmd + B: Toggle Sidebar
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === "KeyB") {
         e.preventDefault();
         setIsHistoryOpen(prev => !prev);
       }
 
       // Ctrl/Cmd + ` : Toggle Terminal
-      if ((e.ctrlKey || e.metaKey) && (e.key === "`" || e.code === "Backquote")) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === "`" || e.code === "Backquote")) {
         e.preventDefault();
         setIsTerminalVisible(prev => !prev);
+      }
+
+      // Ctrl + P: Quick Chat
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === "KeyP") {
+        e.preventDefault();
+        setIsQuickChatOpen((prev) => {
+          if (!prev && !currentQuickChatId) {
+            setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
+          }
+          return !prev;
+        });
+      }
+
+      // Ctrl + Alt + B: Toggle AI Assistant
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === "KeyB") {
+        e.preventDefault();
+        setIsAiAssistantVisible(prev => !prev);
+      }
+
+      // Ctrl + Alt + C: Explain Code
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === "KeyC") {
+        e.preventDefault();
+        handleExplainRef.current();
       }
     };
 
@@ -872,6 +912,16 @@ function App() {
     editor.addCommand(monaco.KeyCode.F5, () => {
       console.log("F5 shortcut triggered");
       handleRunCodeRef.current();
+    });
+
+    // F4 to Toggle Editor
+    editor.addCommand(monaco.KeyCode.F4, () => {
+      setIsEditorVisible(prev => !prev);
+    });
+
+    // F7 to Toggle Terminal Layout
+    editor.addCommand(monaco.KeyCode.F7, () => {
+      setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical");
     });
 
     // F11 to Toggle Full Screen
@@ -897,6 +947,52 @@ function App() {
     // We add this to the editor directly and prevent default bubbling
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.US_BACKTICK, () => {
       setIsTerminalVisible(prev => !prev);
+    });
+
+    // Ctrl+P to Toggle Quick Chat
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, () => {
+      setIsQuickChatOpen((prev) => {
+        if (!prev && !currentQuickChatId) {
+          setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
+        }
+        return !prev;
+      });
+    });
+
+    // We also need to intercept onKeyDown directly because Windows/Linux might still send 
+    // We also need to intercept onKeyDown directly because Windows/Linux might still send
+    // AltGr/Ctrl+Alt combinations as text input even if a command is bound.
+    editor.onKeyDown((e: any) => {
+      // Monaco event wrapper doesn't have .code, we must use e.browserEvent.code
+      const browserEvt = e.browserEvent as KeyboardEvent;
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+      if (isCtrlOrMeta && e.shiftKey) {
+        // Removed J and M shift bindings as they are moved to F keys
+      }
+
+      // Intercept functional keys to prevent default behavior like Caret Browsing (F7)
+      if (e.keyCode === monaco.KeyCode.F4) {
+        e.preventDefault();
+        setIsEditorVisible(prev => !prev);
+      } else if (e.keyCode === monaco.KeyCode.F7) {
+        e.preventDefault();
+        setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical");
+      }
+
+      if (isCtrlOrMeta && e.altKey) {
+        const physicalCode = browserEvt.code;
+
+        if (physicalCode === "KeyB") {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsAiAssistantVisible(prev => !prev);
+        } else if (physicalCode === "KeyC") {
+          e.preventDefault();
+          e.stopPropagation();
+          handleExplainRef.current();
+        }
+      }
     });
 
     // Also explicitly override the default "Toggle Line Comment" behavior to use standard Ctrl+/ instead 
@@ -1156,7 +1252,7 @@ function App() {
                         className="tab-btn"
                         onClick={() => setIsHistoryOpen(!isHistoryOpen)}
                         style={{ padding: "4px" }}
-                        title="Toggle History"
+                        title="Toggle History (Ctrl+B)"
                       >
                         <Menu size={18} />
                       </button>
@@ -1172,7 +1268,7 @@ function App() {
                           }
                         }}
                         style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
-                        title="Quick Chat"
+                        title="Quick Chat (Ctrl+P)"
                       >
                         <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>Quick Chat</span>
                       </button>
@@ -1180,7 +1276,7 @@ function App() {
                         className={`tab-btn ${!isEditorVisible ? "active" : ""}`}
                         onClick={() => setIsEditorVisible(!isEditorVisible)}
                         style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
-                        title={isEditorVisible ? "Hide Editor" : "Show Editor"}
+                        title={isEditorVisible ? "Hide Editor (F4)" : "Show Editor (F4)"}
                       >
                         <PanelRight size={14} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>{isEditorVisible ? "Hide Editor" : "Show Editor"}</span>
                       </button>
@@ -1631,13 +1727,13 @@ function App() {
                           className="tab-btn"
                           onClick={() => setIsSettingsOpen(true)}
                           style={{ border: "none", color: "var(--text-muted)", padding: "4px 8px" }}
-                          title="Settings"
+                          title="Settings (F1)"
                         >
                           <Settings size={16} />
                         </button>
                         <button
                           className={`tab-btn ${!isAiAssistantVisible ? "active" : ""}`}
-                          title={isAiAssistantVisible ? "Hide AI Assistant" : "Show AI Assistant"}
+                          title={isAiAssistantVisible ? "Hide AI Assistant (Ctrl+Alt+B)" : "Show AI Assistant (Ctrl+Alt+B)"}
                           onClick={() => setIsAiAssistantVisible(!isAiAssistantVisible)}
                           style={{ padding: "4px 8px" }}
                         >
@@ -1653,7 +1749,7 @@ function App() {
                         </button>
                         <button
                           className={`tab-btn`}
-                          title={terminalLayout === "vertical" ? "Move Terminal to Right" : "Move Terminal to Bottom"}
+                          title={terminalLayout === "vertical" ? "Move Terminal to Right (F7)" : "Move Terminal to Bottom (F7)"}
                           onClick={() => setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical")}
                           style={{ padding: "4px 8px" }}
                         >
@@ -1661,7 +1757,7 @@ function App() {
                         </button>
                         <button
                           className={`tab-btn ${isTerminalVisible ? "active" : ""}`}
-                          title={language === "html" || language === "css" ? "Toggle Preview" : (isTerminalVisible ? "Hide Terminal" : "Show Terminal")}
+                          title={language === "html" || language === "css" ? "Toggle Preview (Ctrl+`)" : (isTerminalVisible ? "Hide Terminal (Ctrl+`)" : "Show Terminal (Ctrl+`)")}
                           onClick={() => setIsTerminalVisible(!isTerminalVisible)}
                           style={{ padding: "4px 8px" }}
                         >
@@ -1670,6 +1766,7 @@ function App() {
                         <button
                           className="btn btn-sm btn-primary"
                           onClick={handleExplain}
+                          title="Explain Code (Ctrl+Alt+C)"
                           disabled={isExplaining || aiService === "web"}
                           style={{
                             marginRight: 8,
@@ -1685,6 +1782,7 @@ function App() {
                         <button
                           className="btn btn-sm btn-primary"
                           onClick={handleRunCode}
+                          title="Run Code (F5 / Ctrl+Enter)"
                           style={{
                             padding: "4px 12px",
                             fontSize: "0.8rem",

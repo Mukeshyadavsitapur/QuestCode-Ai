@@ -3,14 +3,18 @@ import "./Shortcuts.css";
 
 export function Shortcuts() {
     const shortcuts = [
-        { key: "Ctrl + Enter", desc: "Run Code" },
+        { key: "F1", desc: "Settings / Command Palette" },
+        { key: "F5", desc: "Run Code" },
+        { key: "F11", desc: "Toggle Full Screen" },
+        { key: "Ctrl + B", desc: "Toggle Sidebar" },
+        { key: "Ctrl + `", desc: "Toggle Terminal" },
+        { key: "Ctrl + Enter", desc: "Run Code (Editor)" },
+        { key: "Ctrl + /", desc: "Toggle Line Comment" },
         { key: "Ctrl + F", desc: "Find" },
         { key: "Ctrl + H", desc: "Replace" },
         { key: "Ctrl + D", desc: "Add Selection to Next Find Match" },
         { key: "Alt + Click", desc: "Insert Cursor" },
-        { key: "Ctrl + /", desc: "Toggle Line Comment" },
         { key: "Shift + Alt + F", desc: "Format Document" },
-        { key: "F1", desc: "Command Palette" },
         { key: "Ctrl + P", desc: "Quick Open" },
         { key: "Ctrl + Shift + L", desc: "Select All Occurrences" },
     ];

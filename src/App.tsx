@@ -21,7 +21,9 @@ import {
   Zap,
   X,
   PanelBottom,
-  PanelRight
+  PanelRight,
+  PanelLeft,
+  PanelLeftClose
 } from "lucide-react";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
@@ -89,6 +91,7 @@ function App() {
   });
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [visibleChats, setVisibleChats] = useState(20);
+  const [isAiAssistantVisible, setIsAiAssistantVisible] = useState(true);
 
   const [currentQuickChatId, setCurrentQuickChatId] = useState<string | null>(() => {
     return localStorage.getItem("current_quick_chat_id");
@@ -581,6 +584,7 @@ function App() {
     if (aiService === "web") return;
     setIsExplaining(true);
     setViewMode("ai");
+    setIsAiAssistantVisible(true);
 
     if (!isTauri()) {
       setDescription("## Browser Mode\n\nAI features require the desktop application to access the backend. Please download the full application.");
@@ -890,8 +894,15 @@ function App() {
     });
 
     // Ctrl+` to Toggle Terminal (using backquote key code if available, otherwise rely on fallback)
+    // We add this to the editor directly and prevent default bubbling
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.US_BACKTICK, () => {
       setIsTerminalVisible(prev => !prev);
+    });
+
+    // Also explicitly override the default "Toggle Line Comment" behavior to use standard Ctrl+/ instead 
+    // and make sure Ctrl+` doesn't fall through to it
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, () => {
+      editor.getAction('editor.action.commentLine').run();
     });
 
     // Ctrl + S to (hypothetically) save or just prevent default
@@ -1134,351 +1145,354 @@ function App() {
 
       <main className="main-content">
         <PanelGroup orientation="horizontal">
-          <Panel defaultSize={50} minSize={30}>
-            <div className="panel" style={{ position: "relative" }}>
-              <div className="panel-header">
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <button
-                    id="sidebar-toggle"
-                    className="tab-btn"
-                    onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                    style={{ padding: "4px" }}
-                    title="Toggle History"
-                  >
-                    <Menu size={18} />
-                  </button>
-                  <button className={`tab-btn ${viewMode === "ai" ? "active" : ""}`} onClick={() => setViewMode("ai")}>
-                    <MessageSquare size={14} /> AI Assistant
-                  </button>
-                  <button
-                    className={`tab-btn ${isQuickChatOpen ? "active" : ""}`}
-                    onClick={() => {
-                      setIsQuickChatOpen(!isQuickChatOpen);
-                      if (!isQuickChatOpen && !currentQuickChatId) {
-                        setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
-                      }
-                    }}
-                    style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
-                    title="Quick Chat"
-                  >
-                    <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>Quick Chat</span>
-                  </button>
-                  <button
-                    className={`tab-btn ${!isEditorVisible ? "active" : ""}`}
-                    onClick={() => setIsEditorVisible(!isEditorVisible)}
-                    style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
-                    title={isEditorVisible ? "Hide Editor" : "Show Editor"}
-                  >
-                    <PanelRight size={14} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>{isEditorVisible ? "Hide Editor" : "Show Editor"}</span>
-                  </button>
-
-                </div>
-
-                {viewMode === "ai" && (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      className="tab-btn active"
-                      style={{ fontSize: "0.75rem", padding: "4px 12px", minWidth: "120px", display: "flex", justifyContent: "center" }}
-                      onClick={toggleAiService}
-                    >
-                      {aiService === "api" ? (
-                        <><Bot size={12} style={{ marginRight: 6 }} /> QuestCode AI</>
-                      ) : (
-                        <><Globe size={12} style={{ marginRight: 6 }} /> {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"} Web</>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Sidebar Overlay (Chat History OR Learning Topics) */}
-              {isHistoryOpen && (
-                <div className="chat-history-sidebar" ref={sidebarRef}>
-                  {viewMode === "learning" ? (
-                    // Learning Topics Sidebar
-                    <div className="sidebar-content" style={{ padding: "16px" }}>
-                      <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => { setViewMode("ai"); setIsHistoryOpen(true); }}
-                          style={{ marginRight: "10px", padding: "4px" }}
-                        >
-                          <ArrowLeft size={16} />
-                        </button>
-                        <h3 style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-color)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          {language.toUpperCase()} Course
-                        </h3>
-                      </div>
-
-                      {(
-                        language === "rust" ? TOPICS_RUST :
-                          language === "python" ? TOPICS_PYTHON :
-                            language === "dsa" ? TOPICS_DSA :
-                              language === "html" ? TOPICS_HTML :
-                                language === "css" ? TOPICS_CSS :
-                                  language === "ml" ? TOPICS_ML :
-                                    TOPICS_JS
-                      ).map((group) => (
-                        <div key={group.title} style={{ marginBottom: "12px" }}>
-                          <button
-                            onClick={() => toggleGroup(group.title)}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              width: "100%",
-                              background: "transparent",
-                              border: "none",
-                              padding: "6px 0",
-                              cursor: "pointer",
-                              color: "var(--text-main)",
-                              fontSize: "0.85rem",
-                              fontWeight: "600"
-                            }}
-                          >
-                            <span style={{ color: "var(--text-muted)", marginRight: "6px" }}>
-                              {expandedGroups.has(group.title) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                            </span>
-                            {group.title}
-                          </button>
-
-                          {expandedGroups.has(group.title) && (
-                            <div style={{ marginLeft: "14px", borderLeft: "1px solid var(--border-color)", paddingLeft: "8px", marginTop: "4px" }}>
-                              {group.topics.map(topic => (
-                                <button
-                                  key={topic.id}
-                                  onClick={() => handleSelectTopic(topic, group.title)}
-                                  className={`history-item ${selectedTopic?.id === topic.id ? "active" : ""}`}
-                                  style={{
-                                    width: "100%",
-                                    justifyContent: "flex-start",
-                                    fontSize: "0.8rem",
-                                    padding: "6px 8px",
-                                    marginBottom: "2px",
-                                    border: "none",
-                                    textAlign: "left"
-                                  }}
-                                >
-                                  <span style={{ opacity: 0.7, marginRight: "6px", fontSize: "0.75rem" }}>{topic.id}</span>
-                                  <span>{topic.title}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    // Chat History Sidebar
-                    <>
-                      <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
-                          <Plus size={16} /> New Chat
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                          onClick={() => {
-                            setViewMode("docs");
-                            setIsHistoryOpen(false);
-                          }}
-                        >
-                          <Book size={16} /> Official Docs
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                          onClick={() => {
-                            setViewMode("learning");
-                            setIsHistoryOpen(true); // Keep sidebar open for topic selection
-                          }}
-                        >
-                          <Sparkles size={16} /> Getting Started with AI
-                        </button>
-                      </div>
-                      <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-
-                        <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: "8px" }}><MessageSquare size={12} /> Recent Activity</div>
-                        {chats.length === 0 ? (
-                          <div className="empty-history">No history yet</div>
-                        ) : (
-                          <>
-                            {chats.slice(0, visibleChats).map((chat) => (
-                              <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
-                                <MessageSquare size={14} />
-                                <span className="history-title">{chat.title}</span>
-                                <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            ))}
-                            {visibleChats < chats.length && (
-                              <button
-                                className="btn btn-secondary"
-                                style={{ width: "100%", justifyContent: "center", marginTop: "8px", fontSize: "0.8rem", padding: "6px", border: "1px solid var(--border-color)" }}
-                                onClick={() => setVisibleChats(prev => prev + 20)}
-                              >
-                                Load More
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div style={{ display: viewMode === "ai" ? "flex" : "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
-                {aiService === "api" ? (
-                  <>
-                    <div className="description-container" ref={mainChatScrollRef}>
-                      <ReactMarkdown
-                        components={markdownComponents}
-                        remarkPlugins={[remarkGfm]}
-                      >
-                        {description}
-                      </ReactMarkdown>
-                    </div>
-                  </>
-                ) : (
-                  <div
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: 24,
-                      textAlign: "center",
-                    }}
-                  >
-                    <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
-                      <Globe size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
-                      <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Open Web LLM</h3>
-                      <p style={{ color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>
-                        Select your preferred web LLM to chat, analyze images, and more. We'll copy your code to the clipboard for you.
-                      </p>
-                      <select
-                        className="settings-input"
-                        style={{ appearance: 'auto', WebkitAppearance: 'auto' as any, marginBottom: 24, padding: "8px 12px", width: "100%", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-color)", borderRadius: 4 }}
-                        value={webLlm}
-                        onChange={(e) => setWebLlm(e.target.value)}
-                      >
-                        <option value="groq">Groq</option>
-                        <option value="huggingface">Hugging Face</option>
-                        <option value="gemini">Google Gemini</option>
-                        <option value="openai">OpenAI (ChatGPT)</option>
-                        <option value="anthropic">Anthropic (Claude)</option>
-                      </select>
-                      <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleOpenWebLlm}>
-                        <Copy size={16} /> Copy Code & Open {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: viewMode === "docs" ? "flex" : "none", flex: 1, flexDirection: "column" }}>
-                {(language === "rust" || language === "python" || language === "ml") ? (
-                  <iframe
-                    src={language === "rust" ? "https://doc.rust-lang.org/book/" : language === "ml" ? "https://scikit-learn.org/stable/user_guide.html" : "https://docs.python.org/3/"}
-                    title="Documentation"
-                    style={{ flex: 1, border: "none", width: "100%", height: "100%", backgroundColor: "var(--bg-color)" }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: 24,
-                      textAlign: "center",
-                      height: "100%"
-                    }}
-                  >
-                    <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
-                      <Book size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
-                      <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Official Documentation</h3>
-                      <p style={{ color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.5 }}>
-                        MDN documentation cannot be embedded directly. Please open it in your browser.
-                      </p>
+          {isAiAssistantVisible && (
+            <>
+              <Panel defaultSize={50} minSize={30}>
+                <div className="panel" style={{ position: "relative" }}>
+                  <div className="panel-header">
+                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                       <button
-                        className="btn btn-primary"
-                        style={{ width: "100%", justifyContent: "center" }}
-                        onClick={async () => {
-                          const url =
-                            language === "html" ? "https://developer.mozilla.org/en-US/docs/Web/HTML" :
-                              language === "css" ? "https://developer.mozilla.org/en-US/docs/Web/CSS" :
-                                "https://developer.mozilla.org/en-US/docs/Web/JavaScript";
-                          try {
-                            await openUrl(url);
-                          } catch (e) {
-                            window.open(url, "_blank");
+                        id="sidebar-toggle"
+                        className="tab-btn"
+                        onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                        style={{ padding: "4px" }}
+                        title="Toggle History"
+                      >
+                        <Menu size={18} />
+                      </button>
+                      <button className={`tab-btn ${viewMode === "ai" ? "active" : ""}`} onClick={() => setViewMode("ai")}>
+                        <MessageSquare size={14} /> AI Assistant
+                      </button>
+                      <button
+                        className={`tab-btn ${isQuickChatOpen ? "active" : ""}`}
+                        onClick={() => {
+                          setIsQuickChatOpen(!isQuickChatOpen);
+                          if (!isQuickChatOpen && !currentQuickChatId) {
+                            setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
                           }
                         }}
+                        style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
+                        title="Quick Chat"
                       >
-                        <Globe size={16} style={{ marginRight: 8 }} /> Open {language.toUpperCase()} Docs
+                        <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>Quick Chat</span>
+                      </button>
+                      <button
+                        className={`tab-btn ${!isEditorVisible ? "active" : ""}`}
+                        onClick={() => setIsEditorVisible(!isEditorVisible)}
+                        style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
+                        title={isEditorVisible ? "Hide Editor" : "Show Editor"}
+                      >
+                        <PanelRight size={14} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>{isEditorVisible ? "Hide Editor" : "Show Editor"}</span>
+                      </button>
+
+                    </div>
+
+                    {viewMode === "ai" && (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          className="tab-btn active"
+                          style={{ fontSize: "0.75rem", padding: "4px 12px", minWidth: "120px", display: "flex", justifyContent: "center" }}
+                          onClick={toggleAiService}
+                        >
+                          {aiService === "api" ? (
+                            <><Bot size={12} style={{ marginRight: 6 }} /> QuestCode AI</>
+                          ) : (
+                            <><Globe size={12} style={{ marginRight: 6 }} /> {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"} Web</>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sidebar Overlay (Chat History OR Learning Topics) */}
+                  {isHistoryOpen && (
+                    <div className="chat-history-sidebar" ref={sidebarRef}>
+                      {viewMode === "learning" ? (
+                        // Learning Topics Sidebar
+                        <div className="sidebar-content" style={{ padding: "16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => { setViewMode("ai"); setIsHistoryOpen(true); }}
+                              style={{ marginRight: "10px", padding: "4px" }}
+                            >
+                              <ArrowLeft size={16} />
+                            </button>
+                            <h3 style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-color)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                              {language.toUpperCase()} Course
+                            </h3>
+                          </div>
+
+                          {(
+                            language === "rust" ? TOPICS_RUST :
+                              language === "python" ? TOPICS_PYTHON :
+                                language === "dsa" ? TOPICS_DSA :
+                                  language === "html" ? TOPICS_HTML :
+                                    language === "css" ? TOPICS_CSS :
+                                      language === "ml" ? TOPICS_ML :
+                                        TOPICS_JS
+                          ).map((group) => (
+                            <div key={group.title} style={{ marginBottom: "12px" }}>
+                              <button
+                                onClick={() => toggleGroup(group.title)}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  width: "100%",
+                                  background: "transparent",
+                                  border: "none",
+                                  padding: "6px 0",
+                                  cursor: "pointer",
+                                  color: "var(--text-main)",
+                                  fontSize: "0.85rem",
+                                  fontWeight: "600"
+                                }}
+                              >
+                                <span style={{ color: "var(--text-muted)", marginRight: "6px" }}>
+                                  {expandedGroups.has(group.title) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                </span>
+                                {group.title}
+                              </button>
+
+                              {expandedGroups.has(group.title) && (
+                                <div style={{ marginLeft: "14px", borderLeft: "1px solid var(--border-color)", paddingLeft: "8px", marginTop: "4px" }}>
+                                  {group.topics.map(topic => (
+                                    <button
+                                      key={topic.id}
+                                      onClick={() => handleSelectTopic(topic, group.title)}
+                                      className={`history-item ${selectedTopic?.id === topic.id ? "active" : ""}`}
+                                      style={{
+                                        width: "100%",
+                                        justifyContent: "flex-start",
+                                        fontSize: "0.8rem",
+                                        padding: "6px 8px",
+                                        marginBottom: "2px",
+                                        border: "none",
+                                        textAlign: "left"
+                                      }}
+                                    >
+                                      <span style={{ opacity: 0.7, marginRight: "6px", fontSize: "0.75rem" }}>{topic.id}</span>
+                                      <span>{topic.title}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        // Chat History Sidebar
+                        <>
+                          <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
+                              <Plus size={16} /> New Chat
+                            </button>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                              onClick={() => {
+                                setViewMode("docs");
+                                setIsHistoryOpen(false);
+                              }}
+                            >
+                              <Book size={16} /> Official Docs
+                            </button>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                              onClick={() => {
+                                setViewMode("learning");
+                                setIsHistoryOpen(true); // Keep sidebar open for topic selection
+                              }}
+                            >
+                              <Sparkles size={16} /> Getting Started with AI
+                            </button>
+                          </div>
+                          <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+
+                            <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: "8px" }}><MessageSquare size={12} /> Recent Activity</div>
+                            {chats.length === 0 ? (
+                              <div className="empty-history">No history yet</div>
+                            ) : (
+                              <>
+                                {chats.slice(0, visibleChats).map((chat) => (
+                                  <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
+                                    <MessageSquare size={14} />
+                                    <span className="history-title">{chat.title}</span>
+                                    <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                ))}
+                                {visibleChats < chats.length && (
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ width: "100%", justifyContent: "center", marginTop: "8px", fontSize: "0.8rem", padding: "6px", border: "1px solid var(--border-color)" }}
+                                    onClick={() => setVisibleChats(prev => prev + 20)}
+                                  >
+                                    Load More
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: viewMode === "ai" ? "flex" : "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+                    {aiService === "api" ? (
+                      <>
+                        <div className="description-container" ref={mainChatScrollRef}>
+                          <ReactMarkdown
+                            components={markdownComponents}
+                            remarkPlugins={[remarkGfm]}
+                          >
+                            {description}
+                          </ReactMarkdown>
+                        </div>
+                      </>
+                    ) : (
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: 24,
+                          textAlign: "center",
+                        }}
+                      >
+                        <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
+                          <Globe size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
+                          <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Open Web LLM</h3>
+                          <p style={{ color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>
+                            Select your preferred web LLM to chat, analyze images, and more. We'll copy your code to the clipboard for you.
+                          </p>
+                          <select
+                            className="settings-input"
+                            style={{ appearance: 'auto', WebkitAppearance: 'auto' as any, marginBottom: 24, padding: "8px 12px", width: "100%", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-color)", borderRadius: 4 }}
+                            value={webLlm}
+                            onChange={(e) => setWebLlm(e.target.value)}
+                          >
+                            <option value="groq">Groq</option>
+                            <option value="huggingface">Hugging Face</option>
+                            <option value="gemini">Google Gemini</option>
+                            <option value="openai">OpenAI (ChatGPT)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                          </select>
+                          <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleOpenWebLlm}>
+                            <Copy size={16} /> Copy Code & Open {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: viewMode === "docs" ? "flex" : "none", flex: 1, flexDirection: "column" }}>
+                    {(language === "rust" || language === "python" || language === "ml") ? (
+                      <iframe
+                        src={language === "rust" ? "https://doc.rust-lang.org/book/" : language === "ml" ? "https://scikit-learn.org/stable/user_guide.html" : "https://docs.python.org/3/"}
+                        title="Documentation"
+                        style={{ flex: 1, border: "none", width: "100%", height: "100%", backgroundColor: "var(--bg-color)" }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: 24,
+                          textAlign: "center",
+                          height: "100%"
+                        }}
+                      >
+                        <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
+                          <Book size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
+                          <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Official Documentation</h3>
+                          <p style={{ color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.5 }}>
+                            MDN documentation cannot be embedded directly. Please open it in your browser.
+                          </p>
+                          <button
+                            className="btn btn-primary"
+                            style={{ width: "100%", justifyContent: "center" }}
+                            onClick={async () => {
+                              const url =
+                                language === "html" ? "https://developer.mozilla.org/en-US/docs/Web/HTML" :
+                                  language === "css" ? "https://developer.mozilla.org/en-US/docs/Web/CSS" :
+                                    "https://developer.mozilla.org/en-US/docs/Web/JavaScript";
+                              try {
+                                await openUrl(url);
+                              } catch (e) {
+                                window.open(url, "_blank");
+                              }
+                            }}
+                          >
+                            <Globe size={16} style={{ marginRight: 8 }} /> Open {language.toUpperCase()} Docs
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: viewMode === "shortcuts" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
+                    <Shortcuts />
+                  </div>
+
+                  <div style={{ display: viewMode === "learning" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
+                    <AiLearning
+                      ref={learningRef}
+                      language={language}
+                      apiKey={llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey}
+                      provider={llmProvider}
+                      selectedModel={selectedModel}
+                      topic={selectedTopic}
+                      groupTitle={selectedGroup}
+                      onBack={() => setIsHistoryOpen(true)}
+                      onApplyCode={setCode}
+                    />
+                  </div>
+
+
+
+                  {/* Shared AI Controls */}
+                  {((viewMode === "ai" && aiService === "api") || viewMode === "learning") && (
+                    <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px" }}>
+                      <textarea
+                        className="ai-input"
+                        placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
+                        value={input}
+                        onChange={(e) => {
+                          setInput(e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
+                            e.preventDefault();
+                            handleSend();
+                            e.currentTarget.style.height = 'auto';
+                          }
+                        }}
+                        rows={1}
+                        style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden" }}
+                      />
+                      <button className="btn btn-primary" onClick={handleSend}>
+                        <Send size={18} />
                       </button>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
 
-              <div style={{ display: viewMode === "shortcuts" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
-                <Shortcuts />
-              </div>
-
-              <div style={{ display: viewMode === "learning" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
-                <AiLearning
-                  ref={learningRef}
-                  language={language}
-                  apiKey={llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey}
-                  provider={llmProvider}
-                  selectedModel={selectedModel}
-                  topic={selectedTopic}
-                  groupTitle={selectedGroup}
-                  onBack={() => setIsHistoryOpen(true)}
-                  onApplyCode={setCode}
-                />
-              </div>
-
-
-
-              {/* Shared AI Controls */}
-              {((viewMode === "ai" && aiService === "api") || viewMode === "learning") && (
-                <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px" }}>
-                  <textarea
-                    className="ai-input"
-                    placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
-                    value={input}
-                    onChange={(e) => {
-                      setInput(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = e.target.scrollHeight + 'px';
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
-                        e.preventDefault();
-                        handleSend();
-                        e.currentTarget.style.height = 'auto';
-                      }
-                    }}
-                    rows={1}
-                    style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden" }}
-                  />
-                  <button className="btn btn-primary" onClick={handleSend}>
-                    <Send size={18} />
-                  </button>
+                  {/* Removed duplicate Floating Quick Chat Modal here */}
                 </div>
-              )}
-
-              {/* Removed duplicate Floating Quick Chat Modal here */}
-            </div>
-          </Panel >
-
-          {isEditorVisible && <PanelResizeHandle className="resizer horizontal" />}
+              </Panel >
+              <PanelResizeHandle className="resizer horizontal" />
+            </>
+          )}
 
           {isEditorVisible && (
             <Panel defaultSize={50} minSize={30}>
@@ -1620,6 +1634,14 @@ function App() {
                           title="Settings"
                         >
                           <Settings size={16} />
+                        </button>
+                        <button
+                          className={`tab-btn ${!isAiAssistantVisible ? "active" : ""}`}
+                          title={isAiAssistantVisible ? "Hide AI Assistant" : "Show AI Assistant"}
+                          onClick={() => setIsAiAssistantVisible(!isAiAssistantVisible)}
+                          style={{ padding: "4px 8px" }}
+                        >
+                          {isAiAssistantVisible ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
                         </button>
                         <button
                           className={`tab-btn ${isMinimapVisible ? "active" : ""}`}

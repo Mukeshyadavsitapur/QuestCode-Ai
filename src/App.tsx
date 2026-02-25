@@ -276,9 +276,24 @@ function App() {
     } else if (llmProvider === "anthropic") {
       setAvailableModels(["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]);
     } else if (llmProvider === "groq") {
-      setAvailableModels(["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]);
+      setAvailableModels(["openai/gpt-oss-20b", "openai/gpt-oss-120b", "openai/gpt-oss-safeguard-20b", "moonshotai/kimi-k2-instruct-0905", "meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]);
     } else if (llmProvider === "huggingface") {
-      setAvailableModels(["meta-llama/Llama-3.3-70B-Instruct", "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", "Qwen/Qwen2.5-72B-Instruct", "mistralai/Mixtral-8x7B-Instruct-v0.1"]);
+      setAvailableModels([
+        "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "microsoft/phi-4-mini",
+        "meta-llama/Llama-3.1-8B-Instruct",
+        "google/gemma-2-9b-it",
+        "mistralai/Mistral-7B-Instruct-v0.3",
+        "bigcode/starcoder2-7b",
+        "ibm-granite/granite-3.0-8b-instruct",
+        "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct",
+        "sentence-transformers/all-MiniLM-L6-v2",
+        "meta-llama/Llama-3.3-70B-Instruct",
+        "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+        "Qwen/Qwen2.5-72B-Instruct",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1"
+      ]);
     }
   }, [llmProvider, apiKey, openAiApiKey, anthropicApiKey, groqApiKey, huggingFaceApiKey]);
 

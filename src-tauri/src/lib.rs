@@ -1,12 +1,10 @@
-use serde::{Deserialize, Serialize};
 use reqwest::Client;
-use std::process::Stdio;
-use tokio::process::Command as TokioCommand;
-use tokio::sync::{Mutex, oneshot};
-use tauri::State;
+use serde::{Deserialize, Serialize};
 use std::env;
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
+use std::process::Stdio;
+use tauri::State;
+use tokio::process::Command as TokioCommand;
+use tokio::sync::{oneshot, Mutex};
 // actually simple std::fs::write is fine for small files.
 
 #[derive(Serialize)]
@@ -82,7 +80,8 @@ async fn fetch_gemini_models_raw(api_key: &str) -> Result<Vec<String>, String> {
         api_key
     );
 
-    let response = client.get(&url)
+    let response = client
+        .get(&url)
         .send()
         .await
         .map_err(|e| format!("Network error: {}", e))?;
@@ -92,16 +91,22 @@ async fn fetch_gemini_models_raw(api_key: &str) -> Result<Vec<String>, String> {
         return Err(format!("API Error: {}", error_text));
     }
 
-    let model_list: GeminiModelList = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
-    
+    let model_list: GeminiModelList = response
+        .json()
+        .await
+        .map_err(|e| format!("Parse error: {}", e))?;
+
     // Basic structural filter for "generateContent" and Gemini naming
-    let models: Vec<String> = model_list.models.into_iter()
+    let models: Vec<String> = model_list
+        .models
+        .into_iter()
         .filter(|m| {
             let name = m.name.to_lowercase();
-            m.supported_generation_methods.contains(&"generateContent".to_string()) &&
-            !name.contains("tts") &&
-            !name.contains("embedding") &&
-            name.contains("gemini")
+            m.supported_generation_methods
+                .contains(&"generateContent".to_string())
+                && !name.contains("tts")
+                && !name.contains("embedding")
+                && name.contains("gemini")
         })
         .map(|m| m.name.replace("models/", ""))
         .collect();
@@ -109,7 +114,12 @@ async fn fetch_gemini_models_raw(api_key: &str) -> Result<Vec<String>, String> {
     Ok(models)
 }
 
-async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+async fn call_gemini(
+    api_key: &str,
+    prompt: &str,
+    selected_model: Option<String>,
+    temperature: Option<f32>,
+) -> Result<AIResponse, String> {
     if api_key.trim().is_empty() {
         return Err("API Key is missing. Please add it in Settings.".to_string());
     }
@@ -118,10 +128,13 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
     let all_models = match fetch_gemini_models_raw(api_key).await {
         Ok(m) => m,
         Err(e) => {
-            println!("⚠️ Failed to fetch models dynamically: {}. Using hardcoded fallbacks.", e);
+            println!(
+                "⚠️ Failed to fetch models dynamically: {}. Using hardcoded fallbacks.",
+                e
+            );
             vec![
-                "gemini-2.0-flash".to_string(), 
-                "gemini-1.5-flash".to_string()
+                "gemini-2.0-flash".to_string(),
+                "gemini-1.5-flash".to_string(),
             ]
         }
     };
@@ -142,23 +155,29 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
     let mut selected_family = None;
     if let Some(ref m) = selected_model {
         let m_clean = m.replace("models/", "");
-        if m_clean.contains("1.5") { selected_family = Some("1.5"); }
-        else if m_clean.contains("2.0") { selected_family = Some("2.0"); }
-        else if m_clean.contains("2.5") { selected_family = Some("2.5"); }
-        else if m_clean.contains("3.0") { selected_family = Some("3.0"); }
-        
+        if m_clean.contains("1.5") {
+            selected_family = Some("1.5");
+        } else if m_clean.contains("2.0") {
+            selected_family = Some("2.0");
+        } else if m_clean.contains("2.5") {
+            selected_family = Some("2.5");
+        } else if m_clean.contains("3.0") {
+            selected_family = Some("3.0");
+        }
+
         // Add specific selected model first (Priority 1)
         execution_chain.push(m_clean);
     }
 
     // Helper to add unique models from a family
-    let mut add_family = |chain: &mut Vec<String>, family: &str| {
-        let mut family_models: Vec<String> = all_models.iter()
+    let add_family = |chain: &mut Vec<String>, family: &str| {
+        let mut family_models: Vec<String> = all_models
+            .iter()
             .filter(|m| m.contains(family))
             .cloned()
             .collect();
-        
-        family_models.sort_by(|a, b| b.cmp(a)); 
+
+        family_models.sort_by(|a, b| b.cmp(a));
 
         for m in family_models {
             if !chain.contains(&m) {
@@ -183,10 +202,17 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
     let mut last_error = "No response generated.".to_string();
 
     for model in &execution_chain {
-        println!("Attempting request with model: {}, temp: {:?}", model, temperature);
+        println!(
+            "Attempting request with model: {}, temp: {:?}",
+            model, temperature
+        );
         let client = Client::new();
-        let model_path = if model.starts_with("models/") { model.to_string() } else { format!("models/{}", model) };
-        
+        let model_path = if model.starts_with("models/") {
+            model.to_string()
+        } else {
+            format!("models/{}", model)
+        };
+
         let url = format!(
             "https://generativelanguage.googleapis.com/v1beta/{}:generateContent?key={}",
             model_path, api_key
@@ -202,15 +228,12 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
         };
 
         if let Some(temp) = temperature {
-             request_body.generation_config = Some(GenerationConfig {
+            request_body.generation_config = Some(GenerationConfig {
                 temperature: Some(temp),
             });
         }
 
-        let response_res = client.post(&url)
-            .json(&request_body)
-            .send()
-            .await;
+        let response_res = client.post(&url).json(&request_body).send().await;
 
         let response = match response_res {
             Ok(resp) => resp,
@@ -221,13 +244,16 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
         };
 
         if response.status().is_success() {
-            let gemini_resp: GeminiResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+            let gemini_resp: GeminiResponse = response
+                .json()
+                .await
+                .map_err(|e| format!("Parse error: {}", e))?;
 
             if let Some(candidates) = gemini_resp.candidates {
                 if let Some(first_candidate) = candidates.first() {
                     if let Some(first_part) = first_candidate.content.parts.first() {
                         println!("✅ SUCCESS: Response received from model: {}", model);
-                        
+
                         return Ok(AIResponse {
                             content: first_part.text.clone(),
                             model: model.to_string(),
@@ -235,20 +261,29 @@ async fn call_gemini(api_key: &str, prompt: &str, selected_model: Option<String>
                     }
                 }
             }
-            println!("⚠️ WARNING: Parse success but no content in candidates for {}", model);
+            println!(
+                "⚠️ WARNING: Parse success but no content in candidates for {}",
+                model
+            );
         } else {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
             last_error = format!("Model {} Error ({}): {}", model, status, error_text);
-            
+
             if status.is_success() {
-                 return Err(last_error);
+                return Err(last_error);
             }
-            println!("🔄 FALLBACK: Model {} failed with {}. Trying next...", model, status);
+            println!(
+                "🔄 FALLBACK: Model {} failed with {}. Trying next...",
+                model, status
+            );
         }
     }
 
-    Err(format!("Request failed after trying chain: {:?}. Last error: {}", execution_chain, last_error))
+    Err(format!(
+        "Request failed after trying chain: {:?}. Last error: {}",
+        execution_chain, last_error
+    ))
 }
 
 #[tauri::command]
@@ -260,12 +295,9 @@ async fn get_available_models(api_key: String) -> Result<Vec<String>, String> {
     let all_models = fetch_gemini_models_raw(&api_key).await?;
 
     // Filter for UI: Keep 2.5 and newer (exclude 1.0, 1.5, 2.0)
-    let ui_models: Vec<String> = all_models.into_iter()
-        .filter(|name| {
-            !name.contains("1.0") &&
-            !name.contains("1.5") &&
-            !name.contains("2.0")
-        })
+    let ui_models: Vec<String> = all_models
+        .into_iter()
+        .filter(|name| !name.contains("1.0") && !name.contains("1.5") && !name.contains("2.0"))
         .collect();
 
     Ok(ui_models)
@@ -296,7 +328,12 @@ struct OpenAIResponse {
     choices: Vec<OpenAIChoice>,
 }
 
-async fn call_openai(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+async fn call_openai(
+    api_key: &str,
+    prompt: &str,
+    selected_model: Option<String>,
+    temperature: Option<f32>,
+) -> Result<AIResponse, String> {
     if api_key.trim().is_empty() {
         return Err("OpenAI API Key is missing. Please add it in Settings.".to_string());
     }
@@ -326,7 +363,10 @@ async fn call_openai(api_key: &str, prompt: &str, selected_model: Option<String>
     let mut last_error = "No response generated.".to_string();
 
     for model in execution_chain {
-        println!("Attempting OpenAI request with model: {}, temp: {:?}", model, temperature);
+        println!(
+            "Attempting OpenAI request with model: {}, temp: {:?}",
+            model, temperature
+        );
         let client = Client::new();
 
         let request_body = OpenAIRequest {
@@ -338,7 +378,8 @@ async fn call_openai(api_key: &str, prompt: &str, selected_model: Option<String>
             temperature,
         };
 
-        let response_res = client.post("https://api.openai.com/v1/chat/completions")
+        let response_res = client
+            .post("https://api.openai.com/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
             .json(&request_body)
@@ -354,7 +395,10 @@ async fn call_openai(api_key: &str, prompt: &str, selected_model: Option<String>
         };
 
         if response.status().is_success() {
-            let openai_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+            let openai_resp: OpenAIResponse = response
+                .json()
+                .await
+                .map_err(|e| format!("Parse error: {}", e))?;
             if let Some(choice) = openai_resp.choices.first() {
                 println!("✅ SUCCESS: Response received from OpenAI model: {}", model);
                 return Ok(AIResponse {
@@ -362,17 +406,26 @@ async fn call_openai(api_key: &str, prompt: &str, selected_model: Option<String>
                     model,
                 });
             }
-            println!("⚠️ WARNING: Parse success but no valid choices returned for {}", model);
+            println!(
+                "⚠️ WARNING: Parse success but no valid choices returned for {}",
+                model
+            );
         } else {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
             last_error = format!("Model {} Error ({}): {}", model, status, error_text);
-            
-            println!("🔄 FALLBACK: OpenAI model {} failed with {}. Trying next...", model, status);
+
+            println!(
+                "🔄 FALLBACK: OpenAI model {} failed with {}. Trying next...",
+                model, status
+            );
         }
     }
 
-    Err(format!("OpenAI request failed after trying chain. Last error: {}", last_error))
+    Err(format!(
+        "OpenAI request failed after trying chain. Last error: {}",
+        last_error
+    ))
 }
 
 // --- Anthropic Support ---
@@ -401,7 +454,12 @@ struct AnthropicResponse {
     content: Vec<AnthropicContentBlock>,
 }
 
-async fn call_anthropic(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+async fn call_anthropic(
+    api_key: &str,
+    prompt: &str,
+    selected_model: Option<String>,
+    temperature: Option<f32>,
+) -> Result<AIResponse, String> {
     if api_key.trim().is_empty() {
         return Err("Anthropic API Key is missing. Please add it in Settings.".to_string());
     }
@@ -431,7 +489,10 @@ async fn call_anthropic(api_key: &str, prompt: &str, selected_model: Option<Stri
     let mut last_error = "No response generated.".to_string();
 
     for model in execution_chain {
-        println!("Attempting Anthropic request with model: {}, temp: {:?}", model, temperature);
+        println!(
+            "Attempting Anthropic request with model: {}, temp: {:?}",
+            model, temperature
+        );
         let client = Client::new();
 
         let request_body = AnthropicRequest {
@@ -444,7 +505,8 @@ async fn call_anthropic(api_key: &str, prompt: &str, selected_model: Option<Stri
             temperature,
         };
 
-        let response_res = client.post("https://api.anthropic.com/v1/messages")
+        let response_res = client
+            .post("https://api.anthropic.com/v1/messages")
             .header("x-api-key", api_key)
             .header("anthropic-version", "2023-06-01")
             .header("content-type", "application/json")
@@ -461,34 +523,59 @@ async fn call_anthropic(api_key: &str, prompt: &str, selected_model: Option<Stri
         };
 
         if response.status().is_success() {
-            let anthropic_resp: AnthropicResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+            let anthropic_resp: AnthropicResponse = response
+                .json()
+                .await
+                .map_err(|e| format!("Parse error: {}", e))?;
             if let Some(block) = anthropic_resp.content.first() {
-                println!("✅ SUCCESS: Response received from Anthropic model: {}", model);
+                println!(
+                    "✅ SUCCESS: Response received from Anthropic model: {}",
+                    model
+                );
                 return Ok(AIResponse {
                     content: block.text.clone(),
                     model,
                 });
             }
-            println!("⚠️ WARNING: Parse success but no content returned for {}", model);
+            println!(
+                "⚠️ WARNING: Parse success but no content returned for {}",
+                model
+            );
         } else {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
             last_error = format!("Model {} Error ({}): {}", model, status, error_text);
-            
-            println!("🔄 FALLBACK: Anthropic model {} failed with {}. Trying next...", model, status);
+
+            println!(
+                "🔄 FALLBACK: Anthropic model {} failed with {}. Trying next...",
+                model, status
+            );
         }
     }
-    
-    Err(format!("Anthropic request failed after trying chain. Last error: {}", last_error))
+
+    Err(format!(
+        "Anthropic request failed after trying chain. Last error: {}",
+        last_error
+    ))
 }
 
 // --- Groq Support ---
-async fn call_groq(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+async fn call_groq(
+    api_key: &str,
+    prompt: &str,
+    selected_model: Option<String>,
+    temperature: Option<f32>,
+) -> Result<AIResponse, String> {
     if api_key.trim().is_empty() {
         return Err("Groq API Key is missing.".to_string());
     }
 
     let default_models = vec![
+        "openai/gpt-oss-20b".to_string(),
+        "openai/gpt-oss-120b".to_string(),
+        "openai/gpt-oss-safeguard-20b".to_string(),
+        "moonshotai/kimi-k2-instruct-0905".to_string(),
+        "meta-llama/llama-4-scout-17b-16e-instruct".to_string(),
         "llama-3.3-70b-versatile".to_string(),
         "llama-3.1-8b-instant".to_string(),
         "mixtral-8x7b-32768".to_string(),
@@ -512,7 +599,10 @@ async fn call_groq(api_key: &str, prompt: &str, selected_model: Option<String>, 
     let mut last_error = "No response generated.".to_string();
 
     for model in execution_chain {
-        println!("Attempting Groq request with model: {}, temp: {:?}", model, temperature);
+        println!(
+            "Attempting Groq request with model: {}, temp: {:?}",
+            model, temperature
+        );
         let client = Client::new();
 
         let request_body = OpenAIRequest {
@@ -524,7 +614,8 @@ async fn call_groq(api_key: &str, prompt: &str, selected_model: Option<String>, 
             temperature,
         };
 
-        let response_res = client.post("https://api.groq.com/openai/v1/chat/completions")
+        let response_res = client
+            .post("https://api.groq.com/openai/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
             .json(&request_body)
@@ -540,7 +631,10 @@ async fn call_groq(api_key: &str, prompt: &str, selected_model: Option<String>, 
         };
 
         if response.status().is_success() {
-            let groq_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+            let groq_resp: OpenAIResponse = response
+                .json()
+                .await
+                .map_err(|e| format!("Parse error: {}", e))?;
             if let Some(choice) = groq_resp.choices.first() {
                 println!("✅ SUCCESS: Response received from Groq model: {}", model);
                 return Ok(AIResponse {
@@ -548,26 +642,50 @@ async fn call_groq(api_key: &str, prompt: &str, selected_model: Option<String>, 
                     model,
                 });
             }
-            println!("⚠️ WARNING: Parse success but no valid choices returned for {}", model);
+            println!(
+                "⚠️ WARNING: Parse success but no valid choices returned for {}",
+                model
+            );
         } else {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
             last_error = format!("Model {} Error ({}): {}", model, status, error_text);
-            
-            println!("🔄 FALLBACK: Groq model {} failed with {}. Trying next...", model, status);
+
+            println!(
+                "🔄 FALLBACK: Groq model {} failed with {}. Trying next...",
+                model, status
+            );
         }
     }
 
-    Err(format!("Groq request failed after trying chain. Last error: {}", last_error))
+    Err(format!(
+        "Groq request failed after trying chain. Last error: {}",
+        last_error
+    ))
 }
 
 // --- Hugging Face Support ---
-async fn call_huggingface(api_key: &str, prompt: &str, selected_model: Option<String>, temperature: Option<f32>) -> Result<AIResponse, String> {
+async fn call_huggingface(
+    api_key: &str,
+    prompt: &str,
+    selected_model: Option<String>,
+    temperature: Option<f32>,
+) -> Result<AIResponse, String> {
     if api_key.trim().is_empty() {
         return Err("Hugging Face API Key is missing.".to_string());
     }
 
     let default_models = vec![
+        "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B".to_string(),
+        "Qwen/Qwen2.5-Coder-7B-Instruct".to_string(),
+        "microsoft/phi-4-mini".to_string(),
+        "meta-llama/Llama-3.1-8B-Instruct".to_string(),
+        "google/gemma-2-9b-it".to_string(),
+        "mistralai/Mistral-7B-Instruct-v0.3".to_string(),
+        "bigcode/starcoder2-7b".to_string(),
+        "ibm-granite/granite-3.0-8b-instruct".to_string(),
+        "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct".to_string(),
+        "sentence-transformers/all-MiniLM-L6-v2".to_string(),
         "meta-llama/Llama-3.3-70B-Instruct".to_string(),
         "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B".to_string(),
         "Qwen/Qwen2.5-72B-Instruct".to_string(),
@@ -593,11 +711,14 @@ async fn call_huggingface(api_key: &str, prompt: &str, selected_model: Option<St
     let url = "https://router.huggingface.co/v1/chat/completions";
 
     for model in execution_chain {
-        println!("Attempting Hugging Face request with model: {}, temp: {:?}", model, temperature);
+        println!(
+            "Attempting Hugging Face request with model: {}, temp: {:?}",
+            model, temperature
+        );
         let client = Client::new();
 
         let request_body = OpenAIRequest {
-            model: model.clone(), 
+            model: model.clone(),
             messages: vec![OpenAIMessage {
                 role: "user".to_string(),
                 content: prompt.to_string(),
@@ -605,7 +726,8 @@ async fn call_huggingface(api_key: &str, prompt: &str, selected_model: Option<St
             temperature: temperature.or(Some(0.1)), // HF often requires this
         };
 
-        let response_res = client.post(url)
+        let response_res = client
+            .post(url)
             .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
             .json(&request_body)
@@ -621,25 +743,40 @@ async fn call_huggingface(api_key: &str, prompt: &str, selected_model: Option<St
         };
 
         if response.status().is_success() {
-            let hf_resp: OpenAIResponse = response.json().await.map_err(|e| format!("Parse error: {}", e))?;
+            let hf_resp: OpenAIResponse = response
+                .json()
+                .await
+                .map_err(|e| format!("Parse error: {}", e))?;
             if let Some(choice) = hf_resp.choices.first() {
-                println!("✅ SUCCESS: Response received from Hugging Face model: {}", model);
+                println!(
+                    "✅ SUCCESS: Response received from Hugging Face model: {}",
+                    model
+                );
                 return Ok(AIResponse {
                     content: choice.message.content.clone(),
                     model,
                 });
             }
-            println!("⚠️ WARNING: Parse success but no valid choices returned for {}", model);
+            println!(
+                "⚠️ WARNING: Parse success but no valid choices returned for {}",
+                model
+            );
         } else {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
             last_error = format!("Model {} Error ({}): {}", model, status, error_text);
-            
-            println!("🔄 FALLBACK: Hugging Face model {} failed with {}. Trying next...", model, status);
+
+            println!(
+                "🔄 FALLBACK: Hugging Face model {} failed with {}. Trying next...",
+                model, status
+            );
         }
     }
 
-    Err(format!("Hugging Face request failed after trying chain. Last error: {}", last_error))
+    Err(format!(
+        "Hugging Face request failed after trying chain. Last error: {}",
+        last_error
+    ))
 }
 
 #[derive(Deserialize)]
@@ -665,26 +802,40 @@ struct QuestionRequest {
 
 #[tauri::command]
 async fn explain_code(req: AIRequest) -> Result<AIResponse, String> {
-    let prompt = format!("Explain this {} code in markdown format:\n\n```{}\n{}\n```", req.language, req.language, req.code);
+    let prompt = format!(
+        "Explain this {} code in markdown format:\n\n```{}\n{}\n```",
+        req.language, req.language, req.code
+    );
     let provider = req.provider.as_deref().unwrap_or("groq");
     match provider {
         "openai" => call_openai(&req.api_key, &prompt, req.selected_model, req.temperature).await,
-        "anthropic" => call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "anthropic" => {
+            call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await
+        }
         "groq" => call_groq(&req.api_key, &prompt, req.selected_model, req.temperature).await,
-        "huggingface" => call_huggingface(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "huggingface" => {
+            call_huggingface(&req.api_key, &prompt, req.selected_model, req.temperature).await
+        }
         _ => call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await,
     }
 }
 
 #[tauri::command]
 async fn ask_question(req: QuestionRequest) -> Result<AIResponse, String> {
-    let prompt = format!("Given this {} code:\n\n```{}\n{}\n```\n\nQuestion: {}\n\nAnswer in markdown:", req.language, req.language, req.code, req.question);
+    let prompt = format!(
+        "Given this {} code:\n\n```{}\n{}\n```\n\nQuestion: {}\n\nAnswer in markdown:",
+        req.language, req.language, req.code, req.question
+    );
     let provider = req.provider.as_deref().unwrap_or("groq");
     match provider {
         "openai" => call_openai(&req.api_key, &prompt, req.selected_model, req.temperature).await,
-        "anthropic" => call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "anthropic" => {
+            call_anthropic(&req.api_key, &prompt, req.selected_model, req.temperature).await
+        }
         "groq" => call_groq(&req.api_key, &prompt, req.selected_model, req.temperature).await,
-        "huggingface" => call_huggingface(&req.api_key, &prompt, req.selected_model, req.temperature).await,
+        "huggingface" => {
+            call_huggingface(&req.api_key, &prompt, req.selected_model, req.temperature).await
+        }
         _ => call_gemini(&req.api_key, &prompt, req.selected_model, req.temperature).await,
     }
 }
@@ -701,18 +852,22 @@ async fn stop_execution(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn execute_code(state: State<'_, AppState>, code: String, language: String) -> Result<String, String> {
+async fn execute_code(
+    state: State<'_, AppState>,
+    code: String,
+    language: String,
+) -> Result<String, String> {
     // 1. Create a temporary directory/file
     let mut temp_dir = env::temp_dir();
     temp_dir.push("rust_reader_pro_exec");
-    
+
     // Ensure dir exists
     if !temp_dir.exists() {
         std::fs::create_dir(&temp_dir).map_err(|e| format!("Failed to create temp dir: {}", e))?;
     }
 
     let (tx, rx) = oneshot::channel();
-    
+
     // Store the cancellation sender
     {
         let mut lock = state.stop_tx.lock().await;
@@ -721,16 +876,17 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
 
     let result = if language.to_lowercase() == "rust" {
         let file_path = temp_dir.join("main.rs");
-        let exe_path = temp_dir.join("main.exe"); 
+        let exe_path = temp_dir.join("main.exe");
 
         // Write code to file (synchronously is fine for small files)
         if let Err(e) = std::fs::write(&file_path, &code) {
-           return Err(format!("Failed to write code: {}", e));
+            return Err(format!("Failed to write code: {}", e));
         }
 
         // Compile using rustc (cancellable)
         let mut compile_cmd = TokioCommand::new("rustc");
-        compile_cmd.arg(&file_path)
+        compile_cmd
+            .arg(&file_path)
             .arg("-o")
             .arg(&exe_path)
             .stdout(Stdio::piped())
@@ -738,26 +894,33 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
             .kill_on_drop(true);
 
         #[cfg(target_os = "windows")]
-        compile_cmd.creation_flags(0x08000000); 
+        compile_cmd.creation_flags(0x08000000);
 
-        let compile_output = compile_cmd.output().await
+        let compile_output = compile_cmd
+            .output()
+            .await
             .map_err(|e| format!("Failed to run rustc: {}. Is Rust installed?", e))?;
 
         if !compile_output.status.success() {
-             Ok(format!("Compilation Error:\n{}", String::from_utf8_lossy(&compile_output.stderr)))
+            Ok(format!(
+                "Compilation Error:\n{}",
+                String::from_utf8_lossy(&compile_output.stderr)
+            ))
         } else {
             // Run the executable
             let mut run_cmd = TokioCommand::new(&exe_path);
-            run_cmd.stdout(Stdio::piped())
+            run_cmd
+                .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .kill_on_drop(true);
 
             #[cfg(target_os = "windows")]
             run_cmd.creation_flags(0x08000000);
 
-            let child = run_cmd.spawn()
+            let child = run_cmd
+                .spawn()
                 .map_err(|e| format!("Failed to spawn executable: {}", e))?;
-            
+
             tokio::select! {
                 output_res = child.wait_with_output() => {
                     match output_res {
@@ -778,7 +941,6 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
                 }
             }
         }
-
     } else if language.to_lowercase() == "python" {
         let file_path = temp_dir.join("script.py");
 
@@ -788,14 +950,15 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
 
         let mut cmd = TokioCommand::new("python");
         cmd.arg(&file_path)
-           .stdout(Stdio::piped())
-           .stderr(Stdio::piped())
-           .kill_on_drop(true);
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true);
 
         #[cfg(target_os = "windows")]
         cmd.creation_flags(0x08000000);
 
-        let child = cmd.spawn()
+        let child = cmd
+            .spawn()
             .map_err(|e| format!("Failed to run python: {}. Is Python installed?", e))?;
 
         tokio::select! {
@@ -821,19 +984,20 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
         let file_path = temp_dir.join("script.js");
 
         if let Err(e) = std::fs::write(&file_path, &code) {
-             return Err(format!("Failed to write code: {}", e));
+            return Err(format!("Failed to write code: {}", e));
         }
 
         let mut cmd = TokioCommand::new("node"); // Assumes node is in PATH
         cmd.arg(&file_path)
-           .stdout(Stdio::piped())
-           .stderr(Stdio::piped())
-           .kill_on_drop(true);
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true);
 
         #[cfg(target_os = "windows")]
         cmd.creation_flags(0x08000000);
 
-        let child = cmd.spawn()
+        let child = cmd
+            .spawn()
             .map_err(|e| format!("Failed to run node: {}. Is Node.js installed?", e))?;
 
         tokio::select! {
@@ -858,26 +1022,22 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
     } else if language.to_lowercase() == "html" {
         let file_path = temp_dir.join("index.html");
         if let Err(e) = std::fs::write(&file_path, &code) {
-             return Err(format!("Failed to write code: {}", e));
+            return Err(format!("Failed to write code: {}", e));
         }
-        
+
         // Open the file in the default browser using 'start' command on Windows
         // For cross-platform, we might need different commands (open on Mac, xdg-open on Linux)
         // Since user is on Windows:
         let mut cmd = TokioCommand::new("cmd");
-        cmd.arg("/C")
-           .arg("start")
-           .arg(&file_path)
-           .arg(&file_path);
+        cmd.arg("/C").arg("start").arg(&file_path).arg(&file_path);
 
         #[cfg(target_os = "windows")]
         cmd.creation_flags(0x08000000);
 
         match cmd.spawn() {
             Ok(_) => Ok("Opened index.html in your default browser.".to_string()),
-            Err(e) => Err(format!("Failed to open browser: {}", e))
+            Err(e) => Err(format!("Failed to open browser: {}", e)),
         }
-
     } else if language.to_lowercase() == "css" {
         let file_path = temp_dir.join("style_preview.html");
         let html_content = format!(
@@ -909,21 +1069,18 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
         );
 
         if let Err(e) = std::fs::write(&file_path, &html_content) {
-             return Err(format!("Failed to write preview file: {}", e));
+            return Err(format!("Failed to write preview file: {}", e));
         }
 
         let mut cmd = TokioCommand::new("cmd");
-        cmd.arg("/C")
-           .arg("start")
-           .arg(&file_path)
-           .arg(&file_path);
+        cmd.arg("/C").arg("start").arg(&file_path).arg(&file_path);
 
         #[cfg(target_os = "windows")]
         cmd.creation_flags(0x08000000);
 
         match cmd.spawn() {
             Ok(_) => Ok("Opened CSS preview in your default browser.".to_string()),
-            Err(e) => Err(format!("Failed to open browser: {}", e))
+            Err(e) => Err(format!("Failed to open browser: {}", e)),
         }
     } else {
         Err(format!("Unsupported language: {}", language))
@@ -942,12 +1099,14 @@ async fn execute_code(state: State<'_, AppState>, code: String, language: String
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(AppState { stop_tx: Mutex::new(None) })
+        .manage(AppState {
+            stop_tx: Mutex::new(None),
+        })
         .invoke_handler(tauri::generate_handler![
-            explain_code, 
-            ask_question, 
-            execute_code, 
-            stop_execution, 
+            explain_code,
+            ask_question,
+            execute_code,
+            stop_execution,
             get_available_models
         ])
         .run(tauri::generate_context!())

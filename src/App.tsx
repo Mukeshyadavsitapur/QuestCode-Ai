@@ -398,42 +398,43 @@ function App() {
   useEffect(() => {
     loader.init().then((monaco) => {
       Object.values(themes).forEach((t) => {
-        const isLight = ["day", "sepia", "yellow", "ocean", "slate"].includes(t.id);
+        // 'day' and 'e-reader' are our light themes
+        const isLight = ["day", "e-reader"].includes(t.id);
         const base = isLight ? "vs" : "vs-dark";
 
-        // Define syntax highlighting rules based on light/dark mode
+        // High contrast syntax highlighting for perfect readability
         const rules = isLight
           ? [
             { token: "", foreground: t.text.replace("#", "") }, // Default text color
-            { token: "comment", foreground: "008000" },
-            { token: "keyword", foreground: "098658", fontStyle: "bold" },
-            { token: "string", foreground: "a31515" },
-            { token: "number", foreground: "098658" },
-            { token: "regexp", foreground: "811f3f" },
-            { token: "type", foreground: "267f99" }, // Classes, Types
-            { token: "class", foreground: "267f99" },
-            { token: "function", foreground: "795e26" }, // Functions
-            { token: "variable", foreground: "001080" }, // Variables
-            { token: "operator", foreground: "333333" },
-            { token: "tag", foreground: "800000" }, // HTML tags
-            { token: "attribute.name", foreground: "e50000" },
-            { token: "attribute.value", foreground: "0000ff" },
+            { token: "comment", foreground: "666666" },
+            { token: "keyword", foreground: "0033b3", fontStyle: "bold" },
+            { token: "string", foreground: "067d17" },
+            { token: "number", foreground: "1750eb" },
+            { token: "regexp", foreground: "264eff" },
+            { token: "type", foreground: "000000", fontStyle: "bold" },
+            { token: "class", foreground: "000000", fontStyle: "bold" },
+            { token: "function", foreground: "00627a" },
+            { token: "variable", foreground: "000000" },
+            { token: "operator", foreground: "000000" },
+            { token: "tag", foreground: "0033b3" },
+            { token: "attribute.name", foreground: "000000" },
+            { token: "attribute.value", foreground: "067d17" },
           ]
           : [
             { token: "", foreground: t.text.replace("#", "") }, // Default text color
-            { token: "comment", foreground: "6A9955" },
-            { token: "keyword", foreground: "569CD6", fontStyle: "bold" },
-            { token: "string", foreground: "CE9178" },
-            { token: "number", foreground: "B5CEA8" },
-            { token: "regexp", foreground: "D16969" },
-            { token: "type", foreground: "4EC9B0" }, // Classes, Types
-            { token: "class", foreground: "4EC9B0" },
-            { token: "function", foreground: "DCDCAA" }, // Functions
-            { token: "variable", foreground: "9CDCFE" }, // Variables
-            { token: "operator", foreground: "D4D4D4" },
-            { token: "tag", foreground: "569CD6" }, // HTML tags
-            { token: "attribute.name", foreground: "9CDCFE" },
-            { token: "attribute.value", foreground: "CE9178" },
+            { token: "comment", foreground: "8b949e" },
+            { token: "keyword", foreground: "ff7b72", fontStyle: "bold" },
+            { token: "string", foreground: "a5d6ff" },
+            { token: "number", foreground: "79c0ff" },
+            { token: "regexp", foreground: "a5d6ff" },
+            { token: "type", foreground: "ff7b72" },
+            { token: "class", foreground: "d2a8ff" },
+            { token: "function", foreground: "d2a8ff" },
+            { token: "variable", foreground: "c9d1d9" },
+            { token: "operator", foreground: "c9d1d9" },
+            { token: "tag", foreground: "7ee787" },
+            { token: "attribute.name", foreground: "79c0ff" },
+            { token: "attribute.value", foreground: "a5d6ff" },
           ];
 
         monaco.editor.defineTheme(t.id, {
@@ -1721,7 +1722,7 @@ function App() {
                         <Menu size={18} />
                       </button>
                       <button className={`tab-btn ${viewMode === "ai" ? "active" : ""}`} onClick={() => setViewMode("ai")}>
-                        <MessageSquare size={14} /> AI Assistant
+                        <MessageSquare size={14} /> AI
                       </button>
                       <button
                         className={`tab-btn ${isQuickChatOpen ? "active" : ""}`}
@@ -1734,7 +1735,7 @@ function App() {
                         style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
                         title="Quick Chat (Ctrl+P)"
                       >
-                        <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>Quick Chat</span>
+                        <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} />
                       </button>
                       <button
                         className={`tab-btn ${!isEditorVisible ? "active" : ""}`}
@@ -1742,7 +1743,7 @@ function App() {
                         style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
                         title={isEditorVisible ? "Hide Editor (F4)" : "Show Editor (F4)"}
                       >
-                        <PanelRight size={14} /> <span style={{ fontSize: "0.8rem", fontWeight: "600" }}>{isEditorVisible ? "Hide Editor" : "Show Editor"}</span>
+                        <PanelRight size={14} />
                       </button>
 
                     </div>

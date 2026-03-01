@@ -701,21 +701,255 @@ body.light-theme .history-item:hover {
     color: var(--accent-text);
     font-weight: 600;
 }
+
 /* AI Assistant Minimalist Action Buttons */
-.msg-action-bar { display: flex !important; align-items: center !important; flex-wrap: wrap !important; gap: 1.5rem !important; margin-top: 1rem !important; padding: 0.25rem 0 !important; width: 100% !important; background: transparent !important; }
-.msg-action-btn { background: none !important; border: none !important; padding: 0 !important; cursor: pointer !important; color: var(--text-secondary) !important; display: flex !important; align-items: center !important; gap: 0.5rem !important; font-size: 0.8rem !important; transition: all 0.2s ease !important; opacity: 0.8 !important; box-shadow: none !important; outline: none !important; margin-bottom: 0.5rem !important; }
-.msg-action-btn:hover { color: var(--text-primary) !important; opacity: 1 !important; background: transparent !important; }
-.msg-action-btn span { font-weight: 500 !important; }
-.msg-action-btn--kebab { padding: 0.25rem !important; }
-.msg-action-bar > div { margin-left: auto !important; }
+.msg-action-bar {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 1.5rem !important;
+    margin-top: 1rem !important;
+    padding: 0.25rem 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+}
+
+.msg-action-btn {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    color: var(--text-secondary) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    font-size: 0.8rem !important;
+    transition: all 0.2s ease !important;
+    opacity: 0.8 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.msg-action-btn:hover {
+    color: var(--text-primary) !important;
+    opacity: 1 !important;
+    background: transparent !important;
+}
+
+.msg-action-btn span {
+    font-weight: 500 !important;
+}
+
+.msg-action-btn--kebab {
+    padding: 0.25rem !important;
+}
+
+.msg-action-bar>div {
+    margin-left: auto !important;
+}
 
 /* AI Assistant Dictionary & Speaker Controls */
-.msg-bubble-tools { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; margin-bottom: 0.75rem; }
-.icon-btn { background: none !important; border: none !important; padding: 0.4rem !important; cursor: pointer !important; color: var(--text-muted) !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s ease !important; border-radius: 50% !important; }
-.icon-btn:hover { background-color: rgba(255, 255, 255, 0.05) !important; color: var(--text-primary) !important; }
-.icon-btn.active { color: var(--accent-color) !important; background-color: rgba(59, 130, 246, 0.1) !important; opacity: 1 !important; }
+.msg-bubble-tools {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.icon-btn {
+    background: none !important;
+    border: none !important;
+    padding: 0.4rem !important;
+    cursor: pointer !important;
+    color: var(--text-muted) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+    border-radius: 50% !important;
+}
+
+.icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-primary) !important;
+}
+
+.icon-btn.active {
+    color: var(--accent-color) !important;
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    opacity: 1 !important;
+}
 
 /* AI Assistant Text Style Restoration (Neutral bold/headers) */
-.description-container strong, .description-container b, .message-bubble.ai strong, .message-bubble.ai b { color: inherit !important; font-weight: 700 !important; }
-.description-container h1, .description-container h2, .description-container h3, .description-container h4, .message-bubble.ai h1, .message-bubble.ai h2, .message-bubble.ai h3, .message-bubble.ai h4 { color: var(--text-main) !important; }
-:root { --accent-text: var(--text-main) !important; }
+.description-container strong,
+.description-container b,
+.message-bubble.ai strong,
+.message-bubble.ai b {
+    color: inherit !important;
+    font-weight: 700 !important;
+}
+
+.description-container h1,
+.description-container h2,
+.description-container h3,
+.description-container h4,
+.message-bubble.ai h1,
+.message-bubble.ai h2,
+.message-bubble.ai h3,
+.message-bubble.ai h4 {
+    color: var(--text-main) !important;
+}
+
+:root {
+    --accent-text: var(--text-main) !important;
+}
+
+/* ===== Perfect PrismJS Syntax Highlighting (Light & Dark) ===== */
+
+/* Base container for code (Dark Theme Default) */
+.custom-markdown-content pre,
+.message-bubble.ai pre {
+    background: var(--code-bg) !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+/* Override text color & shadows for clear typography */
+.custom-markdown-content code,
+.message-bubble.ai code[class*="language-"],
+.message-bubble.ai pre[class*="language-"] {
+    text-shadow: none !important;
+    font-family: 'Fira Code', 'Courier New', Courier, monospace !important;
+    color: var(--text-main) !important;
+}
+
+/* === DARK THEME TOKENS (Default for Night, Forest, Coffee) === */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+    color: #8b949e !important;
+}
+
+.token.punctuation {
+    color: #8b949e !important;
+}
+
+.token.namespace {
+    opacity: .7 !important;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+    color: #79c0ff !important;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+    color: #a5d6ff !important;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.token.variable {
+    color: #c9d1d9 !important;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+    color: #ff7b72 !important;
+    font-weight: bold !important;
+}
+
+.token.function,
+.token.class-name {
+    color: #d2a8ff !important;
+}
+
+.token.regex,
+.token.important {
+    color: #a5d6ff !important;
+}
+
+/* === LIGHT THEME TOKENS (Overrides for Day, E-Reader) === */
+body.light-theme .token.comment,
+body.light-theme .token.prolog,
+body.light-theme .token.doctype,
+body.light-theme .token.cdata {
+    color: #666666 !important;
+}
+
+body.light-theme .token.punctuation {
+    color: #666666 !important;
+}
+
+body.light-theme .token.property,
+body.light-theme .token.tag,
+body.light-theme .token.boolean,
+body.light-theme .token.number,
+body.light-theme .token.constant,
+body.light-theme .token.symbol,
+body.light-theme .token.deleted {
+    color: #1750eb !important;
+}
+
+body.light-theme .token.selector,
+body.light-theme .token.attr-name,
+body.light-theme .token.string,
+body.light-theme .token.char,
+body.light-theme .token.builtin,
+body.light-theme .token.inserted {
+    color: #067d17 !important;
+}
+
+body.light-theme .token.operator,
+body.light-theme .token.entity,
+body.light-theme .token.url,
+body.light-theme .token.variable {
+    color: #000000 !important;
+}
+
+body.light-theme .token.atrule,
+body.light-theme .token.attr-value,
+body.light-theme .token.keyword {
+    color: #0033b3 !important;
+    font-weight: bold !important;
+}
+
+body.light-theme .token.function,
+body.light-theme .token.class-name {
+    color: #00627a !important;
+    font-weight: bold !important;
+}
+
+body.light-theme .token.regex,
+body.light-theme .token.important {
+    color: #264eff !important;
+}
+
+/* Common token styles */
+.token.important,
+.token.bold {
+    font-weight: bold !important;
+}
+
+.token.italic {
+    font-style: italic !important;
+}
+
+.token.entity {
+    cursor: help !important;
+}

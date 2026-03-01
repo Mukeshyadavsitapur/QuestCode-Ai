@@ -55,7 +55,7 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
             </div>
         ),
         th: ({ node, ...props }: any) => (
-            <th {...props} style={{ borderBottom: "2px solid var(--border-color)", borderRight: "1px solid var(--border-color)", padding: "12px 16px", textAlign: "left", background: "rgba(88, 166, 255, 0.15)", color: "var(--accent-text)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.8rem", letterSpacing: "0.05em", resize: "horizontal", overflow: "hidden", minWidth: "120px", position: "relative" }} />
+            <th {...props} style={{ borderBottom: "2px solid var(--border-color)", borderRight: "1px solid var(--border-color)", padding: "12px 16px", textAlign: "left", background: "var(--code-header-bg)", color: "var(--text-main)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.8rem", letterSpacing: "0.05em", resize: "horizontal", overflow: "hidden", minWidth: "120px", position: "relative" }} />
         ),
         td: ({ node, ...props }: any) => (
             <td {...props} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-color)", borderRight: "1px solid var(--border-color)", wordBreak: "break-word" }} />
@@ -75,7 +75,7 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
             if (isInline) {
                 return (
                     <code className={className} {...props} style={{
-                        background: "rgba(88, 166, 255, 0.1)",
+                        background: "var(--highlight)",
                         color: "var(--accent-text)",
                         padding: "2px 5px",
                         borderRadius: "4px",
@@ -93,7 +93,7 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        background: "var(--panel-bg)",
+                        background: "var(--code-header-bg)",
                         padding: "8px 12px",
                         borderTopLeftRadius: "8px",
                         borderTopRightRadius: "8px",
@@ -129,7 +129,7 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
                         </div>
                     </div>
                     <pre style={{
-                        background: "#1e1e1e", // Force dark bg for code
+                        background: "var(--code-bg)",
                         padding: "16px",
                         borderBottomLeftRadius: "8px",
                         borderBottomRightRadius: "8px",
@@ -140,7 +140,7 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
                         <code className={mappedClassName} {...props} style={{
                             fontFamily: "var(--font-mono)",
                             fontSize: "0.9rem",
-                            color: "#e5e5e5",
+                            color: "var(--text-main)",
                             whiteSpace: "pre",
                             textAlign: "left",
                             display: "block"

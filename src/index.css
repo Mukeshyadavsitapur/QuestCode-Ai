@@ -12,6 +12,15 @@
     /* Purple for concepts */
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+    /* New Brand Tokens for AI Chat */
+    --bg-primary: var(--bg-color);
+    --bg-secondary: var(--panel-bg);
+    --bg-tertiary: #161b22;
+    --text-primary: var(--text-main);
+    --text-secondary: var(--text-muted);
+    --accent-primary: var(--accent-color);
+    --input-bg: var(--bg-color);
 }
 
 * {
@@ -692,3 +701,21 @@ body.light-theme .history-item:hover {
     color: var(--accent-text);
     font-weight: 600;
 }
+/* AI Assistant Minimalist Action Buttons */
+.msg-action-bar { display: flex !important; align-items: center !important; flex-wrap: wrap !important; gap: 1.5rem !important; margin-top: 1rem !important; padding: 0.25rem 0 !important; width: 100% !important; background: transparent !important; }
+.msg-action-btn { background: none !important; border: none !important; padding: 0 !important; cursor: pointer !important; color: var(--text-secondary) !important; display: flex !important; align-items: center !important; gap: 0.5rem !important; font-size: 0.8rem !important; transition: all 0.2s ease !important; opacity: 0.8 !important; box-shadow: none !important; outline: none !important; margin-bottom: 0.5rem !important; }
+.msg-action-btn:hover { color: var(--text-primary) !important; opacity: 1 !important; background: transparent !important; }
+.msg-action-btn span { font-weight: 500 !important; }
+.msg-action-btn--kebab { padding: 0.25rem !important; }
+.msg-action-bar > div { margin-left: auto !important; }
+
+/* AI Assistant Dictionary & Speaker Controls */
+.msg-bubble-tools { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; margin-bottom: 0.75rem; }
+.icon-btn { background: none !important; border: none !important; padding: 0.4rem !important; cursor: pointer !important; color: var(--text-muted) !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s ease !important; border-radius: 50% !important; }
+.icon-btn:hover { background-color: rgba(255, 255, 255, 0.05) !important; color: var(--text-primary) !important; }
+.icon-btn.active { color: var(--accent-color) !important; background-color: rgba(59, 130, 246, 0.1) !important; opacity: 1 !important; }
+
+/* AI Assistant Text Style Restoration (Neutral bold/headers) */
+.description-container strong, .description-container b, .message-bubble.ai strong, .message-bubble.ai b { color: inherit !important; font-weight: 700 !important; }
+.description-container h1, .description-container h2, .description-container h3, .description-container h4, .message-bubble.ai h1, .message-bubble.ai h2, .message-bubble.ai h3, .message-bubble.ai h4 { color: var(--text-main) !important; }
+:root { --accent-text: var(--text-main) !important; }

@@ -12,7 +12,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Rnd } from "react-rnd";
 import {
-  Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus, Trash2,
+  Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus,
   ChevronRight,
   ChevronDown,
   Square,
@@ -23,7 +23,8 @@ import {
   PanelBottom,
   PanelRight,
   PanelLeft,
-  PanelLeftClose
+  PanelLeftClose,
+  RefreshCw, Pencil, Trash2, BookOpen, VolumeX, Volume2, FileDown, MoreVertical
 } from "lucide-react";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
@@ -31,6 +32,7 @@ import { themes } from "./themes";
 import { Terminal } from "./Terminal"; // Import Terminal
 import { AiLearning, AiLearningHandle } from "./AiLearning";
 import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, TOPICS_HTML, TOPICS_CSS, TOPICS_JS, TOPICS_ML, Topic } from "./learningData";
+import Quiz from "./Quiz";
 import "./App.css";
 import { DEFAULT_RUST_CODE, DEFAULT_PYTHON_CODE, DEFAULT_HTML_CODE, DEFAULT_CSS_CODE, DEFAULT_JS_CODE, DEFAULT_ML_CODE } from "./defaultCode";
 import Prism from "prismjs";
@@ -42,20 +44,28 @@ import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-markup";
 
 
-
+interface Message {
+  role: 'user' | 'ai' | 'system';
+  content: string;
+}
 
 interface ChatSession {
   id: string;
   title: string;
-  description: string;
-  timestamp: number;
+  timestamp: string;
+  messages: Message[];
+  description?: string; // Optional for backward compatibility with older chats
 }
+
+
 
 const INITIAL_DESCRIPTION = "# Getting Started\n\nWelcome! Type some code on the left and click **'Explain Code'** to get an AI-powered breakdown of what's happening.\n\nYou can also ask specific questions using the chat bar below.";
 
-// Helper to check if running in Tauri
-const isTauri = () => "TAURI_INTERNALS" in window || "__TAURI_INTERNALS__" in window;
+const INITIAL_MESSAGES: Message[] = [
+  { role: 'system', content: INITIAL_DESCRIPTION }
+]; const isTauri = () => "TAURI_INTERNALS" in window || "__TAURI_INTERNALS__" in window;
 
+// Update the App wrapper to include Quiz and Dictionary
 function App() {
   // Helper to get default code for a language
   const getDefaultCode = (lang: string) => {
@@ -76,8 +86,22 @@ function App() {
     const savedCode = localStorage.getItem(`code_${language}`);
     return savedCode || getDefaultCode(language);
   });
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
 
-  const [description, setDescription] = useState(INITIAL_DESCRIPTION);
+  // PromptTest Chat Features State
+  const [isDictionaryActive, setIsDictionaryActive] = useState(false);
+  const [dictionaryWord, setDictionaryWord] = useState('');
+  const [dictionaryResult, setDictionaryResult] = useState('');
+  const [isDictionaryLoading, setIsDictionaryLoading] = useState(false);
+  const [isDictionaryModalOpen, setIsDictionaryModalOpen] = useState(false);
+  const [speakingMsgIdx, setSpeakingMsgIdx] = useState<number | null>(null);
+  const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
+  const [isQuizGenerating, setIsQuizGenerating] = useState(false);
+  const [activeQuizQuestions, setActiveQuizQuestions] = useState<any[] | null>(null);
+  const [openKebabIdx, setOpenKebabIdx] = useState<number | null>(null);
+  const [editingMsgIdx, setEditingMsgIdx] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+
   const [input, setInput] = useState("");
   const [isExplaining, setIsExplaining] = useState(false);
 
@@ -99,19 +123,20 @@ function App() {
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
   const [quickChatInput, setQuickChatInput] = useState("");
   const INITIAL_QUICK_CHAT_DESCRIPTION = "## Quick Chat\n\nAsk me anything! Let me help you while you read the documentation.";
-  const [quickChatDescription, setQuickChatDescription] = useState(() => {
+  const [quickChatMessages, setQuickChatMessages] = useState<Message[]>(() => {
     const savedId = localStorage.getItem("current_quick_chat_id");
     if (savedId) {
       const savedChats = localStorage.getItem("ai_quick_chats");
       if (savedChats) {
         const parsedChats: ChatSession[] = JSON.parse(savedChats);
         const currentChat = parsedChats.find(c => c.id === savedId);
-        if (currentChat) return currentChat.description;
+        if (currentChat) return currentChat.messages;
       }
     }
-    return INITIAL_QUICK_CHAT_DESCRIPTION;
+    return [{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }];
   });
   const [isQuickChatExplaining, setIsQuickChatExplaining] = useState(false);
+
 
   // Quick Chat Window Geometry State
   const [quickChatGeometry, setQuickChatGeometry] = useState(() => {
@@ -142,7 +167,7 @@ function App() {
   // Highlight code in chat
   useEffect(() => {
     Prism.highlightAll();
-  }, [description, quickChatDescription, viewMode, isQuickChatOpen]);
+  }, [messages, quickChatMessages, viewMode, isQuickChatOpen]);
 
   // Learning State
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(() => {
@@ -222,7 +247,6 @@ function App() {
     return (localStorage.getItem("terminalLayout") as "vertical" | "horizontal") || "vertical";
   });
   const [webPreviewContent, setWebPreviewContent] = useState("");
-  const [isMinimapVisible, setIsMinimapVisible] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("terminalLayout", terminalLayout);
@@ -253,10 +277,13 @@ function App() {
     setWebLlm(llmProvider);
   }, [llmProvider]);
   const [activeModel, setActiveModel] = useState<string>("");
-  const [selectedModel, setSelectedModel] = useState<string | null>(() => {
-    return localStorage.getItem("selected_model");
-  });
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+
+  // Advanced feature states
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    return localStorage.getItem("selected_model") || "gpt-3.5-turbo";
+  });
+  const [isMinimapVisible, setIsMinimapVisible] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("llmProvider", llmProvider);
@@ -287,7 +314,7 @@ function App() {
     } else if (llmProvider === "huggingface") {
       setAvailableModels([
         "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
-        "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "Qwen/Qwen2.5-Coder-7B-7B-Instruct",
         "microsoft/phi-4-mini",
         "meta-llama/Llama-3.1-8B-Instruct",
         "google/gemma-2-9b-it",
@@ -351,6 +378,8 @@ function App() {
     root.style.setProperty("--text-highlight", selectedTheme.activeWord);
     root.style.setProperty("--accent-text", selectedTheme.primaryText);
     root.style.setProperty("--secondary-color", selectedTheme.buttonBg);
+    root.style.setProperty("--code-bg", selectedTheme.codeBg);
+    root.style.setProperty("--code-header-bg", selectedTheme.codeHeaderBg);
 
     const isDark =
       selectedTheme.bg.startsWith("#0") ||
@@ -448,30 +477,32 @@ function App() {
 
   // Chat Helpers
   const extractTitle = (text: string) => {
-    const firstLine = text.split("\n")[0].replace(/[#*`]/g, "").trim();
-    return firstLine.substring(0, 30) || "New Chat";
+    // If we only have messages, we just grab first 40 chars of the text
+    const cleanSource = text.replace(/<[^>]+>/g, '').trim();
+    return cleanSource.substring(0, 40) || "New Chat";
   };
 
-  const updateChatHistory = (newDescription: string, forcedTitle?: string) => {
+  const updateChatHistory = (msgs: Message[], forcedTitle?: string) => {
     if (currentChatId) {
       setChats((prev) =>
         prev.map((chat) =>
           chat.id === currentChatId
             ? {
               ...chat,
-              description: newDescription,
-              title: forcedTitle || (chat.title === "New Chat" || chat.title === "Getting Started" ? extractTitle(newDescription) : chat.title),
+              messages: msgs,
             }
             : chat
         )
       );
     } else {
       const newId = Date.now().toString();
+      const firstUserMsg = msgs.find(m => m.role === 'user');
+      const newTitle = forcedTitle || (firstUserMsg ? extractTitle(firstUserMsg.content) : "New Chat");
       const newChat: ChatSession = {
         id: newId,
-        title: forcedTitle || extractTitle(newDescription),
-        description: newDescription,
-        timestamp: Date.now(),
+        title: newTitle,
+        messages: msgs,
+        timestamp: new Date().toISOString(),
       };
       setChats((prev) => {
         const newChats = [newChat, ...prev];
@@ -483,14 +514,18 @@ function App() {
 
   const handleNewChat = () => {
     setCurrentChatId(null);
-    setDescription(INITIAL_DESCRIPTION);
+    setMessages(INITIAL_MESSAGES);
     setIsHistoryOpen(false);
     setViewMode("ai");
   };
 
+
+
+
+
   const handleSelectChat = (chat: ChatSession) => {
     setCurrentChatId(chat.id);
-    setDescription(chat.description);
+    setMessages(chat.messages || [{ role: 'system', content: chat.description || '' }]);
     setIsHistoryOpen(false);
     setViewMode("ai");
   };
@@ -501,34 +536,48 @@ function App() {
     let userQuestion = quickChatInput;
     setQuickChatInput("");
 
-    const isFirstMessage = quickChatDescription === INITIAL_QUICK_CHAT_DESCRIPTION;
-    const cleanDescription = isFirstMessage ? "" : quickChatDescription.replace(/<span class="latest-question-anchor"><\/span>/g, ""); // Remove previous anchors
-    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `<span class="latest-question-anchor"></span>**You asked:** ${userQuestion}\n\n*Thinking...*`;
-    setQuickChatDescription(newDescription);
+    const isFirstMessage = quickChatMessages.length === 1 && quickChatMessages[0].role === 'system';
+
+    const newUserMsg: Message = { role: 'user', content: userQuestion };
+    const newThinkingMsg: Message = { role: 'ai', content: '*Thinking...*' };
+
+    // Replace initial description if it's the first message, otherwise append
+    const updatedMessages = isFirstMessage
+      ? [newUserMsg, newThinkingMsg]
+      : [...quickChatMessages, newUserMsg, newThinkingMsg];
+
+    setQuickChatMessages(updatedMessages);
     scrollToLatestMessage(quickChatScrollRef);
 
     if (!isTauri()) {
       setTimeout(() => {
-        setQuickChatDescription((prev: string) => prev.replace("*Thinking...*", "\n\n**Browser Mode:** AI Chat requires the desktop application to access the backend."));
+        setQuickChatMessages(prev => {
+          const newArr = [...prev];
+          newArr[newArr.length - 1] = { role: 'ai', content: "**Browser Mode:** Quick Chat requires the desktop application to access the backend." };
+          return newArr;
+        });
       }, 500);
       return;
     }
 
-    setIsQuickChatExplaining(true);
+    console.log("Asking quick question. Selection:", selectedModel);
+    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
     try {
-      const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
       const response: { content: string; model: string } = await invoke("ask_question", {
         req: {
           api_key: currentApiKey,
           provider: llmProvider,
           code: code,
-          question: userQuestion,
+          question: userQuestion, // Send prompt context+question
           language: (language === "dsa" || language === "ml") ? "python" : language,
           selected_model: selectedModel
         }
       });
-      const finalDescription = newDescription.replace("*Thinking...*", response.content);
-      setQuickChatDescription(finalDescription);
+
+      const finalMessages = [...updatedMessages];
+      finalMessages[finalMessages.length - 1] = { role: 'ai', content: response.content };
+
+      setQuickChatMessages(finalMessages);
       setActiveModel(response.model);
 
       // Save to main unified chat history directly
@@ -538,7 +587,7 @@ function App() {
             chat.id === currentQuickChatId
               ? {
                 ...chat,
-                description: finalDescription,
+                messages: finalMessages,
               }
               : chat
           )
@@ -548,8 +597,8 @@ function App() {
         const newChat: ChatSession = {
           id: newId,
           title: userQuestion.substring(0, 40) || "Quick Chat",
-          description: finalDescription,
-          timestamp: Date.now(),
+          messages: finalMessages,
+          timestamp: new Date().toISOString(),
         };
         setChats((prev) => {
           const newChats = [newChat, ...prev];
@@ -560,7 +609,11 @@ function App() {
 
     } catch (error) {
       console.error("Failed to ask quick question:", error);
-      setQuickChatDescription((prev: string) => prev.replace("*Thinking...*", `\n\n**Error:** ${error}`));
+      setQuickChatMessages(prev => {
+        const newArr = [...prev];
+        newArr[newArr.length - 1] = { role: 'ai', content: `**Error:** ${error}` };
+        return newArr;
+      });
     } finally {
       setIsQuickChatExplaining(false);
     }
@@ -587,12 +640,21 @@ function App() {
     setIsAiAssistantVisible(true);
 
     if (!isTauri()) {
-      setDescription("## Browser Mode\n\nAI features require the desktop application to access the backend. Please download the full application.");
+      setMessages([{ role: 'system', content: "## Browser Mode\n\nAI features require the desktop application to access the backend. Please download the full application." }]);
       setIsExplaining(false);
       return;
     }
 
     console.log("Explaining code. Selection:", selectedModel);
+
+    // Add Thinking Message
+    const isFirstMessage = messages.length === 1 && messages[0].role === 'system';
+    const newMsgs = isFirstMessage
+      ? [{ role: 'user', content: 'Explain this code.' } as Message, { role: 'ai', content: '*Thinking...*' } as Message]
+      : [...messages, { role: 'user', content: 'Explain this code.' } as Message, { role: 'ai', content: '*Thinking...*' } as Message];
+    setMessages(newMsgs);
+    scrollToLatestMessage(mainChatScrollRef);
+
     const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
     try {
       const response: { content: string; model: string } = await invoke("explain_code", {
@@ -605,12 +667,27 @@ function App() {
         }
       });
       console.log("Response from:", response.model);
-      setDescription(response.content);
+
+      const updatedMsgs = [...newMsgs];
+      updatedMsgs[updatedMsgs.length - 1] = { role: 'ai', content: response.content };
+
+      setMessages(updatedMsgs);
       setActiveModel(response.model);
-      updateChatHistory(response.content);
+      // Create new chat session for explanation
+      const newId = Date.now().toString();
+      const newChat: ChatSession = {
+        id: newId,
+        title: "Code Explanation",
+        messages: updatedMsgs,
+        timestamp: new Date().toISOString(),
+      };
+      setChats(prev => [newChat, ...prev].slice(0, 500));
+      setCurrentChatId(newId);
     } catch (error) {
       console.error("Failed to explain code:", error);
-      setDescription(`## Error\n\n${error}`);
+      const updatedMsgs = [...newMsgs];
+      updatedMsgs[updatedMsgs.length - 1] = { role: 'ai', content: `## Error\n\n${error}` };
+      setMessages(updatedMsgs);
     } finally {
       setIsExplaining(false);
     }
@@ -632,15 +709,25 @@ function App() {
 
     setInput("");
 
-    const isFirstMessage = description === INITIAL_DESCRIPTION;
-    const cleanDescription = isFirstMessage ? "" : description.replace(/<span class="latest-question-anchor"><\/span>/g, ""); // Remove previous anchors
-    const newDescription = cleanDescription + (isFirstMessage ? "" : "\n\n--- \n\n") + `<span class="latest-question-anchor"></span>**You asked:** ${input}\n\n*Thinking...*`; // Display original input to user
-    setDescription(newDescription);
+    const isFirstMessage = messages.length === 1 && messages[0].role === 'system';
+    const newUserMsg: Message = { role: 'user', content: userQuestion };
+    const newThinkingMsg: Message = { role: 'ai', content: '*Thinking...*' };
+
+    // Replace initial description if it's the first message, otherwise append
+    const updatedMessages = isFirstMessage
+      ? [newUserMsg, newThinkingMsg]
+      : [...messages, newUserMsg, newThinkingMsg];
+
+    setMessages(updatedMessages);
     scrollToLatestMessage(mainChatScrollRef);
 
     if (!isTauri()) {
       setTimeout(() => {
-        setDescription((prev) => prev.replace("*Thinking...*", "\n\n**Browser Mode:** AI Chat requires the desktop application to access the backend."));
+        setMessages(prev => {
+          const newArr = [...prev];
+          newArr[newArr.length - 1] = { role: 'ai', content: "**Browser Mode:** AI Chat requires the desktop application to access the backend." };
+          return newArr;
+        });
       }, 500);
       return;
     }
@@ -659,14 +746,21 @@ function App() {
         }
       });
       console.log("Response from:", response.model);
-      const finalDescription = newDescription.replace("*Thinking...*", response.content);
-      setDescription(finalDescription);
+
+      const finalMessages = [...updatedMessages];
+      finalMessages[finalMessages.length - 1] = { role: 'ai', content: response.content };
+
+      setMessages(finalMessages);
       setActiveModel(response.model);
       // Use the question as title if it's the first message
-      updateChatHistory(finalDescription, isFirstMessage ? userQuestion.substring(0, 40) : undefined);
+      updateChatHistory(finalMessages, isFirstMessage ? userQuestion.substring(0, 40) : undefined);
     } catch (error) {
       console.error("Failed to ask question:", error);
-      setDescription((prev) => prev.replace("*Thinking...*", `\n\n**Error:** ${error}`));
+      setMessages(prev => {
+        const newArr = [...prev];
+        newArr[newArr.length - 1] = { role: 'ai', content: `**Error:** ${error}` };
+        return newArr;
+      });
     }
   };
 
@@ -866,6 +960,232 @@ function App() {
     handleLanguageChange(languages[nextIndex]);
   };
 
+  const handleCopyMessage = async (content: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedMsgIdx(idx);
+      setTimeout(() => setCopiedMsgIdx(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+
+
+  const handleListen = async (text: string, idx: number) => {
+    if (speakingMsgIdx === idx) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setSpeakingMsgIdx(null);
+      return;
+    }
+
+    try {
+      // Clean up text
+      const cleanText = text
+        .replace(/[*#]/g, '') // Remove markdown
+        .replace(/<[^>]*>?/gm, ''); // Remove tags
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'en-US';
+        utterance.onend = () => setSpeakingMsgIdx(null);
+        utterance.onerror = () => setSpeakingMsgIdx(null);
+
+        window.speechSynthesis.speak(utterance);
+        setSpeakingMsgIdx(idx);
+      } else {
+        console.warn("Speech Synthesis not supported");
+      }
+    } catch (err) {
+      console.error("Error playing TTS:", err);
+      setSpeakingMsgIdx(null);
+    }
+  };
+
+  const handleExplainWithContext = async (question: string, context: Message[]) => {
+    if (!question.trim() || aiService === "web") return;
+
+    setIsExplaining(true);
+    const newUserMsg: Message = { role: 'user', content: question };
+    const newThinkingMsg: Message = { role: 'ai', content: '*Thinking...*' };
+
+    // updatedMessages should be previous context + new user msg + thinking
+    const updatedMessages = [...context, newUserMsg, newThinkingMsg];
+    setMessages(updatedMessages);
+    scrollToLatestMessage(mainChatScrollRef);
+
+    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
+
+    try {
+      const response: { content: string; model: string } = await invoke("ask_question", {
+        req: {
+          api_key: currentApiKey,
+          provider: llmProvider,
+          code: code,
+          question: question,
+          language: (language === "dsa" || language === "ml") ? "python" : language,
+          selected_model: selectedModel
+        }
+      });
+
+      setMessages(prev => {
+        const newArr = [...prev];
+        if (newArr.length > 0 && newArr[newArr.length - 1].content === '*Thinking...*') {
+          newArr[newArr.length - 1] = { role: 'ai', content: response.content };
+        }
+        return newArr;
+      });
+      setActiveModel(response.model);
+      updateChatHistory([...context, newUserMsg, { role: 'ai', content: response.content }]);
+    } catch (error) {
+      console.error("Failed to explain code:", error);
+      setMessages(prev => {
+        const newArr = [...prev];
+        if (newArr.length > 0) {
+          newArr[newArr.length - 1] = { role: 'ai', content: `Error: ${error}` };
+        }
+        return newArr;
+      });
+    } finally {
+      setIsExplaining(false);
+    }
+  };
+
+  const handleTryAgain = (idx: number) => {
+    const userMsg = messages[idx - 1];
+    if (userMsg && userMsg.role === 'user') {
+      const newMessages = messages.slice(0, idx - 1);
+      setMessages(newMessages);
+      handleExplainWithContext(userMsg.content, newMessages);
+    }
+  };
+
+  const handleDeleteMessage = (idx: number) => {
+    const newMessages = messages.filter((_, i) => i !== idx);
+    setMessages(newMessages);
+    updateChatHistory(newMessages);
+    setOpenKebabIdx(null);
+  };
+
+  const handleStartEdit = (idx: number) => {
+    setEditingMsgIdx(idx);
+    setEditDraft(messages[idx].content);
+    setOpenKebabIdx(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMsgIdx(null);
+    setEditDraft('');
+  };
+
+  const handleSaveEdit = (idx: number) => {
+    const newMessages = [...messages];
+    newMessages[idx].content = editDraft;
+    setMessages(newMessages);
+    updateChatHistory(newMessages);
+    setEditingMsgIdx(null);
+    setEditDraft('');
+  };
+
+  const handleDictionaryLookup = async (word: string) => {
+    if (!word) return;
+    setIsDictionaryLoading(true);
+    setIsDictionaryModalOpen(true);
+    setDictionaryWord(word);
+    try {
+      const prompt = `Define the word or concept "${word}" in the context of programming and ${language}. Provide a concise definition and a short example if applicable.`;
+      const response: { content: string } = await invoke("ask_question", {
+        req: {
+          api_key: apiKey,
+          provider: llmProvider,
+          code: code,
+          question: prompt,
+          language: language === "dsa" ? "python" : language,
+          selected_model: selectedModel
+        }
+      });
+      setDictionaryResult(response.content);
+    } catch (err) {
+      console.error("Dictionary lookup failed:", err);
+      setDictionaryResult("Failed to fetch definition.");
+    } finally {
+      setIsDictionaryLoading(false);
+    }
+  };
+
+  const handleGenerateQuiz = async (content: string) => {
+    setIsQuizGenerating(true);
+    try {
+      const prompt = `Generate a 3-question multiple choice quiz based on this text:\n\n${content}\n\nFormat the response EXACTLY as a JSON array of objects. Each object should have 'question' (string), 'options' (array of strings), and 'correctAnswerIndex' (integer 0-3). No other text.`;
+      const response: { content: string } = await invoke("ask_question", {
+        req: {
+          api_key: apiKey,
+          provider: llmProvider,
+          code: "",
+          question: prompt,
+          language: language === "dsa" ? "python" : language,
+          selected_model: selectedModel
+        }
+      });
+
+      const jsonStr = response.content.replace(/```json/g, "").replace(/```/g, "").trim();
+      const questions = JSON.parse(jsonStr);
+      // Map to include explanations if missing
+      const formattedQuestions = questions.map((q: any) => ({
+        ...q,
+        options: q.options.map((opt: any) => typeof opt === 'string' ? { text: opt, explanation: "Based on the content provided." } : opt)
+      }));
+      setActiveQuizQuestions(formattedQuestions);
+    } catch (error) {
+      console.error("Error generating quiz:", error);
+      alert("Failed to generate quiz. Check console for details.");
+    } finally {
+      setIsQuizGenerating(false);
+    }
+  };
+
+  const handleExportPdf = (content: string) => {
+    const printWindow = window.open('', '', 'height=600,width=800');
+    if (!printWindow) return;
+
+    printWindow.document.write('<html><head><title>Export Message Context</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write(`
+      body { font-family: sans-serif; padding: 40px; color: #333; }
+      pre { background: #f5f5f5; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; }
+      code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
+      h1, h2, h3 { color: #1a1a1a; margin-top: 1.5em; margin-bottom: 0.5em; }
+      ul, ol { margin-left: 20px; }
+      blockquote { border-left: 4px solid #ddd; padding-left: 15px; color: #555; margin-left: 0; }
+    `);
+    printWindow.document.write('</style></head><body>');
+    printWindow.document.write(`<h2>ReaderPro Context AI Response</h2>`);
+    printWindow.document.write('<div class="markdown-body">');
+
+    // Naively render to HTML - for a robust app use marked.js or similar inside the print window
+    let htmlContent = content
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>')
+      .replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>')
+      .replace(/^#{1}\s+(.+)$/gm, '<h1>$1</h1>');
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.write('</div></body></html>');
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+    };
+  };
+
+
   const handleRunCode = async () => {
     if (isRunning) {
       // If already running, treating this as a STOP request
@@ -987,7 +1307,7 @@ function App() {
         e.preventDefault();
         setIsQuickChatOpen((prev) => {
           if (!prev && !currentQuickChatId) {
-            setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
+            setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
           }
           return !prev;
         });
@@ -1069,7 +1389,7 @@ function App() {
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, () => {
       setIsQuickChatOpen((prev) => {
         if (!prev && !currentQuickChatId) {
-          setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
+          setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
         }
         return !prev;
       });
@@ -1161,6 +1481,29 @@ function App() {
       <tr {...props} className="markdown-row" />
     ),
     pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+    p: ({ node, children, ...props }: any) => {
+      if (!isDictionaryActive) return <p {...props}>{children}</p>;
+
+      const content = String(children);
+      const words = content.split(/(\s+)/);
+      return (
+        <p {...props}>
+          {words.map((part, i) => {
+            if (part.trim() === '') return part;
+            return (
+              <span
+                key={i}
+                className="dictionary-word"
+                onClick={() => handleDictionaryLookup(part.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ""))}
+                style={{ cursor: 'help', borderBottom: '1px dotted var(--accent-color)' }}
+              >
+                {part}
+              </span>
+            );
+          })}
+        </p>
+      );
+    },
     code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
       const match = /language-(\w+)/.exec(className || "");
       let displayLang = match ? match[1] : "";
@@ -1227,7 +1570,7 @@ function App() {
             </div>
           </div>
           <pre style={{
-            background: "#1e1e1e", // Force dark bg for code
+            background: "var(--code-bg)",
             padding: "16px",
             borderBottomLeftRadius: "8px",
             borderBottomRightRadius: "8px",
@@ -1238,7 +1581,7 @@ function App() {
             <code className={mappedClassName} {...props} style={{
               fontFamily: "var(--font-mono)",
               fontSize: "0.9rem",
-              color: "#e5e5e5",
+              color: "var(--text-main)",
               whiteSpace: "pre",
               textAlign: "left",
               display: "block"
@@ -1246,7 +1589,7 @@ function App() {
               {children}
             </code>
           </pre>
-        </div>
+        </div >
       );
     }
   }), []);
@@ -1258,7 +1601,7 @@ function App() {
       </div>
     ),
     th: ({ node, ...props }: any) => (
-      <th {...props} style={{ borderBottom: "2px solid var(--border-color)", borderRight: "1px solid var(--border-color)", padding: "12px 16px", textAlign: "left", background: "rgba(88, 166, 255, 0.15)", color: "var(--accent-text)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.8rem", letterSpacing: "0.05em", resize: "horizontal", overflow: "hidden", minWidth: "120px", position: "relative" }} />
+      <th {...props} style={{ borderBottom: "2px solid var(--border-color)", borderRight: "1px solid var(--border-color)", padding: "12px 16px", textAlign: "left", background: "var(--code-header-bg)", color: "var(--text-main)", fontWeight: 600, textTransform: "uppercase", fontSize: "0.8rem", letterSpacing: "0.05em", resize: "horizontal", overflow: "hidden", minWidth: "120px", position: "relative" }} />
     ),
     td: ({ node, ...props }: any) => (
       <td {...props} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-color)", borderRight: "1px solid var(--border-color)", wordBreak: "break-word" }} />
@@ -1278,8 +1621,8 @@ function App() {
       if (isInline) {
         return (
           <code className={className} {...props} style={{
-            background: "rgba(88, 166, 255, 0.1)",
-            color: "var(--accent-color)",
+            background: "var(--highlight)",
+            color: "var(--accent-text)",
             padding: "2px 5px",
             borderRadius: "4px",
             fontSize: "0.9em",
@@ -1296,7 +1639,7 @@ function App() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            background: "var(--panel-bg)",
+            background: "var(--code-header-bg)",
             padding: "8px 12px",
             borderTopLeftRadius: "8px",
             borderTopRightRadius: "8px",
@@ -1332,7 +1675,7 @@ function App() {
             </div>
           </div>
           <pre style={{
-            background: "#1e1e1e",
+            background: "var(--code-bg)",
             padding: "16px",
             borderBottomLeftRadius: "8px",
             borderBottomRightRadius: "8px",
@@ -1343,7 +1686,7 @@ function App() {
             <code className={mappedClassName} {...props} style={{
               fontFamily: "var(--font-mono)",
               fontSize: "0.9rem",
-              color: "#e5e5e5",
+              color: "var(--text-main)",
               whiteSpace: "pre",
               textAlign: "left",
               display: "block"
@@ -1385,7 +1728,7 @@ function App() {
                         onClick={() => {
                           setIsQuickChatOpen(!isQuickChatOpen);
                           if (!isQuickChatOpen && !currentQuickChatId) {
-                            setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
+                            setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
                           }
                         }}
                         style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
@@ -1561,13 +1904,133 @@ function App() {
                   <div style={{ display: viewMode === "ai" ? "flex" : "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
                     {aiService === "api" ? (
                       <>
-                        <div className="description-container" ref={mainChatScrollRef}>
-                          <ReactMarkdown
-                            components={markdownComponents}
-                            remarkPlugins={[remarkGfm]}
-                          >
-                            {description}
-                          </ReactMarkdown>
+                        <div className="description-container" ref={mainChatScrollRef} style={{ padding: "0 16px", paddingBottom: "100px" }}>
+                          {messages.map((msg, idx) => {
+                            const isEditing = editingMsgIdx === idx;
+                            return (
+                              <div key={idx} className={`chat-bubble-container ${msg.role}`} data-msg-idx={idx}>
+                                {isEditing ? (
+                                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <textarea
+                                      autoFocus
+                                      value={editDraft}
+                                      onChange={e => setEditDraft(e.target.value)}
+                                      style={{
+                                        width: '100%',
+                                        height: '180px',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '0.75rem',
+                                        border: '1.5px solid var(--accent-color)',
+                                        backgroundColor: 'var(--bg-secondary)',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '0.95rem',
+                                        fontFamily: 'inherit',
+                                        resize: 'vertical',
+                                        outline: 'none'
+                                      }}
+                                    />
+                                    <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem', display: 'block' }}>Zoom Controls are explicitly disabled in QuestCode-Ai for cleaner navigation.</label>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                      <button
+                                        className="msg-action-btn"
+                                        style={{ background: 'var(--accent-color)', color: 'white', padding: '0.35rem 1rem', borderRadius: '1.5rem', fontWeight: 600 }}
+                                        onClick={() => handleSaveEdit(idx)}
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        className="msg-action-btn"
+                                        style={{ background: 'var(--bg-tertiary)', padding: '0.35rem 0.85rem', borderRadius: '1.5rem' }}
+                                        onClick={handleCancelEdit}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className={`message-bubble ${msg.role}`}>
+                                    {msg.role === 'ai' && msg.content && msg.content !== '*Thinking...*' && (
+                                      <div className="msg-bubble-tools">
+                                        <button
+                                          className={`icon-btn ${isDictionaryActive ? 'active' : ''}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsDictionaryActive(!isDictionaryActive);
+                                          }}
+                                          title={isDictionaryActive ? "Disable Dictionary Mode" : "Enable Dictionary Mode (Click words)"}
+                                        >
+                                          <BookOpen size={16} />
+                                        </button>
+                                        <button
+                                          className={`icon-btn ${speakingMsgIdx === idx ? 'active' : ''}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            handleListen(msg.content, idx);
+                                          }}
+                                          title={speakingMsgIdx === idx ? "Stop listening" : "Listen"}
+                                        >
+                                          {speakingMsgIdx === idx ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    <ReactMarkdown
+                                      components={markdownComponents}
+                                      remarkPlugins={[remarkGfm]}
+                                    >
+                                      {msg.content}
+                                    </ReactMarkdown>
+
+                                    {msg.role === 'ai' && idx === messages.length - 1 && (
+                                      <div className="chat-reference-anchor"></div>
+                                    )}
+
+                                    {/* Action Bar */}
+                                    {msg.role === 'ai' && msg.content && msg.content !== '*Thinking...*' && (
+                                      <div className="msg-action-bar">
+                                        <button className="msg-action-btn" onClick={() => handleCopyMessage(msg.content, idx)}>
+                                          <Copy size={16} /> <span>{copiedMsgIdx === idx ? 'Copied!' : 'Copy'}</span>
+                                        </button>
+
+                                        <button className="msg-action-btn" onClick={() => handleTryAgain(idx)}>
+                                          <RefreshCw size={16} /> <span>Try again</span>
+                                        </button>
+
+                                        <button className="msg-action-btn" disabled={isQuizGenerating} onClick={() => handleGenerateQuiz(msg.content)}>
+                                          <Zap size={16} /> <span>{isQuizGenerating ? 'Generating...' : 'Generate Quiz'}</span>
+                                        </button>
+
+                                        <button className="msg-action-btn" onClick={() => handleExportPdf(msg.content)}>
+                                          <FileDown size={16} /> <span>Export PDF</span>
+                                        </button>
+
+                                        {/* Kebab menu on the far right */}
+                                        <div style={{ position: 'relative', marginLeft: 'auto', display: 'flex' }}>
+                                          <button className="msg-action-btn msg-action-btn--kebab" onClick={(e) => { e.stopPropagation(); setOpenKebabIdx(openKebabIdx === idx ? null : idx); }}>
+                                            <MoreVertical size={16} />
+                                          </button>
+                                          {openKebabIdx === idx && (
+                                            <>
+                                              <div style={{ position: 'fixed', inset: 0, zIndex: 300 }} onClick={() => setOpenKebabIdx(null)} />
+                                              <div className="msg-kebab-menu">
+                                                <div className="msg-kebab-item" onClick={() => handleStartEdit(idx)}>
+                                                  <Pencil size={13} /> Edit response
+                                                </div>
+                                                <div className="msg-kebab-item msg-kebab-item--delete" onClick={() => handleDeleteMessage(idx)}>
+                                                  <Trash2 size={13} /> Delete response
+                                                </div>
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </>
                     ) : (
@@ -1684,6 +2147,9 @@ function App() {
                         placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
                         value={input}
                         onChange={(e) => {
+                          const model = e.target.value;
+                          setSelectedModel(model);
+                          localStorage.setItem("selected_model", model);
                           setInput(e.target.value);
                           e.target.style.height = 'auto';
                           e.target.style.height = e.target.scrollHeight + 'px';
@@ -1739,8 +2205,8 @@ function App() {
                         <option value="dsa">📊 DSA</option>
                         <option value="html">🌐 HTML</option>
                         <option value="css">🎨 CSS</option>
-                        <option value="javascript">⚡ JavaScript</option>
-                        <option value="ml">🤖 Machine Learning</option>
+                        <option value="javascript">📜 JavaScript</option>
+                        <option value="ml">🤖 ML Model</option>
                       </select>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button
@@ -1863,8 +2329,8 @@ function App() {
                         />
                       )}
                     </div>
-                  </div>
-                </Panel>
+                  </div >
+                </Panel >
 
                 {isTerminalVisible && (
                   <>
@@ -1892,98 +2358,182 @@ function App() {
                       </div>
                     </Panel>
                   </>
-                )}
-              </PanelGroup>
-            </Panel>
+                )
+                }
+              </PanelGroup >
+            </Panel >
           )}
         </PanelGroup >
 
         {/* Floating Quick Chat Modal - Moved to root of main-content to allow dragging anywhere */}
-        {isQuickChatOpen && (
-          <Rnd
-            size={{ width: quickChatGeometry.width, height: quickChatGeometry.height }}
-            position={{ x: quickChatGeometry.x, y: quickChatGeometry.y }}
-            onDragStop={(_e, d) => {
-              setQuickChatGeometry((prev: any) => ({ ...prev, x: d.x, y: d.y }));
-            }}
-            onResizeStop={(_e, _direction, ref, _delta, position) => {
-              setQuickChatGeometry({
-                width: parseInt(ref.style.width, 10),
-                height: parseInt(ref.style.height, 10),
-                ...position
-              });
-            }}
-            minWidth={300}
-            minHeight={300}
-            bounds="parent"
-            dragHandleClassName="quick-chat-drag-handle"
-            style={{
-              zIndex: 1000,
-              position: 'fixed'
-            }}
-          >
+        {
+          isQuickChatOpen && (
+            <Rnd
+              size={{ width: quickChatGeometry.width, height: quickChatGeometry.height }}
+              position={{ x: quickChatGeometry.x, y: quickChatGeometry.y }}
+              onDragStop={(_e, d) => {
+                setQuickChatGeometry((prev: any) => ({ ...prev, x: d.x, y: d.y }));
+              }}
+              onResizeStop={(_e, _direction, ref, _delta, position) => {
+                setQuickChatGeometry({
+                  width: parseInt(ref.style.width, 10),
+                  height: parseInt(ref.style.height, 10),
+                  ...position
+                });
+              }}
+              minWidth={300}
+              minHeight={300}
+              bounds="parent"
+              dragHandleClassName="quick-chat-drag-handle"
+              style={{
+                zIndex: 1000,
+                position: 'fixed'
+              }}
+            >
+              <div style={{
+                width: "100%",
+                height: "100%",
+                background: "var(--bg-color)",
+                border: "1px solid var(--border-color)",
+                borderRadius: "12px",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden"
+              }}>
+                <div className="quick-chat-drag-handle" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--border-color)", background: "var(--panel-bg)", cursor: "move" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-color)", fontWeight: "bold" }}>
+                    <Zap size={16} fill="currentColor" /> Quick Chat
+                  </div>
+                  <div style={{ display: "flex", gap: "8px" }} onPointerDown={(e) => e.stopPropagation()}>
+                    <button onClick={() => {
+                      setCurrentQuickChatId(null);
+                      setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
+                    }} className="btn btn-secondary" style={{ padding: "4px 8px", fontSize: "0.8rem" }}>
+                      <Plus size={14} /> New
+                    </button>
+                    <button onClick={() => setIsQuickChatOpen(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+                <div className="description-container" style={{ flex: 1, padding: "16px", overflowY: "auto" }} onPointerDown={(e) => e.stopPropagation()} ref={quickChatScrollRef}>
+                  {quickChatMessages.map((msg, idx) => (
+                    <div key={idx} className={`chat-bubble-container ${msg.role}`}>
+                      <div className={`chat-bubble ${msg.role}`}>
+                        <ReactMarkdown
+                          components={quickChatMarkdownComponents}
+                          remarkPlugins={[remarkGfm]}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", padding: "12px" }} onPointerDown={(e) => e.stopPropagation()}>
+                  <textarea
+                    className="ai-input"
+                    placeholder="Ask a quick question..."
+                    value={quickChatInput}
+                    onChange={(e) => {
+                      setQuickChatInput(e.target.value);
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !isQuickChatExplaining) {
+                        e.preventDefault();
+                        handleSendQuickChat();
+                        e.currentTarget.style.height = 'auto';
+                      }
+                    }}
+                    disabled={isQuickChatExplaining}
+                    rows={1}
+                    style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden" }}
+                  />
+                  <button className="btn btn-primary" onClick={handleSendQuickChat} disabled={isQuickChatExplaining}>
+                    {isQuickChatExplaining ? <Zap size={18} className="animate-pulse" /> : <Send size={18} />}
+                  </button>
+                </div>
+              </div>
+            </Rnd >
+          )
+        }
+
+        {/* Dictionary Modal Overlay */}
+        {isDictionaryModalOpen && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+            backdropFilter: 'blur(4px)',
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
             <div style={{
-              width: "100%",
-              height: "100%",
-              background: "var(--bg-color)",
-              border: "1px solid var(--border-color)",
-              borderRadius: "12px",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden"
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '1.25rem',
+              width: '90%',
+              maxWidth: '500px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              overflow: 'hidden'
             }}>
-              <div className="quick-chat-drag-handle" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--border-color)", background: "var(--panel-bg)", cursor: "move" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-color)", fontWeight: "bold" }}>
-                  <Zap size={16} fill="currentColor" /> Quick Chat
+              <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Book size={18} color="var(--accent-color)" />
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>Dictionary</h3>
                 </div>
-                <div style={{ display: "flex", gap: "8px" }} onPointerDown={(e) => e.stopPropagation()}>
-                  <button onClick={() => {
-                    setCurrentQuickChatId(null);
-                    setQuickChatDescription(INITIAL_QUICK_CHAT_DESCRIPTION);
-                  }} className="btn btn-secondary" style={{ padding: "4px 8px", fontSize: "0.8rem" }}>
-                    <Plus size={14} /> New
-                  </button>
-                  <button onClick={() => setIsQuickChatOpen(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
-                    <X size={18} />
-                  </button>
-                </div>
+                <button onClick={() => setIsDictionaryModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
+                  <X size={20} />
+                </button>
               </div>
-              <div className="description-container" style={{ flex: 1, padding: "16px", overflowY: "auto" }} onPointerDown={(e) => e.stopPropagation()} ref={quickChatScrollRef}>
-                <ReactMarkdown
-                  components={quickChatMarkdownComponents}
-                  remarkPlugins={[remarkGfm]}
+
+              <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto' }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em' }}>Word / Concept</span>
+                  <h2 style={{ margin: '4px 0 0 0', color: 'var(--accent-color)', fontSize: '1.5rem' }}>{dictionaryWord}</h2>
+                </div>
+
+                {isDictionaryLoading ? (
+                  <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 12px' }} />
+                    <p>Fetching definition...</p>
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--text-main)', lineHeight: 1.6 }}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {dictionaryResult}
+                    </ReactMarkdown>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.1)', textAlign: 'right' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setIsDictionaryModalOpen(false)}
                 >
-                  {quickChatDescription}
-                </ReactMarkdown>
-              </div>
-              <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", padding: "12px" }} onPointerDown={(e) => e.stopPropagation()}>
-                <textarea
-                  className="ai-input"
-                  placeholder="Ask a quick question..."
-                  value={quickChatInput}
-                  onChange={(e) => {
-                    setQuickChatInput(e.target.value);
-                    e.target.style.height = 'auto';
-                    e.target.style.height = e.target.scrollHeight + 'px';
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !isQuickChatExplaining) {
-                      e.preventDefault();
-                      handleSendQuickChat();
-                      e.currentTarget.style.height = 'auto';
-                    }
-                  }}
-                  disabled={isQuickChatExplaining}
-                  rows={1}
-                  style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden" }}
-                />
-                <button className="btn btn-primary" onClick={handleSendQuickChat} disabled={isQuickChatExplaining}>
-                  {isQuickChatExplaining ? <Zap size={18} className="animate-pulse" /> : <Send size={18} />}
+                  Close
                 </button>
               </div>
             </div>
-          </Rnd>
+          </div>
+        )}
+
+        {/* Quiz Overlay */}
+        {activeQuizQuestions && (
+          <Quiz
+            questions={activeQuizQuestions}
+            onClose={() => setActiveQuizQuestions(null)}
+          />
         )}
 
       </main >

@@ -33,10 +33,18 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 }
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>,
-);
+console.log("main.tsx: Before createRoot");
+try {
+  const rootElement = document.getElementById("root");
+  console.log("main.tsx: rootElement = ", rootElement);
+  ReactDOM.createRoot(rootElement as HTMLElement).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>,
+  );
+  console.log("main.tsx: After createRoot.render");
+} catch (err) {
+  console.error("main.tsx: Top level error caught:", err);
+}

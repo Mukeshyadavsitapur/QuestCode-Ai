@@ -21,9 +21,9 @@ interface SettingsModalProps {
     theme: string;
     setTheme: (theme: string) => void;
     onViewShortcuts: () => void;
-    selectedModel: string | null;
+    selectedModel: string;
     availableModels: string[];
-    setSelectedModel: (model: string | null) => void;
+    setSelectedModel: (model: string) => void;
     activeModel: string;
 }
 
@@ -119,7 +119,7 @@ export function SettingsModal({
         setHuggingFaceApiKey(localHuggingFaceKey);
         // Clear selected model if provider changed to avoid invalid model selection
         if (localProvider !== llmProvider) {
-            setSelectedModel(null);
+            setSelectedModel("");
         }
         onClose();
     };
@@ -295,7 +295,7 @@ export function SettingsModal({
                                     opacity: isLoadingModels ? 0.7 : 1
                                 }}
                                 value={selectedModel || ""}
-                                onChange={(e) => setSelectedModel(e.target.value || null)}
+                                onChange={(e) => setSelectedModel(e.target.value)}
                                 disabled={isLoadingModels}
                             >
                                 <option value="">Auto Select (Recommended)</option>

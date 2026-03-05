@@ -7,25 +7,54 @@ on:
         branches: [main]
 
 jobs:
+    # ── Rust / Tauri backend checks ─────────────────────────
     check-rust:
+        name: Check Rust Backend
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
+
             - name: Install system dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libspeechd-dev
+                  sudo apt-get install -y \
+                    libwebkit2gtk-4.1-dev build-essential curl wget file \
+                    libxdo-dev libssl-dev libayatana-appindicator3-dev \
+                    librsvg2-dev libspeechd-dev
+
             - name: Setup Rust
               uses: dtolnay/rust-toolchain@stable
               with:
                   components: clippy, rustfmt
+
             - name: Rust Cache
               uses: Swatinem/rust-cache@v2
               with:
                   workspaces: src-tauri
+
             - name: Check Backend
               run: |
                   cd src-tauri
                   cargo check
                   cargo fmt --check
                   cargo clippy -- -D warnings
+
+    # ── TypeScript / Vite frontend checks ──────────────────
+    check-frontend:
+        name: Check Frontend (TypeScript + Build)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            # tsc + vite build — catches TS errors AND bundling issues
+            - name: Type-check and Build
+              run: npm run build

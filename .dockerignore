@@ -1,0 +1,26 @@
+# Dependencies (rebuilt inside Docker)
+node_modules
+
+# Tauri native binary source (not needed for web build)
+src-tauri
+target
+
+# Build output (rebuilt inside Docker)
+dist
+
+# Git / IDE metadata
+.git
+.gitignore
+.vscode
+.vs
+.agent
+
+# Logs & temp files
+*.log
+build_error.txt
+debug.txt
+debug_clean.txt
+
+# Docker files themselves (avoid recursive copy)
+Dockerfile
+.dockerignore

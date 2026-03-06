@@ -1725,6 +1725,26 @@ function App() {
     }
   }), []);
 
+  // Compute flat topics and prev/next
+  const { prevTopic, nextTopic } = useMemo(() => {
+    let topics: any[] = [];
+    if (language === "rust") topics = TOPICS_RUST;
+    else if (language === "python") topics = TOPICS_PYTHON;
+    else if (language === "dsa") topics = TOPICS_DSA;
+    else if (language === "html") topics = TOPICS_HTML;
+    else if (language === "css") topics = TOPICS_CSS;
+    else if (language === "javascript") topics = TOPICS_JS;
+    else if (language === "ml") topics = TOPICS_ML;
+
+    const flatTopics = topics.flatMap(group => group.topics.map((t: Topic) => ({ ...t, groupTitle: group.title })));
+    const currentIndex = flatTopics.findIndex((t: Topic) => t.id === selectedTopic?.id);
+
+    return {
+      prevTopic: currentIndex > 0 ? flatTopics[currentIndex - 1] : null,
+      nextTopic: currentIndex !== -1 && currentIndex < flatTopics.length - 1 ? flatTopics[currentIndex + 1] : null,
+    };
+  }, [language, selectedTopic]);
+
   return (
     <div className="app-container">
 
@@ -2158,6 +2178,9 @@ function App() {
                       groupTitle={selectedGroup}
                       onBack={() => setIsHistoryOpen(true)}
                       onApplyCode={setCode}
+                      prevTopic={prevTopic}
+                      nextTopic={nextTopic}
+                      onSelectTopic={handleSelectTopic}
                     />
                   </div>
 

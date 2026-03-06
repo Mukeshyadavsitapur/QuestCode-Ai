@@ -20,9 +20,12 @@ interface AiLearningProps {
     groupTitle: string | null;
     onBack: () => void;
     onApplyCode: (code: string) => void;
+    prevTopic?: (Topic & { groupTitle: string }) | null;
+    nextTopic?: (Topic & { groupTitle: string }) | null;
+    onSelectTopic?: (topic: Topic, groupTitle: string) => void;
 }
 
-export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ language, apiKey, provider, selectedModel, topic, groupTitle, onBack, onApplyCode }, ref) => {
+export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ language, apiKey, provider, selectedModel, topic, groupTitle, onBack, onApplyCode, prevTopic, nextTopic, onSelectTopic }, ref) => {
     const [content, setContent] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -413,6 +416,32 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                             content={content}
                             markdownComponents={markdownComponents}
                         />
+
+                        {(prevTopic || nextTopic) && (
+                            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "40px", borderTop: "1px solid var(--border-color)", paddingTop: "24px", gap: "16px" }}>
+                                {prevTopic ? (
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => onSelectTopic?.(prevTopic, prevTopic.groupTitle)}
+                                        style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", padding: "16px 20px", background: "var(--panel-bg)", border: "1px solid var(--border-color)", flex: 1, height: "auto" }}
+                                    >
+                                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>&larr; Previous</span>
+                                        <span style={{ fontWeight: 600, color: "var(--text-main)", textAlign: "left" }}>{prevTopic.title}</span>
+                                    </button>
+                                ) : <div style={{ flex: 1 }}></div>}
+
+                                {nextTopic ? (
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => onSelectTopic?.(nextTopic, nextTopic.groupTitle)}
+                                        style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", padding: "16px 20px", background: "var(--panel-bg)", border: "1px solid var(--border-color)", flex: 1, height: "auto" }}
+                                    >
+                                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>Next &rarr;</span>
+                                        <span style={{ fontWeight: 600, color: "var(--accent-text)", textAlign: "right" }}>{nextTopic.title}</span>
+                                    </button>
+                                ) : <div style={{ flex: 1 }}></div>}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, Moon, Key, Sparkles, Loader2 } from "lucide-react";
+import { X, Moon, Key, Sparkles, Loader2, Trash2, Save, ChevronDown } from "lucide-react";
 import { themes } from "./themes";
 
 interface SettingsModalProps {
@@ -59,6 +59,27 @@ export function SettingsModal({
     const [fetchedModels, setFetchedModels] = useState<string[]>([]);
     const [isLoadingModels, setIsLoadingModels] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
+
+    // Custom Models State Management
+    const [customModelsMap, setCustomModelsMap] = useState<Record<string, string[]>>(() => {
+        try {
+            return JSON.parse(localStorage.getItem('customModelsMap') || '{}');
+        } catch {
+            return {};
+        }
+    });
+
+    const [deletedModelsMap, setDeletedModelsMap] = useState<Record<string, string[]>>(() => {
+        try {
+            return JSON.parse(localStorage.getItem('deletedModelsMap') || '{}');
+        } catch {
+            return {};
+        }
+    });
+
+    const [showModelDropdown, setShowModelDropdown] = useState(false);
+    const [showNewModelInput, setShowNewModelInput] = useState(false);
+    const [newModelInput, setNewModelInput] = useState("");
 
     useEffect(() => {
         setLocalProvider(llmProvider);
@@ -129,7 +150,37 @@ export function SettingsModal({
     // Determine which list to show:
     // 1. If we have fetched models (specifically for the *current* localKey input), use them.
     // 2. Otherwise default to availableModels (though the effect above syncs them).
-    const displayModels = fetchedModels.length > 0 ? fetchedModels : availableModels;
+    const baseModels = fetchedModels.length > 0 ? fetchedModels : availableModels;
+
+    // Combine base models and custom models, then filter out deleted models
+    const displayModels = (() => {
+        const added = customModelsMap[localProvider] || [];
+        const deleted = deletedModelsMap[localProvider] || [];
+        const providerModels = [...new Set([...baseModels, ...added])].filter(m => !deleted.includes(m));
+        return providerModels;
+    })();
+
+    const deleteModel = (modelToDelete: string) => {
+        if (window.confirm(`Are you sure you want to remove '${modelToDelete}'?`)) {
+            const updatedDeleted = { ...deletedModelsMap };
+            if (!updatedDeleted[localProvider]) updatedDeleted[localProvider] = [];
+            if (!updatedDeleted[localProvider].includes(modelToDelete)) {
+                updatedDeleted[localProvider].push(modelToDelete);
+            }
+            setDeletedModelsMap(updatedDeleted);
+            localStorage.setItem('deletedModelsMap', JSON.stringify(updatedDeleted));
+
+            // If we deleted the active model, auto-switch to the next available one
+            if (activeModel === modelToDelete || selectedModel === modelToDelete) {
+                // Calculate what the remaining models will be
+                const added = customModelsMap[localProvider] || [];
+                const remainingModels = [...new Set([...baseModels, ...added])].filter(m => !updatedDeleted[localProvider].includes(m));
+
+                const nextModel = remainingModels.length > 0 ? remainingModels[0] : "";
+                setSelectedModel(nextModel);
+            }
+        }
+    };
 
     return (
         <div className="settings-container" style={{ width: '100%', height: '100%', overflowY: 'auto', background: 'var(--code-bg)' }}>
@@ -283,29 +334,133 @@ export function SettingsModal({
                             <span>AI Model</span>
                         </label>
                         <div style={{ position: 'relative', width: '100%' }}>
-                            <select
-                                className="settings-input"
+                            <div
                                 style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    borderRadius: '4px',
-                                    background: 'var(--panel-bg)',
-                                    color: 'var(--text-main)',
-                                    border: '1px solid var(--border-color)',
-                                    opacity: isLoadingModels ? 0.7 : 1
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '8px', borderRadius: '4px', backgroundColor: 'var(--panel-bg)',
+                                    color: 'var(--text-main)', border: '1px solid var(--border-color)',
+                                    cursor: 'pointer', opacity: isLoadingModels ? 0.7 : 1
                                 }}
-                                value={selectedModel || ""}
-                                onChange={(e) => setSelectedModel(e.target.value)}
-                                disabled={isLoadingModels}
+                                onClick={() => !isLoadingModels && setShowModelDropdown(!showModelDropdown)}
                             >
-                                <option value="">Auto Select (Recommended)</option>
-                                {displayModels.map(model => (
-                                    <option key={model} value={model}>{model}</option>
-                                ))}
-                            </select>
+                                <span>{selectedModel || "Auto Select (Recommended)"}</span>
+                                <ChevronDown size={16} />
+                            </div>
+
                             {isLoadingModels && localProvider === "gemini" && (
                                 <div style={{ position: 'absolute', right: 30, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                                     <Loader2 className="animate-spin" size={16} color="var(--text-muted)" />
+                                </div>
+                            )}
+
+                            {showModelDropdown && !isLoadingModels && (
+                                <div style={{
+                                    position: 'absolute', left: 0, right: 0, top: '100%',
+                                    backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)',
+                                    borderRadius: '0.5rem', marginTop: '0.2rem', overflow: 'hidden', zIndex: 10,
+                                    maxHeight: '250px', overflowY: 'auto', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                }}>
+                                    <div
+                                        style={{ padding: '0.7rem', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', backgroundColor: selectedModel === "" ? 'var(--bg-secondary)' : 'transparent' }}
+                                        onClick={() => {
+                                            setSelectedModel("");
+                                            setShowModelDropdown(false);
+                                        }}
+                                    >
+                                        <span>Auto Select (Recommended)</span>
+                                    </div>
+                                    {displayModels.map(m => (
+                                        <div
+                                            key={m}
+                                            style={{ padding: '0.7rem', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', backgroundColor: selectedModel === m ? 'var(--bg-secondary)' : 'transparent' }}
+                                            onClick={() => {
+                                                setSelectedModel(m);
+                                                setShowModelDropdown(false);
+                                            }}
+                                        >
+                                            <span>{m}</span>
+                                            <Trash2 size={14} style={{ color: 'var(--text-muted)' }} onClick={(e: React.MouseEvent) => { e.stopPropagation(); deleteModel(m); }} />
+                                        </div>
+                                    ))}
+
+                                    {showNewModelInput ? (
+                                        <div style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', borderTop: '1px solid var(--border-color)' }}>
+                                            <input
+                                                type="text"
+                                                value={newModelInput}
+                                                onChange={(e) => setNewModelInput(e.target.value)}
+                                                placeholder="Custom model name..."
+                                                style={{
+                                                    flex: 1, padding: '0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)',
+                                                    backgroundColor: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.8rem'
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter' && newModelInput.trim()) {
+                                                        const newModel = newModelInput.trim();
+                                                        const updatedCustom = { ...customModelsMap };
+                                                        if (!updatedCustom[localProvider]) updatedCustom[localProvider] = [];
+                                                        if (!updatedCustom[localProvider].includes(newModel)) {
+                                                            updatedCustom[localProvider].push(newModel);
+                                                        }
+                                                        setCustomModelsMap(updatedCustom);
+                                                        localStorage.setItem('customModelsMap', JSON.stringify(updatedCustom));
+
+                                                        if (deletedModelsMap[localProvider]?.includes(newModel)) {
+                                                            const updatedDeleted = { ...deletedModelsMap };
+                                                            updatedDeleted[localProvider] = updatedDeleted[localProvider].filter(m => m !== newModel);
+                                                            setDeletedModelsMap(updatedDeleted);
+                                                            localStorage.setItem('deletedModelsMap', JSON.stringify(updatedDeleted));
+                                                        }
+
+                                                        setNewModelInput('');
+                                                        setShowNewModelInput(false);
+                                                        setSelectedModel(newModel);
+                                                    }
+                                                }}
+                                                autoFocus
+                                            />
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (newModelInput.trim()) {
+                                                        const newModel = newModelInput.trim();
+                                                        const updatedCustom = { ...customModelsMap };
+                                                        if (!updatedCustom[localProvider]) updatedCustom[localProvider] = [];
+                                                        if (!updatedCustom[localProvider].includes(newModel)) {
+                                                            updatedCustom[localProvider].push(newModel);
+                                                        }
+                                                        setCustomModelsMap(updatedCustom);
+                                                        localStorage.setItem('customModelsMap', JSON.stringify(updatedCustom));
+
+                                                        if (deletedModelsMap[localProvider]?.includes(newModel)) {
+                                                            const updatedDeleted = { ...deletedModelsMap };
+                                                            updatedDeleted[localProvider] = updatedDeleted[localProvider].filter(m => m !== newModel);
+                                                            setDeletedModelsMap(updatedDeleted);
+                                                            localStorage.setItem('deletedModelsMap', JSON.stringify(updatedDeleted));
+                                                        }
+
+                                                        setNewModelInput('');
+                                                        setShowNewModelInput(false);
+                                                        setSelectedModel(newModel);
+                                                    }
+                                                }}
+                                                style={{
+                                                    padding: '0.4rem', backgroundColor: 'var(--accent-color)', color: 'white',
+                                                    border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center'
+                                                }}
+                                            >
+                                                <Save size={14} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div
+                                            style={{ padding: '0.7rem', color: 'var(--accent-color)', cursor: 'pointer', textAlign: 'center', fontWeight: '500', borderTop: '1px solid var(--border-color)' }}
+                                            onClick={(e) => { e.stopPropagation(); setShowNewModelInput(true); }}
+                                        >
+                                            + New Model
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

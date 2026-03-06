@@ -1,9 +1,7 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useMemo, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Sparkles, Loader2, RefreshCw, BookOpen, Copy, Terminal as TerminalIcon } from "lucide-react";
 import Prism from "prismjs";
+import { SmartContent, generateAIResponseStream } from "./aiUtils";
 import "prismjs/themes/prism-tomorrow.css"; // Basic dark theme, can be overridden by custom CSS
 import "prismjs/components/prism-rust";
 import "prismjs/components/prism-python";
@@ -32,15 +30,12 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const scrollToLatestMessage = () => {
+        // Wait for a tiny bit for render to finish
         setTimeout(() => {
             if (scrollRef.current) {
-                const latestQuestion = scrollRef.current.querySelector('.latest-question-anchor');
+                const latestQuestion = scrollRef.current.querySelector('a[href="#latest-question"]') as HTMLElement;
                 if (latestQuestion) {
-                    setTimeout(() => {
-                        if (scrollRef.current && latestQuestion) {
-                            scrollRef.current.scrollTop = (latestQuestion as HTMLElement).offsetTop;
-                        }
-                    }, 10);
+                    scrollRef.current.scrollTop = latestQuestion.offsetTop - 16;
                 } else {
                     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
                 }
@@ -63,6 +58,12 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
         tr: ({ node, ...props }: any) => (
             <tr {...props} className="markdown-row" />
         ),
+        a: ({ node, ...props }: any) => {
+            if (props.href === '#latest-question') {
+                return <a {...props} style={{ visibility: 'hidden', fontSize: 0, padding: 0, margin: 0 }} />;
+            }
+            return <a {...props} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)', textDecoration: 'underline' }} />;
+        },
         pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
         code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
             const match = /language-(\w+)/.exec(className || "");
@@ -158,8 +159,8 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
             if (!topic) return;
 
             const timestamp = new Date().toLocaleTimeString();
-            const cleanContent = content.replace(/<span class="latest-question-anchor"><\/span>/g, "");
-            const newContent = cleanContent + (cleanContent ? "\n\n--- \n\n" : "") + `<span class="latest-question-anchor"></span>**You (${timestamp}):** ${question}\n\n*Thinking...*`;
+            const cleanContent = content.replace(/\[\s*\]\(#latest-question\)/g, "");
+            const newContent = cleanContent + (cleanContent ? "\n\n--- \n\n" : "") + `[ ](#latest-question)**You (${timestamp}):** ${question}\n\n*Thinking...*`;
             setContent(newContent);
             scrollToLatestMessage();
 
@@ -176,18 +177,25 @@ User Question: ${question}
 
 Answer the user's question in the context of this topic. Be concise and helpful. Use Markdown.`;
 
-                const response: { content: string; model: string } = await invoke("ask_question", {
-                    req: {
-                        api_key: apiKey,
-                        provider: provider,
-                        code: "",
-                        question: prompt,
-                        language: language === "dsa" ? "python" : language,
-                        selected_model: selectedModel
-                    }
+                const stream = generateAIResponseStream(prompt, [], {
+                    provider: provider,
+                    model: selectedModel || "",
+                    apiKey: apiKey,
+                    openAiApiKey: apiKey,
+                    anthropicApiKey: apiKey,
+                    groqApiKey: apiKey,
+                    huggingFaceApiKey: apiKey,
+                    temperature: temperature
                 });
 
-                const finalContent = newContent.replace("*Thinking...*", "") + `\n\n**AI:** ${response.content}`;
+                let fullContent = "";
+                for await (const chunk of stream) {
+                    fullContent += chunk;
+                    setContent(newContent.replace("*Thinking...*", "") + `\n\n**AI:** ${fullContent}`);
+                    scrollToLatestMessage();
+                }
+
+                const finalContent = newContent.replace("*Thinking...*", "") + `\n\n**AI:** ${fullContent}`;
                 setContent(finalContent);
 
                 // Update Cache
@@ -283,19 +291,24 @@ Answer the user's question in the context of this topic. Be concise and helpful.
       Use clean Markdown formatting. Use code blocks for all code.`;
             }
 
-            const response: { content: string; model: string } = await invoke("ask_question", {
-                req: {
-                    api_key: apiKey,
-                    provider: provider,
-                    code: "", // No context code needed
-                    question: prompt,
-                    language: language === "dsa" ? "python" : language,
-                    selected_model: selectedModel,
-                    temperature: temperature // Use selected temperature
-                }
+            const stream = generateAIResponseStream(prompt, [], {
+                provider: provider,
+                model: selectedModel || "",
+                apiKey: apiKey,
+                openAiApiKey: apiKey,
+                anthropicApiKey: apiKey,
+                groqApiKey: apiKey,
+                huggingFaceApiKey: apiKey,
+                temperature: temperature
             });
-            setContent(response.content);
-            localStorage.setItem(cacheKey, response.content);
+
+            let fullContent = "";
+            for await (const chunk of stream) {
+                fullContent += chunk;
+                setContent(fullContent);
+            }
+
+            localStorage.setItem(cacheKey, fullContent);
         } catch (err) {
             console.error("Failed to fetch explanation:", err);
             setError(String(err));
@@ -396,12 +409,10 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                     </div>
                 ) : (
                     <div className="markdown-body">
-                        <ReactMarkdown
-                            components={markdownComponents}
-                            remarkPlugins={[remarkGfm]}
-                        >
-                            {content}
-                        </ReactMarkdown>
+                        <SmartContent
+                            content={content}
+                            markdownComponents={markdownComponents}
+                        />
                     </div>
                 )}
             </div>

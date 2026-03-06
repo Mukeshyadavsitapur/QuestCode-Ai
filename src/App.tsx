@@ -8,8 +8,6 @@ import {
   Separator as PanelResizeHandle
 } from "react-resizable-panels";
 import Editor, { loader } from "@monaco-editor/react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { Rnd } from "react-rnd";
 import {
   Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus,
@@ -44,10 +42,7 @@ import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-markup";
 
 
-interface Message {
-  role: 'user' | 'ai' | 'system';
-  content: string;
-}
+import { Message, SmartContent, generateAIResponseStream } from "./aiUtils";
 
 interface ChatSession {
   id: string;
@@ -200,18 +195,18 @@ function App() {
   const quickChatScrollRef = useRef<HTMLDivElement>(null);
 
   const scrollToLatestMessage = (ref: React.RefObject<HTMLDivElement | null>) => {
+    // Wait for a tiny bit for render to finish
     setTimeout(() => {
       if (ref.current) {
-        const latestQuestion = ref.current.querySelector('.latest-question-anchor');
-        if (latestQuestion) {
-          // Wait for a tiny bit for render to finish
-          setTimeout(() => {
-            if (ref.current && latestQuestion) {
-              ref.current.scrollTop = (latestQuestion as HTMLElement).offsetTop;
-            }
-          }, 10);
+        const containers = ref.current.querySelectorAll('.chat-bubble-container');
+        if (containers.length > 0) {
+          const lastContainer = containers[containers.length - 1] as HTMLElement;
+          if (lastContainer.classList.contains('ai')) {
+            ref.current.scrollTop = lastContainer.offsetTop - 16;
+          } else {
+            ref.current.scrollTop = ref.current.scrollHeight;
+          }
         } else {
-          // Fallback
           ref.current.scrollTop = ref.current.scrollHeight;
         }
       }
@@ -542,7 +537,6 @@ function App() {
     const newUserMsg: Message = { role: 'user', content: userQuestion };
     const newThinkingMsg: Message = { role: 'ai', content: '*Thinking...*' };
 
-    // Replace initial description if it's the first message, otherwise append
     const updatedMessages = isFirstMessage
       ? [newUserMsg, newThinkingMsg]
       : [...quickChatMessages, newUserMsg, newThinkingMsg];
@@ -561,25 +555,33 @@ function App() {
       return;
     }
 
-    console.log("Asking quick question. Selection:", selectedModel);
-    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
+    setIsQuickChatExplaining(true);
     try {
-      const response: { content: string; model: string } = await invoke("ask_question", {
-        req: {
-          api_key: currentApiKey,
-          provider: llmProvider,
-          code: code,
-          question: userQuestion, // Send prompt context+question
-          language: (language === "dsa" || language === "ml") ? "python" : language,
-          selected_model: selectedModel
-        }
+      const stream = generateAIResponseStream(userQuestion, quickChatMessages.filter(m => m.role !== 'system'), {
+        provider: llmProvider,
+        model: selectedModel,
+        apiKey,
+        openAiApiKey,
+        anthropicApiKey,
+        groqApiKey,
+        huggingFaceApiKey
       });
 
-      const finalMessages = [...updatedMessages];
-      finalMessages[finalMessages.length - 1] = { role: 'ai', content: response.content };
+      let fullContent = "";
+      for await (const chunk of stream) {
+        fullContent += chunk;
+        setQuickChatMessages(prev => {
+          const newArr = [...prev];
+          if (newArr.length > 0) {
+            newArr[newArr.length - 1] = { role: 'ai', content: fullContent };
+          }
+          return newArr;
+        });
+        scrollToLatestMessage(quickChatScrollRef);
+      }
 
-      setQuickChatMessages(finalMessages);
-      setActiveModel(response.model);
+      const finalMessages = [...updatedMessages];
+      finalMessages[finalMessages.length - 1] = { role: 'ai', content: fullContent };
 
       // Save to main unified chat history directly
       if (currentQuickChatId) {
@@ -607,7 +609,7 @@ function App() {
         });
         setCurrentQuickChatId(newId);
       }
-
+      setActiveModel(selectedModel);
     } catch (error) {
       console.error("Failed to ask quick question:", error);
       setQuickChatMessages(prev => {
@@ -646,8 +648,6 @@ function App() {
       return;
     }
 
-    console.log("Explaining code. Selection:", selectedModel);
-
     // Add Thinking Message
     const isFirstMessage = messages.length === 1 && messages[0].role === 'system';
     const newMsgs = isFirstMessage
@@ -656,39 +656,53 @@ function App() {
     setMessages(newMsgs);
     scrollToLatestMessage(mainChatScrollRef);
 
-    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
     try {
-      const response: { content: string; model: string } = await invoke("explain_code", {
-        req: {
-          api_key: currentApiKey,
-          provider: llmProvider,
-          code: code,
-          language: (language === "dsa" || language === "ml") ? "python" : language,
-          selected_model: selectedModel
-        }
+      const stream = generateAIResponseStream(`Explain this code in detail:\n\n\`\`\`${language}\n${code}\n\`\`\``, messages.filter(m => m.role !== 'system'), {
+        provider: llmProvider,
+        model: selectedModel,
+        apiKey,
+        openAiApiKey,
+        anthropicApiKey,
+        groqApiKey,
+        huggingFaceApiKey
       });
-      console.log("Response from:", response.model);
 
-      const updatedMsgs = [...newMsgs];
-      updatedMsgs[updatedMsgs.length - 1] = { role: 'ai', content: response.content };
+      let fullContent = "";
+      for await (const chunk of stream) {
+        fullContent += chunk;
+        setMessages(prev => {
+          const newArr = [...prev];
+          if (newArr.length > 0) {
+            newArr[newArr.length - 1] = { role: 'ai', content: fullContent };
+          }
+          return newArr;
+        });
+        scrollToLatestMessage(mainChatScrollRef);
+      }
 
-      setMessages(updatedMsgs);
-      setActiveModel(response.model);
+      const updatedMsgs = isFirstMessage
+        ? [{ role: 'user', content: 'Explain this code.' }, { role: 'ai', content: fullContent }]
+        : [...messages, { role: 'user', content: 'Explain this code.' }, { role: 'ai', content: fullContent }];
+
       // Create new chat session for explanation
       const newId = Date.now().toString();
       const newChat: ChatSession = {
         id: newId,
         title: "Code Explanation",
-        messages: updatedMsgs,
+        messages: updatedMsgs as Message[],
         timestamp: new Date().toISOString(),
       };
       setChats(prev => [newChat, ...prev].slice(0, 500));
       setCurrentChatId(newId);
     } catch (error) {
       console.error("Failed to explain code:", error);
-      const updatedMsgs = [...newMsgs];
-      updatedMsgs[updatedMsgs.length - 1] = { role: 'ai', content: `## Error\n\n${error}` };
-      setMessages(updatedMsgs);
+      setMessages(prev => {
+        const newArr = [...prev];
+        if (newArr.length > 0) {
+          newArr[newArr.length - 1] = { role: 'ai', content: `## Error\n\n${error}` };
+        }
+        return newArr;
+      });
     } finally {
       setIsExplaining(false);
     }
@@ -714,7 +728,6 @@ function App() {
     const newUserMsg: Message = { role: 'user', content: userQuestion };
     const newThinkingMsg: Message = { role: 'ai', content: '*Thinking...*' };
 
-    // Replace initial description if it's the first message, otherwise append
     const updatedMessages = isFirstMessage
       ? [newUserMsg, newThinkingMsg]
       : [...messages, newUserMsg, newThinkingMsg];
@@ -733,33 +746,43 @@ function App() {
       return;
     }
 
-    console.log("Asking question. Selection:", selectedModel);
-    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
     try {
-      const response: { content: string; model: string } = await invoke("ask_question", {
-        req: {
-          api_key: currentApiKey,
-          provider: llmProvider,
-          code: code,
-          question: userQuestion, // Send context-enhanced question to AI
-          language: (language === "dsa" || language === "ml") ? "python" : language,
-          selected_model: selectedModel
-        }
+      const stream = generateAIResponseStream(userQuestion, messages.filter(m => m.role !== 'system'), {
+        provider: llmProvider,
+        model: selectedModel,
+        apiKey,
+        openAiApiKey,
+        anthropicApiKey,
+        groqApiKey,
+        huggingFaceApiKey
       });
-      console.log("Response from:", response.model);
 
-      const finalMessages = [...updatedMessages];
-      finalMessages[finalMessages.length - 1] = { role: 'ai', content: response.content };
+      let fullContent = "";
+      for await (const chunk of stream) {
+        fullContent += chunk;
+        setMessages(prev => {
+          const newArr = [...prev];
+          if (newArr.length > 0) {
+            newArr[newArr.length - 1] = { role: 'ai', content: fullContent };
+          }
+          return newArr;
+        });
+        scrollToLatestMessage(mainChatScrollRef);
+      }
 
-      setMessages(finalMessages);
-      setActiveModel(response.model);
-      // Use the question as title if it's the first message
-      updateChatHistory(finalMessages, isFirstMessage ? userQuestion.substring(0, 40) : undefined);
+      const finalMessages = isFirstMessage
+        ? [newUserMsg, { role: 'ai', content: fullContent }]
+        : [...messages, newUserMsg, { role: 'ai', content: fullContent }];
+
+      updateChatHistory(finalMessages as Message[], isFirstMessage ? userQuestion.substring(0, 40) : undefined);
+      setActiveModel(selectedModel);
     } catch (error) {
       console.error("Failed to ask question:", error);
       setMessages(prev => {
         const newArr = [...prev];
-        newArr[newArr.length - 1] = { role: 'ai', content: `**Error:** ${error}` };
+        if (newArr.length > 0) {
+          newArr[newArr.length - 1] = { role: 'ai', content: `**Error:** ${error}` };
+        }
         return newArr;
       });
     }
@@ -1013,34 +1036,36 @@ function App() {
     const newUserMsg: Message = { role: 'user', content: question };
     const newThinkingMsg: Message = { role: 'ai', content: '*Thinking...*' };
 
-    // updatedMessages should be previous context + new user msg + thinking
     const updatedMessages = [...context, newUserMsg, newThinkingMsg];
     setMessages(updatedMessages);
     scrollToLatestMessage(mainChatScrollRef);
 
-    const currentApiKey = llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey;
-
     try {
-      const response: { content: string; model: string } = await invoke("ask_question", {
-        req: {
-          api_key: currentApiKey,
-          provider: llmProvider,
-          code: code,
-          question: question,
-          language: (language === "dsa" || language === "ml") ? "python" : language,
-          selected_model: selectedModel
-        }
+      const stream = generateAIResponseStream(question, context, {
+        provider: llmProvider,
+        model: selectedModel,
+        apiKey,
+        openAiApiKey,
+        anthropicApiKey,
+        groqApiKey,
+        huggingFaceApiKey
       });
 
-      setMessages(prev => {
-        const newArr = [...prev];
-        if (newArr.length > 0 && newArr[newArr.length - 1].content === '*Thinking...*') {
-          newArr[newArr.length - 1] = { role: 'ai', content: response.content };
-        }
-        return newArr;
-      });
-      setActiveModel(response.model);
-      updateChatHistory([...context, newUserMsg, { role: 'ai', content: response.content }]);
+      let fullContent = "";
+      for await (const chunk of stream) {
+        fullContent += chunk;
+        setMessages(prev => {
+          const newArr = [...prev];
+          if (newArr.length > 0) {
+            newArr[newArr.length - 1] = { role: 'ai', content: fullContent };
+          }
+          return newArr;
+        });
+        scrollToLatestMessage(mainChatScrollRef);
+      }
+
+      updateChatHistory([...context, newUserMsg, { role: 'ai', content: fullContent }]);
+      setActiveModel(selectedModel);
     } catch (error) {
       console.error("Failed to explain code:", error);
       setMessages(prev => {
@@ -1976,12 +2001,10 @@ function App() {
                                       </div>
                                     )}
 
-                                    <ReactMarkdown
-                                      components={markdownComponents}
-                                      remarkPlugins={[remarkGfm]}
-                                    >
-                                      {msg.content}
-                                    </ReactMarkdown>
+                                    <SmartContent
+                                      content={msg.content}
+                                      markdownComponents={markdownComponents}
+                                    />
 
                                     {msg.role === 'ai' && idx === messages.length - 1 && (
                                       <div className="chat-reference-anchor"></div>
@@ -2148,9 +2171,6 @@ function App() {
                         placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
                         value={input}
                         onChange={(e) => {
-                          const model = e.target.value;
-                          setSelectedModel(model);
-                          localStorage.setItem("selected_model", model);
                           setInput(e.target.value);
                           e.target.style.height = 'auto';
                           e.target.style.height = e.target.scrollHeight + 'px';
@@ -2422,12 +2442,10 @@ function App() {
                   {quickChatMessages.map((msg, idx) => (
                     <div key={idx} className={`chat-bubble-container ${msg.role}`}>
                       <div className={`chat-bubble ${msg.role}`}>
-                        <ReactMarkdown
-                          components={quickChatMarkdownComponents}
-                          remarkPlugins={[remarkGfm]}
-                        >
-                          {msg.content}
-                        </ReactMarkdown>
+                        <SmartContent
+                          content={msg.content}
+                          markdownComponents={quickChatMarkdownComponents}
+                        />
                       </div>
                     </div>
                   ))}
@@ -2510,9 +2528,10 @@ function App() {
                   </div>
                 ) : (
                   <div style={{ color: 'var(--text-main)', lineHeight: 1.6 }}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {dictionaryResult}
-                    </ReactMarkdown>
+                    <SmartContent
+                      content={dictionaryResult}
+                      markdownComponents={markdownComponents}
+                    />
                   </div>
                 )}
               </div>

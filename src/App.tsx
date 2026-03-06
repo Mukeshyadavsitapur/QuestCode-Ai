@@ -2254,9 +2254,9 @@ function App() {
                       </select>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button
-                          className="tab-btn"
-                          onClick={() => setIsSettingsOpen(true)}
-                          style={{ border: "none", color: "var(--text-muted)", padding: "4px 8px" }}
+                          className={`tab-btn ${isSettingsOpen ? "active" : ""}`}
+                          onClick={() => setIsSettingsOpen(prev => !prev)}
+                          style={{ border: "none", color: isSettingsOpen ? "var(--accent-color)" : "var(--text-muted)", padding: "4px 8px" }}
                           title="Settings (F1)"
                         >
                           <Settings size={16} />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { X, Moon, Key, Sparkles, Loader2, Trash2, Save, ChevronDown } from "lucide-react";
+import { X, Moon, Key, Sparkles, Loader2, Trash2, ChevronDown, Check } from "lucide-react";
 import { themes } from "./themes";
 
 interface SettingsModalProps {
@@ -50,12 +50,6 @@ export function SettingsModal({
     setSelectedModel,
     activeModel,
 }: SettingsModalProps) {
-    const [localProvider, setLocalProvider] = useState(llmProvider);
-    const [localKey, setLocalKey] = useState(apiKey);
-    const [localOpenAiKey, setLocalOpenAiKey] = useState(openAiApiKey);
-    const [localAnthropicKey, setLocalAnthropicKey] = useState(anthropicApiKey);
-    const [localGroqKey, setLocalGroqKey] = useState(groqApiKey);
-    const [localHuggingFaceKey, setLocalHuggingFaceKey] = useState(huggingFaceApiKey);
     const [fetchedModels, setFetchedModels] = useState<string[]>([]);
     const [isLoadingModels, setIsLoadingModels] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -81,32 +75,27 @@ export function SettingsModal({
     const [showNewModelInput, setShowNewModelInput] = useState(false);
     const [newModelInput, setNewModelInput] = useState("");
 
-    useEffect(() => {
-        setLocalProvider(llmProvider);
-        setLocalKey(apiKey);
-        setLocalOpenAiKey(openAiApiKey);
-        setLocalAnthropicKey(anthropicApiKey);
-        setLocalGroqKey(groqApiKey);
-        setLocalHuggingFaceKey(huggingFaceApiKey);
-    }, [llmProvider, apiKey, openAiApiKey, anthropicApiKey, groqApiKey, huggingFaceApiKey]);
+    // Local draft for API key input — only saved on explicit Save click
+    const [localApiKeyDraft, setLocalApiKeyDraft] = useState(getCurrentApiKeyValue);
+    const [apiKeySaved, setApiKeySaved] = useState(false);
 
-    // Debounce and fetch models when localKey or localProvider changes
+    // Debounce and fetch models when apiKey or llmProvider changes
     useEffect(() => {
         const fetchModels = async () => {
-            if (localProvider !== "gemini") {
+            if (llmProvider !== "gemini") {
                 setFetchedModels([]);
                 setFetchError(null);
                 return;
             }
 
-            if (!localKey.trim()) {
+            if (!apiKey.trim()) {
                 setFetchedModels([]);
                 setFetchError(null);
                 return;
             }
 
-            // Don't re-fetch if it matches the current global key and we already have models passed in props
-            if (localKey === apiKey && availableModels.length > 0) {
+            // Don't re-fetch if we already have models passed in props
+            if (availableModels.length > 0) {
                 setFetchedModels(availableModels);
                 return;
             }
@@ -114,8 +103,7 @@ export function SettingsModal({
             setIsLoadingModels(true);
             setFetchError(null);
             try {
-                console.log("Fetching models for key...", localKey.substring(0, 5) + "...");
-                const models = await invoke<string[]>("get_available_models", { apiKey: localKey });
+                const models = await invoke<string[]>("get_available_models", { apiKey });
                 setFetchedModels(models);
             } catch (error) {
                 console.error("Failed to fetch models:", error);
@@ -126,36 +114,19 @@ export function SettingsModal({
             }
         };
 
-        const timer = setTimeout(fetchModels, 800); // 800ms debounce
-
+        const timer = setTimeout(fetchModels, 800);
         return () => clearTimeout(timer);
-    }, [localKey, apiKey, availableModels, localProvider]); // Depend on availableModels to sync initial state
-
-    const handleSave = () => {
-        setLlmProvider(localProvider);
-        setApiKey(localKey);
-        setOpenAiApiKey(localOpenAiKey);
-        setAnthropicApiKey(localAnthropicKey);
-        setGroqApiKey(localGroqKey);
-        setHuggingFaceApiKey(localHuggingFaceKey);
-        // Clear selected model if provider changed to avoid invalid model selection
-        if (localProvider !== llmProvider) {
-            setSelectedModel("");
-        }
-        onClose();
-    };
+    }, [apiKey, availableModels, llmProvider]);
 
     if (!isOpen) return null;
 
-    // Determine which list to show:
-    // 1. If we have fetched models (specifically for the *current* localKey input), use them.
-    // 2. Otherwise default to availableModels (though the effect above syncs them).
+    // Determine which list to show
     const baseModels = fetchedModels.length > 0 ? fetchedModels : availableModels;
 
     // Combine base models and custom models, then filter out deleted models
     const displayModels = (() => {
-        const added = customModelsMap[localProvider] || [];
-        const deleted = deletedModelsMap[localProvider] || [];
+        const added = customModelsMap[llmProvider] || [];
+        const deleted = deletedModelsMap[llmProvider] || [];
         const providerModels = [...new Set([...baseModels, ...added])].filter(m => !deleted.includes(m));
         return providerModels;
     })();
@@ -163,23 +134,77 @@ export function SettingsModal({
     const deleteModel = (modelToDelete: string) => {
         if (window.confirm(`Are you sure you want to remove '${modelToDelete}'?`)) {
             const updatedDeleted = { ...deletedModelsMap };
-            if (!updatedDeleted[localProvider]) updatedDeleted[localProvider] = [];
-            if (!updatedDeleted[localProvider].includes(modelToDelete)) {
-                updatedDeleted[localProvider].push(modelToDelete);
+            if (!updatedDeleted[llmProvider]) updatedDeleted[llmProvider] = [];
+            if (!updatedDeleted[llmProvider].includes(modelToDelete)) {
+                updatedDeleted[llmProvider].push(modelToDelete);
             }
             setDeletedModelsMap(updatedDeleted);
             localStorage.setItem('deletedModelsMap', JSON.stringify(updatedDeleted));
 
             // If we deleted the active model, auto-switch to the next available one
             if (activeModel === modelToDelete || selectedModel === modelToDelete) {
-                // Calculate what the remaining models will be
-                const added = customModelsMap[localProvider] || [];
-                const remainingModels = [...new Set([...baseModels, ...added])].filter(m => !updatedDeleted[localProvider].includes(m));
-
+                const added = customModelsMap[llmProvider] || [];
+                const remainingModels = [...new Set([...baseModels, ...added])].filter(m => !updatedDeleted[llmProvider].includes(m));
                 const nextModel = remainingModels.length > 0 ? remainingModels[0] : "";
                 setSelectedModel(nextModel);
             }
         }
+    };
+
+    // Auto-save handler for provider change
+    const handleProviderChange = (newProvider: string) => {
+        setLlmProvider(newProvider);
+        setFetchError(null);
+        // Clear selected model when provider changes to avoid invalid model
+        setSelectedModel("");
+    };
+
+    function getCurrentApiKeyValue() {
+        if (llmProvider === 'gemini') return apiKey;
+        if (llmProvider === 'openai') return openAiApiKey;
+        if (llmProvider === 'anthropic') return anthropicApiKey;
+        if (llmProvider === 'groq') return groqApiKey;
+        return huggingFaceApiKey;
+    }
+
+    // Sync local draft when provider switches
+    useEffect(() => {
+        setLocalApiKeyDraft(getCurrentApiKeyValue());
+        setApiKeySaved(false);
+    }, [llmProvider]);
+
+    const saveApiKey = () => {
+        if (llmProvider === 'gemini') setApiKey(localApiKeyDraft);
+        else if (llmProvider === 'openai') setOpenAiApiKey(localApiKeyDraft);
+        else if (llmProvider === 'anthropic') setAnthropicApiKey(localApiKeyDraft);
+        else if (llmProvider === 'groq') setGroqApiKey(localApiKeyDraft);
+        else setHuggingFaceApiKey(localApiKeyDraft);
+        setApiKeySaved(true);
+        setTimeout(() => setApiKeySaved(false), 2000);
+    };
+
+    const addNewModel = () => {
+        const newModel = newModelInput.trim();
+        if (!newModel) return;
+
+        const updatedCustom = { ...customModelsMap };
+        if (!updatedCustom[llmProvider]) updatedCustom[llmProvider] = [];
+        if (!updatedCustom[llmProvider].includes(newModel)) {
+            updatedCustom[llmProvider].push(newModel);
+        }
+        setCustomModelsMap(updatedCustom);
+        localStorage.setItem('customModelsMap', JSON.stringify(updatedCustom));
+
+        if (deletedModelsMap[llmProvider]?.includes(newModel)) {
+            const updatedDeleted = { ...deletedModelsMap };
+            updatedDeleted[llmProvider] = updatedDeleted[llmProvider].filter(m => m !== newModel);
+            setDeletedModelsMap(updatedDeleted);
+            localStorage.setItem('deletedModelsMap', JSON.stringify(updatedDeleted));
+        }
+
+        setNewModelInput('');
+        setShowNewModelInput(false);
+        setSelectedModel(newModel);
     };
 
     return (
@@ -220,12 +245,8 @@ export function SettingsModal({
                         <select
                             className="settings-input"
                             style={{ appearance: 'auto', WebkitAppearance: 'auto' as any, backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                            value={localProvider}
-                            onChange={(e) => {
-                                setLocalProvider(e.target.value);
-                                setLocalKey(e.target.value === 'gemini' ? apiKey : e.target.value === 'openai' ? openAiApiKey : e.target.value === 'anthropic' ? anthropicApiKey : e.target.value === 'groq' ? groqApiKey : huggingFaceApiKey);
-                                setFetchError(null);
-                            }}
+                            value={llmProvider}
+                            onChange={(e) => handleProviderChange(e.target.value)}
                         >
                             <option value="groq">Groq</option>
                             <option value="huggingface">Hugging Face</option>
@@ -238,29 +259,43 @@ export function SettingsModal({
                     <div className="setting-group">
                         <label className="setting-label">
                             <Key size={18} />
-                            <span>{localProvider === 'gemini' ? 'Gemini ' : localProvider === 'openai' ? 'OpenAI ' : localProvider === 'anthropic' ? 'Anthropic ' : localProvider === 'groq' ? 'Groq ' : 'Hugging Face '}API Key</span>
+                            <span>{llmProvider === 'gemini' ? 'Gemini ' : llmProvider === 'openai' ? 'OpenAI ' : llmProvider === 'anthropic' ? 'Anthropic ' : llmProvider === 'groq' ? 'Groq ' : 'Hugging Face '}API Key</span>
                         </label>
-                        <input
-                            type="password"
-                            className="settings-input"
-                            placeholder={`Enter your ${localProvider === 'gemini' ? 'Gemini' : localProvider === 'openai' ? 'OpenAI' : localProvider === 'anthropic' ? 'Anthropic' : localProvider === 'groq' ? 'Groq' : 'Hugging Face'} API Key`}
-                            value={localProvider === 'gemini' ? localKey : localProvider === 'openai' ? localOpenAiKey : localProvider === 'anthropic' ? localAnthropicKey : localProvider === 'groq' ? localGroqKey : localHuggingFaceKey}
-                            onChange={(e) => {
-                                if (localProvider === 'gemini') setLocalKey(e.target.value);
-                                else if (localProvider === 'openai') setLocalOpenAiKey(e.target.value);
-                                else if (localProvider === 'anthropic') setLocalAnthropicKey(e.target.value);
-                                else if (localProvider === 'groq') setLocalGroqKey(e.target.value);
-                                else setLocalHuggingFaceKey(e.target.value);
-                            }}
-                        />
-                        {fetchError && localProvider === "gemini" && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <input
+                                type="password"
+                                className="settings-input"
+                                style={{ flex: 1, margin: 0 }}
+                                placeholder={`Enter your ${llmProvider === 'gemini' ? 'Gemini' : llmProvider === 'openai' ? 'OpenAI' : llmProvider === 'anthropic' ? 'Anthropic' : llmProvider === 'groq' ? 'Groq' : 'Hugging Face'} API Key`}
+                                value={localApiKeyDraft}
+                                onChange={(e) => { setLocalApiKeyDraft(e.target.value); setApiKeySaved(false); }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') saveApiKey(); }}
+                            />
+                            <button
+                                onClick={saveApiKey}
+                                title="Save API Key"
+                                style={{
+                                    flexShrink: 0,
+                                    display: 'flex', alignItems: 'center', gap: 4,
+                                    padding: '8px 14px', borderRadius: 6,
+                                    border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
+                                    backgroundColor: apiKeySaved ? 'var(--accent-color)' : 'var(--accent-color)',
+                                    color: 'white',
+                                    opacity: apiKeySaved ? 0.85 : 1,
+                                    transition: 'opacity 0.2s'
+                                }}
+                            >
+                                {apiKeySaved ? <><Check size={14} /> Saved</> : 'Save'}
+                            </button>
+                        </div>
+                        {fetchError && llmProvider === "gemini" && (
                             <div style={{ color: "#ff6b6b", fontSize: "0.8rem", marginTop: 4 }}>
                                 ⚠️ {fetchError}
                             </div>
                         )}
                         <p className="setting-hint">
                             Your key is stored locally on your device.
-                            {localProvider === "gemini" && (
+                            {llmProvider === "gemini" && (
                                 <>
                                     <br />
                                     <a
@@ -273,7 +308,7 @@ export function SettingsModal({
                                     </a>
                                 </>
                             )}
-                            {localProvider === "openai" && (
+                            {llmProvider === "openai" && (
                                 <>
                                     <br />
                                     <a
@@ -286,7 +321,7 @@ export function SettingsModal({
                                     </a>
                                 </>
                             )}
-                            {localProvider === "anthropic" && (
+                            {llmProvider === "anthropic" && (
                                 <>
                                     <br />
                                     <a
@@ -299,7 +334,7 @@ export function SettingsModal({
                                     </a>
                                 </>
                             )}
-                            {localProvider === "groq" && (
+                            {llmProvider === "groq" && (
                                 <>
                                     <br />
                                     <a
@@ -312,7 +347,7 @@ export function SettingsModal({
                                     </a>
                                 </>
                             )}
-                            {localProvider === "huggingface" && (
+                            {llmProvider === "huggingface" && (
                                 <>
                                     <br />
                                     <a
@@ -347,7 +382,7 @@ export function SettingsModal({
                                 <ChevronDown size={16} />
                             </div>
 
-                            {isLoadingModels && localProvider === "gemini" && (
+                            {isLoadingModels && llmProvider === "gemini" && (
                                 <div style={{ position: 'absolute', right: 30, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                                     <Loader2 className="animate-spin" size={16} color="var(--text-muted)" />
                                 </div>
@@ -396,61 +431,19 @@ export function SettingsModal({
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
                                                 onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' && newModelInput.trim()) {
-                                                        const newModel = newModelInput.trim();
-                                                        const updatedCustom = { ...customModelsMap };
-                                                        if (!updatedCustom[localProvider]) updatedCustom[localProvider] = [];
-                                                        if (!updatedCustom[localProvider].includes(newModel)) {
-                                                            updatedCustom[localProvider].push(newModel);
-                                                        }
-                                                        setCustomModelsMap(updatedCustom);
-                                                        localStorage.setItem('customModelsMap', JSON.stringify(updatedCustom));
-
-                                                        if (deletedModelsMap[localProvider]?.includes(newModel)) {
-                                                            const updatedDeleted = { ...deletedModelsMap };
-                                                            updatedDeleted[localProvider] = updatedDeleted[localProvider].filter(m => m !== newModel);
-                                                            setDeletedModelsMap(updatedDeleted);
-                                                            localStorage.setItem('deletedModelsMap', JSON.stringify(updatedDeleted));
-                                                        }
-
-                                                        setNewModelInput('');
-                                                        setShowNewModelInput(false);
-                                                        setSelectedModel(newModel);
-                                                    }
+                                                    if (e.key === 'Enter') addNewModel();
+                                                    if (e.key === 'Escape') { setShowNewModelInput(false); setNewModelInput(''); }
                                                 }}
                                                 autoFocus
                                             />
                                             <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (newModelInput.trim()) {
-                                                        const newModel = newModelInput.trim();
-                                                        const updatedCustom = { ...customModelsMap };
-                                                        if (!updatedCustom[localProvider]) updatedCustom[localProvider] = [];
-                                                        if (!updatedCustom[localProvider].includes(newModel)) {
-                                                            updatedCustom[localProvider].push(newModel);
-                                                        }
-                                                        setCustomModelsMap(updatedCustom);
-                                                        localStorage.setItem('customModelsMap', JSON.stringify(updatedCustom));
-
-                                                        if (deletedModelsMap[localProvider]?.includes(newModel)) {
-                                                            const updatedDeleted = { ...deletedModelsMap };
-                                                            updatedDeleted[localProvider] = updatedDeleted[localProvider].filter(m => m !== newModel);
-                                                            setDeletedModelsMap(updatedDeleted);
-                                                            localStorage.setItem('deletedModelsMap', JSON.stringify(updatedDeleted));
-                                                        }
-
-                                                        setNewModelInput('');
-                                                        setShowNewModelInput(false);
-                                                        setSelectedModel(newModel);
-                                                    }
-                                                }}
+                                                onClick={(e) => { e.stopPropagation(); addNewModel(); }}
                                                 style={{
-                                                    padding: '0.4rem', backgroundColor: 'var(--accent-color)', color: 'white',
-                                                    border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center'
+                                                    padding: '0.4rem 0.6rem', backgroundColor: 'var(--accent-color)', color: 'white',
+                                                    border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'
                                                 }}
                                             >
-                                                <Save size={14} />
+                                                Add
                                             </button>
                                         </div>
                                     ) : (
@@ -465,7 +458,7 @@ export function SettingsModal({
                             )}
                         </div>
                         <p className="setting-hint">
-                            {isLoadingModels && localProvider === "gemini" ? "Checking availability..." : `Choose a specific ${localProvider === 'gemini' ? 'Gemini' : localProvider === 'openai' ? 'OpenAI' : localProvider === 'anthropic' ? 'Anthropic' : localProvider === 'groq' ? 'Groq' : 'Hugging Face'} model or let the system auto-select.`}
+                            {isLoadingModels && llmProvider === "gemini" ? "Checking availability..." : `Choose a specific ${llmProvider === 'gemini' ? 'Gemini' : llmProvider === 'openai' ? 'OpenAI' : llmProvider === 'anthropic' ? 'Anthropic' : llmProvider === 'groq' ? 'Groq' : 'Hugging Face'} model or let the system auto-select.`}
                         </p>
                         {activeModel && (
                             <div
@@ -495,15 +488,6 @@ export function SettingsModal({
                             View All Shortcuts
                         </button>
                     </div>
-                </div>
-
-                <div className="settings-footer" style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                    <button onClick={onClose} className="btn btn-secondary">
-                        Cancel
-                    </button>
-                    <button onClick={handleSave} className="btn btn-primary">
-                        Save Changes
-                    </button>
                 </div>
             </div>
         </div>

@@ -22,7 +22,7 @@ import {
   PanelRight,
   PanelLeft,
   PanelLeftClose,
-  RefreshCw, Pencil, Trash2, BookOpen, VolumeX, Volume2, FileDown, MoreVertical
+  RefreshCw, Trash2, BookOpen, VolumeX, Volume2
 } from "lucide-react";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
@@ -91,13 +91,8 @@ function App() {
   const [isDictionaryLoading, setIsDictionaryLoading] = useState(false);
   const [isDictionaryModalOpen, setIsDictionaryModalOpen] = useState(false);
   const [speakingMsgIdx, setSpeakingMsgIdx] = useState<number | null>(null);
-  const [copiedMsgIdx, setCopiedMsgIdx] = useState<number | null>(null);
   const [isQuizGenerating, setIsQuizGenerating] = useState(false);
   const [activeQuizQuestions, setActiveQuizQuestions] = useState<any[] | null>(null);
-  const [openKebabIdx, setOpenKebabIdx] = useState<number | null>(null);
-  const [editingMsgIdx, setEditingMsgIdx] = useState<number | null>(null);
-  const [editDraft, setEditDraft] = useState('');
-
   const [input, setInput] = useState("");
   const [isExplaining, setIsExplaining] = useState(false);
   const { isPyodideLoading, runPython } = usePython();
@@ -986,15 +981,7 @@ function App() {
     handleLanguageChange(languages[nextIndex]);
   };
 
-  const handleCopyMessage = async (content: string, idx: number) => {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopiedMsgIdx(idx);
-      setTimeout(() => setCopiedMsgIdx(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  };
+
 
 
 
@@ -1091,33 +1078,6 @@ function App() {
     }
   };
 
-  const handleDeleteMessage = (idx: number) => {
-    const newMessages = messages.filter((_, i) => i !== idx);
-    setMessages(newMessages);
-    updateChatHistory(newMessages);
-    setOpenKebabIdx(null);
-  };
-
-  const handleStartEdit = (idx: number) => {
-    setEditingMsgIdx(idx);
-    setEditDraft(messages[idx].content);
-    setOpenKebabIdx(null);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingMsgIdx(null);
-    setEditDraft('');
-  };
-
-  const handleSaveEdit = (idx: number) => {
-    const newMessages = [...messages];
-    newMessages[idx].content = editDraft;
-    setMessages(newMessages);
-    updateChatHistory(newMessages);
-    setEditingMsgIdx(null);
-    setEditDraft('');
-  };
-
   const handleDictionaryLookup = async (word: string) => {
     if (!word) return;
     setIsDictionaryLoading(true);
@@ -1173,44 +1133,6 @@ function App() {
     } finally {
       setIsQuizGenerating(false);
     }
-  };
-
-  const handleExportPdf = (content: string) => {
-    const printWindow = window.open('', '', 'height=600,width=800');
-    if (!printWindow) return;
-
-    printWindow.document.write('<html><head><title>Export Message Context</title>');
-    printWindow.document.write('<style>');
-    printWindow.document.write(`
-      body { font-family: sans-serif; padding: 40px; color: #333; }
-      pre { background: #f5f5f5; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; }
-      code { background: #f0f0f0; padding: 2px 5px; border-radius: 3px; font-family: monospace; }
-      h1, h2, h3 { color: #1a1a1a; margin-top: 1.5em; margin-bottom: 0.5em; }
-      ul, ol { margin-left: 20px; }
-      blockquote { border-left: 4px solid #ddd; padding-left: 15px; color: #555; margin-left: 0; }
-    `);
-    printWindow.document.write('</style></head><body>');
-    printWindow.document.write(`<h2>ReaderPro Context AI Response</h2>`);
-    printWindow.document.write('<div class="markdown-body">');
-
-    // Naively render to HTML - for a robust app use marked.js or similar inside the print window
-    let htmlContent = content
-      .replace(/\n\n/g, '<br><br>')
-      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      .replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>')
-      .replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>')
-      .replace(/^#{1}\s+(.+)$/gm, '<h1>$1</h1>');
-
-    printWindow.document.write(htmlContent);
-    printWindow.document.write('</div></body></html>');
-    printWindow.document.close();
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
-    };
   };
 
 
@@ -2057,129 +1979,60 @@ function App() {
                       <>
                         <div className="description-container" ref={mainChatScrollRef} style={{ padding: "0 16px", paddingBottom: "100px" }}>
                           {messages.map((msg, idx) => {
-                            const isEditing = editingMsgIdx === idx;
                             return (
                               <div key={idx} className={`chat-bubble-container ${msg.role}`} data-msg-idx={idx}>
-                                {isEditing ? (
-                                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    <textarea
-                                      autoFocus
-                                      value={editDraft}
-                                      onChange={e => setEditDraft(e.target.value)}
-                                      style={{
-                                        width: '100%',
-                                        height: '180px',
-                                        padding: '0.85rem 1rem',
-                                        borderRadius: '0.75rem',
-                                        border: '1.5px solid var(--accent-color)',
-                                        backgroundColor: 'var(--bg-secondary)',
-                                        color: 'var(--text-primary)',
-                                        fontSize: '0.95rem',
-                                        fontFamily: 'inherit',
-                                        resize: 'vertical',
-                                        outline: 'none'
-                                      }}
-                                    />
-                                    <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem', display: 'block' }}>Zoom Controls are explicitly disabled in QuestCode-Ai for cleaner navigation.</label>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <div className={`message-bubble ${msg.role}`}>
+                                  {msg.role === 'ai' && msg.content && msg.content !== '*Thinking...*' && (
+                                    <div className="msg-bubble-tools">
                                       <button
-                                        className="msg-action-btn"
-                                        style={{ background: 'var(--accent-color)', color: 'white', padding: '0.35rem 1rem', borderRadius: '1.5rem', fontWeight: 600 }}
-                                        onClick={() => handleSaveEdit(idx)}
+                                        className={`icon-btn ${isDictionaryActive ? 'active' : ''}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setIsDictionaryActive(!isDictionaryActive);
+                                        }}
+                                        title={isDictionaryActive ? "Disable Dictionary Mode" : "Enable Dictionary Mode (Click words)"}
                                       >
-                                        Save
+                                        <BookOpen size={16} />
                                       </button>
                                       <button
-                                        className="msg-action-btn"
-                                        style={{ background: 'var(--bg-tertiary)', padding: '0.35rem 0.85rem', borderRadius: '1.5rem' }}
-                                        onClick={handleCancelEdit}
+                                        className={`icon-btn ${speakingMsgIdx === idx ? 'active' : ''}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          handleListen(msg.content, idx);
+                                        }}
+                                        title={speakingMsgIdx === idx ? "Stop listening" : "Listen"}
                                       >
-                                        Cancel
+                                        {speakingMsgIdx === idx ? <VolumeX size={15} /> : <Volume2 size={15} />}
                                       </button>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className={`message-bubble ${msg.role}`}>
-                                    {msg.role === 'ai' && msg.content && msg.content !== '*Thinking...*' && (
-                                      <div className="msg-bubble-tools">
-                                        <button
-                                          className={`icon-btn ${isDictionaryActive ? 'active' : ''}`}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setIsDictionaryActive(!isDictionaryActive);
-                                          }}
-                                          title={isDictionaryActive ? "Disable Dictionary Mode" : "Enable Dictionary Mode (Click words)"}
-                                        >
-                                          <BookOpen size={16} />
-                                        </button>
-                                        <button
-                                          className={`icon-btn ${speakingMsgIdx === idx ? 'active' : ''}`}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            e.preventDefault();
-                                            handleListen(msg.content, idx);
-                                          }}
-                                          title={speakingMsgIdx === idx ? "Stop listening" : "Listen"}
-                                        >
-                                          {speakingMsgIdx === idx ? <VolumeX size={15} /> : <Volume2 size={15} />}
-                                        </button>
-                                      </div>
-                                    )}
+                                  )}
 
-                                    <SmartContent
-                                      content={msg.content}
-                                      markdownComponents={markdownComponents}
-                                    />
+                                  <SmartContent
+                                    content={msg.content}
+                                    markdownComponents={markdownComponents}
+                                  />
 
-                                    {msg.role === 'ai' && idx === messages.length - 1 && (
-                                      <div className="chat-reference-anchor"></div>
-                                    )}
+                                  {msg.role === 'ai' && idx === messages.length - 1 && (
+                                    <div className="chat-reference-anchor"></div>
+                                  )}
 
-                                    {/* Action Bar */}
-                                    {msg.role === 'ai' && msg.content && msg.content !== '*Thinking...*' && (
-                                      <div className="msg-action-bar">
-                                        <button className="msg-action-btn" onClick={() => handleCopyMessage(msg.content, idx)}>
-                                          <Copy size={16} /> <span>{copiedMsgIdx === idx ? 'Copied!' : 'Copy'}</span>
-                                        </button>
+                                  {/* Action Bar */}
+                                  {msg.role === 'ai' && msg.content && msg.content !== '*Thinking...*' && (
+                                    <div className="msg-action-bar">
+                                      <button className="msg-action-btn" onClick={() => handleTryAgain(idx)}>
+                                        <RefreshCw size={16} /> <span>Try again</span>
+                                      </button>
 
-                                        <button className="msg-action-btn" onClick={() => handleTryAgain(idx)}>
-                                          <RefreshCw size={16} /> <span>Try again</span>
-                                        </button>
-
-                                        <button className="msg-action-btn" disabled={isQuizGenerating} onClick={() => handleGenerateQuiz(msg.content)}>
-                                          <Zap size={16} /> <span>{isQuizGenerating ? 'Generating...' : 'Generate Quiz'}</span>
-                                        </button>
-
-                                        <button className="msg-action-btn" onClick={() => handleExportPdf(msg.content)}>
-                                          <FileDown size={16} /> <span>Export PDF</span>
-                                        </button>
-
-                                        {/* Kebab menu on the far right */}
-                                        <div style={{ position: 'relative', marginLeft: 'auto', display: 'flex' }}>
-                                          <button className="msg-action-btn msg-action-btn--kebab" onClick={(e) => { e.stopPropagation(); setOpenKebabIdx(openKebabIdx === idx ? null : idx); }}>
-                                            <MoreVertical size={16} />
-                                          </button>
-                                          {openKebabIdx === idx && (
-                                            <>
-                                              <div style={{ position: 'fixed', inset: 0, zIndex: 300 }} onClick={() => setOpenKebabIdx(null)} />
-                                              <div className="msg-kebab-menu">
-                                                <div className="msg-kebab-item" onClick={() => handleStartEdit(idx)}>
-                                                  <Pencil size={13} /> Edit response
-                                                </div>
-                                                <div className="msg-kebab-item msg-kebab-item--delete" onClick={() => handleDeleteMessage(idx)}>
-                                                  <Trash2 size={13} /> Delete response
-                                                </div>
-                                              </div>
-                                            </>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                               </div>
-                             );
-                           })}
+                                      <button className="msg-action-btn" disabled={isQuizGenerating} onClick={() => handleGenerateQuiz(msg.content)}>
+                                        <Zap size={16} /> <span>{isQuizGenerating ? 'Generating...' : 'Generate Quiz'}</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                          </div>
                        </>
                      ) : (

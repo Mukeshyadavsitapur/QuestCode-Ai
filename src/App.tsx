@@ -1292,6 +1292,15 @@ function App() {
     }
 
     try {
+      // Check if we are running on mobile securely
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile && language === "rust") {
+        setTerminalOutput("🎓 Rust Execution Notice:\\n\\nCompiling and running Rust code locally requires a full Rust Toolchain (rustc), which is not available on mobile phones.\\n\\nTo run your Rust code, please use the Desktop version of QuestCode-Ai! You can still use 'Explain Code' here on mobile.");
+        setIsRunning(false);
+        return;
+      }
+
       const output: string = await invoke("execute_code", { code, language });
       setTerminalOutput(prev => prev + output);
     } catch (error) {
@@ -1806,8 +1815,34 @@ function App() {
         <PanelGroup orientation="horizontal">
           {isAiAssistantVisible && (
             <>
-              <Panel defaultSize={50} minSize={30}>
+               <Panel defaultSize={50} minSize={30}>
                 <div className="panel" style={{ position: "relative" }}>
+                  {isSettingsOpen ? (
+                      <SettingsModal
+                        isOpen={isSettingsOpen}
+                        onClose={() => setIsSettingsOpen(false)}
+                        llmProvider={llmProvider}
+                        setLlmProvider={setLlmProvider}
+                        apiKey={apiKey}
+                        setApiKey={setApiKey}
+                        openAiApiKey={openAiApiKey}
+                        setOpenAiApiKey={setOpenAiApiKey}
+                        anthropicApiKey={anthropicApiKey}
+                        setAnthropicApiKey={setAnthropicApiKey}
+                        groqApiKey={groqApiKey}
+                        setGroqApiKey={setGroqApiKey}
+                        huggingFaceApiKey={huggingFaceApiKey}
+                        setHuggingFaceApiKey={setHuggingFaceApiKey}
+                        theme={theme}
+                        setTheme={setTheme}
+                        onViewShortcuts={() => { setIsSettingsOpen(false); setViewMode("shortcuts"); }}
+                        selectedModel={selectedModel}
+                        availableModels={availableModels}
+                        setSelectedModel={setSelectedModel}
+                        activeModel={activeModel}
+                      />
+                  ) : (
+                    <>
                   <div className="panel-header">
                     <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                       <button
@@ -1850,6 +1885,15 @@ function App() {
                         title={isEditorVisible ? "Hide Editor (F4)" : "Show Editor (F4)"}
                       >
                         <PanelRight size={14} />
+                      </button>
+
+                      <button
+                        className={`tab-btn ${isSettingsOpen ? "active" : ""}`}
+                        onClick={() => setIsSettingsOpen(prev => !prev)}
+                        style={{ border: "none", color: isSettingsOpen ? "var(--accent-color)" : "var(--text-muted)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
+                        title="Settings (F1)"
+                      >
+                        <Settings size={14} />
                       </button>
 
                     </div>
@@ -2133,14 +2177,14 @@ function App() {
                                     )}
                                   </div>
                                 )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    ) : (
-                      <div
-                        style={{
+                               </div>
+                             );
+                           })}
+                         </div>
+                       </>
+                     ) : (
+                       <div
+                         style={{
                           flex: 1,
                           display: "flex",
                           flexDirection: "column",
@@ -2276,8 +2320,10 @@ function App() {
                   )}
 
                   {/* Removed duplicate Floating Quick Chat Modal here */}
+                  </>
+                  )}
                 </div>
-              </Panel >
+              </Panel>
               <PanelResizeHandle className="resizer horizontal" />
             </>
           )}
@@ -2315,14 +2361,6 @@ function App() {
                       </select>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button
-                          className={`tab-btn ${isSettingsOpen ? "active" : ""}`}
-                          onClick={() => setIsSettingsOpen(prev => !prev)}
-                          style={{ border: "none", color: isSettingsOpen ? "var(--accent-color)" : "var(--text-muted)", padding: "4px 8px" }}
-                          title="Settings (F1)"
-                        >
-                          <Settings size={16} />
-                        </button>
-                        <button
                           className={`tab-btn ${!isAiAssistantVisible ? "active" : ""}`}
                           title={isAiAssistantVisible ? "Hide AI Assistant (Ctrl+Alt+B)" : "Show AI Assistant (Ctrl+Alt+B)"}
                           onClick={() => setIsAiAssistantVisible(!isAiAssistantVisible)}
@@ -2331,7 +2369,7 @@ function App() {
                           {isAiAssistantVisible ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
                         </button>
                         <button
-                          className={`tab-btn ${isMinimapVisible ? "active" : ""}`}
+                          className={`tab-btn mobile-hidden ${isMinimapVisible ? "active" : ""}`}
                           title={isMinimapVisible ? "Hide Minimap" : "Show Minimap"}
                           onClick={() => setIsMinimapVisible(!isMinimapVisible)}
                           style={{ padding: "4px 8px" }}
@@ -2355,7 +2393,7 @@ function App() {
                           {language === "html" || language === "css" ? <Eye size={14} /> : <TerminalIcon size={14} />}
                         </button>
                         <button
-                          className="btn btn-sm btn-primary"
+                          className="btn btn-sm btn-primary mobile-icon-btn"
                           onClick={handleExplain}
                           title="Explain Code (Ctrl+Alt+C)"
                           disabled={isExplaining || aiService === "web"}
@@ -2367,55 +2405,30 @@ function App() {
                             cursor: aiService === "web" ? "not-allowed" : "pointer"
                           }}
                         >
-                          <span style={{ marginLeft: 0 }}>{isExplaining ? <><Sparkles size={14} className="animate-pulse" style={{ marginRight: 6 }} /> Thinking...</> : "Explain Code"}</span>
+                          <span style={{ marginLeft: 0 }}>{isExplaining ? <><Sparkles size={14} className="animate-pulse" style={{ marginRight: 6 }} /><span className="action-btn-text"> Thinking...</span></> : <><Sparkles size={14} style={{ marginRight: 6 }} /><span className="action-btn-text"> Explain Code</span></>}</span>
                         </button>
                         <button
-                          className="btn btn-sm btn-primary"
+                          className={`btn btn-sm btn-primary mobile-icon-btn ${isRunning ? "is-running" : ""}`}
                           onClick={handleRunCode}
                           title="Run Code (F5 / Ctrl+Enter)"
                           style={{
                             padding: "4px 12px",
                             fontSize: "0.8rem",
-                            backgroundColor: isRunning ? "#ef4444" : "var(--accent-color)", // Red when running
+                            backgroundColor: isRunning ? "#ef4444" : "var(--accent-color)", // Red when running (only visible on desktop)
                             transition: "background-color 0.2s"
                           }}
                         >
                           {isRunning ? (
-                            <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /> Stop</>
+                            <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /><span className="action-btn-text"> Stop</span></>
                           ) : (language === "html" || language === "css") ? (
-                            <><Globe size={12} style={{ marginRight: 6 }} /> Preview</>
+                            <><Globe size={12} style={{ marginRight: 6 }} /><span className="action-btn-text"> Preview</span></>
                           ) : (
-                            "Run Code"
+                            <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg><span className="action-btn-text"> Run Code</span></>
                           )}
                         </button>
                       </div>
                     </div>
                     <div className="editor-container" style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column" }}>
-                      {isSettingsOpen ? (
-                        <SettingsModal
-                          isOpen={isSettingsOpen}
-                          onClose={() => setIsSettingsOpen(false)}
-                          llmProvider={llmProvider}
-                          setLlmProvider={setLlmProvider}
-                          apiKey={apiKey}
-                          setApiKey={setApiKey}
-                          openAiApiKey={openAiApiKey}
-                          setOpenAiApiKey={setOpenAiApiKey}
-                          anthropicApiKey={anthropicApiKey}
-                          setAnthropicApiKey={setAnthropicApiKey}
-                          groqApiKey={groqApiKey}
-                          setGroqApiKey={setGroqApiKey}
-                          huggingFaceApiKey={huggingFaceApiKey}
-                          setHuggingFaceApiKey={setHuggingFaceApiKey}
-                          theme={theme}
-                          setTheme={setTheme}
-                          onViewShortcuts={() => { setIsSettingsOpen(false); setViewMode("shortcuts"); }}
-                          selectedModel={selectedModel}
-                          availableModels={availableModels}
-                          setSelectedModel={setSelectedModel}
-                          activeModel={activeModel}
-                        />
-                      ) : (
                         <Editor
                           height="100%"
                           language={language === "ml" || language === "dsa" ? "python" : language}
@@ -2432,7 +2445,6 @@ function App() {
                             automaticLayout: true,
                           }}
                         />
-                      )}
                     </div>
                   </div >
                 </Panel >

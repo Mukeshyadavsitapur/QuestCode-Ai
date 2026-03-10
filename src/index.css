@@ -345,6 +345,30 @@ body {
     .main-content {
         flex-direction: column;
     }
+    
+    .mobile-hidden {
+        display: none !important;
+    }
+    
+    .action-btn-text {
+        display: none !important;
+    }
+    
+    .mobile-icon-btn {
+        background: transparent !important;
+        border: none !important;
+        padding: 4px 8px !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        color: var(--text-main) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    .mobile-icon-btn.is-running {
+        color: #ef4444 !important; /* Keep the red color for stop but as an icon color */
+    }
 }
 
 /* Modal Styles */

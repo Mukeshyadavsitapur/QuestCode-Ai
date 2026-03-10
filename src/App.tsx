@@ -244,6 +244,18 @@ function App() {
     localStorage.setItem("terminalLayout", terminalLayout);
   }, [terminalLayout]);
 
+  // Force vertical layout on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 768 && terminalLayout === "horizontal") {
+        setTerminalLayout("vertical");
+      }
+    };
+    handleResize(); // Check on mount
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [terminalLayout]);
+
   // Settings State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [llmProvider, setLlmProvider] = useState<string>(() =>
@@ -268,6 +280,17 @@ function App() {
   useEffect(() => {
     setWebLlm(llmProvider);
   }, [llmProvider]);
+
+  const getCurrentApiKey = () => {
+    switch (llmProvider) {
+      case 'openai': return openAiApiKey;
+      case 'anthropic': return anthropicApiKey;
+      case 'groq': return groqApiKey;
+      case 'huggingface': return huggingFaceApiKey;
+      default: return apiKey;
+    }
+  };
+
   const [activeModel, setActiveModel] = useState<string>("");
   const [availableModels, setAvailableModels] = useState<string[]>([]);
 
@@ -1087,7 +1110,7 @@ function App() {
       const prompt = `Define the word or concept "${word}" in the context of programming and ${language}. Provide a concise definition and a short example if applicable.`;
       const response: { content: string } = await invoke("ask_question", {
         req: {
-          api_key: apiKey,
+          api_key: getCurrentApiKey(),
           provider: llmProvider,
           code: code,
           question: prompt,
@@ -1110,7 +1133,7 @@ function App() {
       const prompt = `Generate a 3-question multiple choice quiz based on this text:\n\n${content}\n\nFormat the response EXACTLY as a JSON array of objects. Each object should have 'question' (string), 'options' (array of strings), and 'correctAnswerIndex' (integer 0-3). No other text.`;
       const response: { content: string } = await invoke("ask_question", {
         req: {
-          api_key: apiKey,
+          api_key: getCurrentApiKey(),
           provider: llmProvider,
           code: "",
           question: prompt,
@@ -2129,7 +2152,11 @@ function App() {
                     <AiLearning
                       ref={learningRef}
                       language={language}
-                      apiKey={llmProvider === "openai" ? openAiApiKey : llmProvider === "anthropic" ? anthropicApiKey : llmProvider === "groq" ? groqApiKey : llmProvider === "huggingface" ? huggingFaceApiKey : apiKey}
+                      apiKey={apiKey}
+                      openAiApiKey={openAiApiKey}
+                      anthropicApiKey={anthropicApiKey}
+                      groqApiKey={groqApiKey}
+                      huggingFaceApiKey={huggingFaceApiKey}
                       provider={llmProvider}
                       selectedModel={selectedModel}
                       topic={selectedTopic}
@@ -2230,7 +2257,7 @@ function App() {
                           <Layout size={14} />
                         </button>
                         <button
-                          className={`tab-btn`}
+                          className={`tab-btn mobile-hidden`}
                           title={terminalLayout === "vertical" ? "Move Terminal to Right (F7)" : "Move Terminal to Bottom (F7)"}
                           onClick={() => setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical")}
                           style={{ padding: "4px 8px" }}

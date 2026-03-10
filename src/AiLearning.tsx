@@ -14,6 +14,10 @@ export interface AiLearningHandle {
 interface AiLearningProps {
     language: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml";
     apiKey: string;
+    openAiApiKey: string;
+    anthropicApiKey: string;
+    groqApiKey: string;
+    huggingFaceApiKey: string;
     provider: string;
     selectedModel: string | null;
     topic: Topic | null;
@@ -25,7 +29,7 @@ interface AiLearningProps {
     onSelectTopic?: (topic: Topic, groupTitle: string) => void;
 }
 
-export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ language, apiKey, provider, selectedModel, topic, groupTitle, onBack, onApplyCode, prevTopic, nextTopic, onSelectTopic }, ref) => {
+export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ language, apiKey, openAiApiKey, anthropicApiKey, groqApiKey, huggingFaceApiKey, provider, selectedModel, topic, groupTitle, onBack, onApplyCode, prevTopic, nextTopic, onSelectTopic }, ref) => {
     const [content, setContent] = useState<string>("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -184,10 +188,10 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                     provider: provider,
                     model: selectedModel || "",
                     apiKey: apiKey,
-                    openAiApiKey: apiKey,
-                    anthropicApiKey: apiKey,
-                    groqApiKey: apiKey,
-                    huggingFaceApiKey: apiKey,
+                    openAiApiKey: openAiApiKey,
+                    anthropicApiKey: anthropicApiKey,
+                    groqApiKey: groqApiKey,
+                    huggingFaceApiKey: huggingFaceApiKey,
                     temperature: temperature
                 });
 
@@ -298,10 +302,10 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                 provider: provider,
                 model: selectedModel || "",
                 apiKey: apiKey,
-                openAiApiKey: apiKey,
-                anthropicApiKey: apiKey,
-                groqApiKey: apiKey,
-                huggingFaceApiKey: apiKey,
+                openAiApiKey: openAiApiKey,
+                anthropicApiKey: anthropicApiKey,
+                groqApiKey: groqApiKey,
+                huggingFaceApiKey: huggingFaceApiKey,
                 temperature: temperature
             });
 

@@ -40,6 +40,7 @@ import "prismjs/components/prism-python";
 import "prismjs/components/prism-css";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-markup";
+import { usePython } from "./usePython";
 
 
 import { Message, SmartContent, generateAIResponseStream } from "./aiUtils";
@@ -99,6 +100,7 @@ function App() {
 
   const [input, setInput] = useState("");
   const [isExplaining, setIsExplaining] = useState(false);
+  const { isPyodideLoading, runPython } = usePython();
 
   // AI Chat History State
   const [chats, setChats] = useState<ChatSession[]>(() => {
@@ -144,10 +146,10 @@ function App() {
       }
     }
     return {
-      x: window.innerWidth ? (window.innerWidth / 2) - 200 : 50,
-      y: window.innerHeight ? (window.innerHeight / 2) - 250 : 50,
-      width: 400,
-      height: 500
+      x: typeof window !== 'undefined' ? Math.max(0, (window.innerWidth / 2) - 200) : 50,
+      y: typeof window !== 'undefined' ? Math.max(0, (window.innerHeight / 2) - 250) : 50,
+      width: typeof window !== 'undefined' ? Math.min(400, window.innerWidth - 40) : 400,
+      height: typeof window !== 'undefined' ? Math.min(500, window.innerHeight - 100) : 500
     };
   });
 
@@ -1230,20 +1232,71 @@ function App() {
     }
 
     setIsRunning(true);
-    setTerminalOutput(`Running ${language.toUpperCase()} code...`);
+    setTerminalOutput("");
+
+    if (language === "python" || language === "dsa" || language === "ml") {
+       if (isPyodideLoading) {
+           setTerminalOutput("Error: Python engine is still loading... Please wait a moment and try again.\\n");
+           setIsRunning(false);
+           return;
+       }
+       
+       await runPython(
+         code, 
+         (str) => setTerminalOutput(prev => prev + str)
+       );
+       setIsRunning(false);
+       return;
+    }
+
+    if (language === "javascript") {
+      try {
+        // Native secure evaluation of JS within browser context
+        let logOutput = "";
+        const originalLog = console.log;
+        const originalError = console.error;
+        console.log = (...args) => {
+          logOutput += args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(" ") + "\\n";
+        };
+        console.error = (...args) => {
+          logOutput += args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(" ") + "\\n";
+        };
+        
+        let evalResult = undefined;
+        try {
+           // eslint-disable-next-line no-eval
+           evalResult = eval(code);
+        } catch (e: any) {
+           logOutput += `\\nError: ${e.message}`;
+        }
+
+        console.log = originalLog;
+        console.error = originalError;
+        
+        if (evalResult !== undefined && typeof evalResult !== 'function') {
+           logOutput += `\\n=> ${typeof evalResult === 'object' ? JSON.stringify(evalResult) : String(evalResult)}`;
+        }
+        
+        setTerminalOutput(logOutput);
+      } catch(e: any) {
+        setTerminalOutput(`Error executing JS: ${e.message}`);
+      }
+      setIsRunning(false);
+      return;
+    }
 
     if (!isTauri()) {
-      setTerminalOutput("Error: Running code requires the desktop application backend.\n\nBrowser mode mainly supports HTML/CSS Preview.");
+      setTerminalOutput("Error: Running Rust code requires the desktop application backend.\\n\\nBrowser mode mainly supports HTML/CSS/JS/Python.\\n");
       setIsRunning(false);
       return;
     }
 
     try {
-      const output: string = await invoke("execute_code", { code, language: (language === "dsa" || language === "ml") ? "python" : language });
-      setTerminalOutput(output);
+      const output: string = await invoke("execute_code", { code, language });
+      setTerminalOutput(prev => prev + output);
     } catch (error) {
       console.error("Failed to run code:", error);
-      setTerminalOutput(`Error: ${error}`);
+      setTerminalOutput(prev => prev + `\\nError: ${error}`);
     } finally {
       setIsRunning(false);
     }
@@ -1771,13 +1824,21 @@ function App() {
                       </button>
                       <button
                         className={`tab-btn ${isQuickChatOpen ? "active" : ""}`}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
                           setIsQuickChatOpen(!isQuickChatOpen);
                           if (!isQuickChatOpen && !currentQuickChatId) {
                             setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
                           }
                         }}
-                        style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          setIsQuickChatOpen(!isQuickChatOpen);
+                          if (!isQuickChatOpen && !currentQuickChatId) {
+                            setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
+                          }
+                        }}
+                        style={{ border: "none", color: "var(--accent-color)", padding: "8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
                         title="Quick Chat (Ctrl+P)"
                       >
                         <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} />
@@ -2413,8 +2474,14 @@ function App() {
         {
           isQuickChatOpen && (
             <Rnd
-              size={{ width: quickChatGeometry.width, height: quickChatGeometry.height }}
-              position={{ x: quickChatGeometry.x, y: quickChatGeometry.y }}
+              size={{
+                width: typeof window !== 'undefined' ? Math.min(quickChatGeometry.width, window.innerWidth - 20) : quickChatGeometry.width,
+                height: typeof window !== 'undefined' ? Math.min(quickChatGeometry.height, window.innerHeight - 80) : quickChatGeometry.height
+              }}
+              position={{
+                x: typeof window !== 'undefined' ? Math.min(Math.max(0, quickChatGeometry.x), window.innerWidth - 50) : quickChatGeometry.x,
+                y: typeof window !== 'undefined' ? Math.max(0, quickChatGeometry.y) : quickChatGeometry.y
+              }}
               onDragStop={(_e, d) => {
                 setQuickChatGeometry((prev: any) => ({ ...prev, x: d.x, y: d.y }));
               }}
@@ -2453,10 +2520,14 @@ function App() {
                     <button onClick={() => {
                       setCurrentQuickChatId(null);
                       setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
+                    }} onTouchEnd={(e) => {
+                      e.preventDefault();
+                      setCurrentQuickChatId(null);
+                      setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
                     }} className="btn btn-secondary" style={{ padding: "4px 8px", fontSize: "0.8rem" }}>
                       <Plus size={14} /> New
                     </button>
-                    <button onClick={() => setIsQuickChatOpen(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
+                    <button onClick={() => setIsQuickChatOpen(false)} onTouchEnd={(e) => { e.preventDefault(); setIsQuickChatOpen(false); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
                       <X size={18} />
                     </button>
                   </div>

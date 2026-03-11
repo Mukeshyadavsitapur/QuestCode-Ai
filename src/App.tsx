@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { speak, stop, isSpeaking, isInitialized } from "tauri-plugin-tts-api";
 import {
   Panel,
   Group as PanelGroup,
@@ -57,12 +58,13 @@ interface ChatSession {
 
 
 const INITIAL_DESCRIPTION = "# Getting Started\n\nWelcome! Type some code on the left and click **'Explain Code'** to get an AI-powered breakdown of what's happening.\n\nYou can also ask specific questions using the chat bar below.";
-
 const INITIAL_MESSAGES: Message[] = [
   { role: 'system', content: INITIAL_DESCRIPTION }
-]; const isTauri = () => "TAURI_INTERNALS" in window || "__TAURI_INTERNALS__" in window;
+];
+// NOTE: Do NOT use a module-level constant for Tauri detection.
+// Tauri injects __TAURI_INTERNALS__ asynchronously after module load.
+// Always check at call time using: !!(window as any).__TAURI_INTERNALS__
 
-// Update the App wrapper to include Quiz and Dictionary
 function App() {
   // Helper to get default code for a language
   const getDefaultCode = (lang: string) => {
@@ -98,6 +100,7 @@ function App() {
   const [speakingMsgIdx, setSpeakingMsgIdx] = useState<{idx: number, isQuickChat: boolean} | null>(null);
   const [isQuizGenerating, setIsQuizGenerating] = useState(false);
   const [activeQuizQuestions, setActiveQuizQuestions] = useState<any[] | null>(null);
+  const ttsGeneration = useRef(0);
   const [input, setInput] = useState("");
   const [temperature, setTemperature] = useState<number>(0.3);
   const [isExplaining, setIsExplaining] = useState(false);
@@ -326,7 +329,7 @@ function App() {
     localStorage.setItem("huggingFaceApiKey", huggingFaceApiKey);
     if (llmProvider === "gemini") {
       if (apiKey) {
-        if (!isTauri()) {
+        if (!!!(window as any).__TAURI_INTERNALS__) {
           console.warn("Not in Tauri environment, skipping model fetch");
           setAvailableModels(["gemini-2.0-flash", "gemini-1.5-flash"]); // Fallback for browser demo
           return;
@@ -571,7 +574,7 @@ function App() {
     setQuickChatMessages(updatedMessages);
     scrollToLatestMessage(quickChatScrollRef);
 
-    if (!isTauri()) {
+    if (!!!(window as any).__TAURI_INTERNALS__) {
       setTimeout(() => {
         setQuickChatMessages(prev => {
           const newArr = [...prev];
@@ -681,7 +684,7 @@ function App() {
     // On mobile: showing AI assistant hides editor
     if (isMobile) setIsEditorVisible(false);
 
-    if (!isTauri()) {
+    if (!!!(window as any).__TAURI_INTERNALS__) {
       setMessages([{ role: 'system', content: "## Browser Mode\n\nAI features require the desktop application to access the backend. Please download the full application." }]);
       setIsExplaining(false);
       return;
@@ -775,7 +778,7 @@ function App() {
     setMessages(updatedMessages);
     scrollToLatestMessage(mainChatScrollRef);
 
-    if (!isTauri()) {
+    if (!!!(window as any).__TAURI_INTERNALS__) {
       setTimeout(() => {
         setMessages(prev => {
           const newArr = [...prev];
@@ -1028,50 +1031,61 @@ function App() {
 
 
 
-  // TTS Voice Selection Helper
-  const getPreferredVoice = () => {
-    if (!('speechSynthesis' in window)) return null;
-    const voices = window.speechSynthesis.getVoices();
-    // Try to find a high-quality English voice (e.g., Google or Samantha)
-    const preferred = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Samantha')));
-    if (preferred) return preferred;
-    // Fallback to any English voice
-    const anyEnglish = voices.find(v => v.lang.startsWith('en'));
-    if (anyEnglish) return anyEnglish;
-    // Last fallback
-    return voices[0] || null;
-  };
-
-  // Pre-load voices for mobile
+  // No longer using window.speechSynthesis pre-loading logic as we are switching to native plugin
   useEffect(() => {
-    if ('speechSynthesis' in window) {
-      const loadVoices = () => {
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-          console.log(`TTS: Loaded ${voices.length} voices.`);
+    // Initializing native TTS engine
+    const initTts = async () => {
+      try {
+        console.log("TTS: Initializing native engine...");
+        for (let i = 0; i < 15; i++) {
+          const status = await isInitialized();
+          console.log(`TTS: Initialization poll ${i+1}: initialized=${status.initialized}, voices=${status.voiceCount}`);
+          if (status.initialized && status.voiceCount > 0) {
+            console.log(`TTS: Native engine ready with ${status.voiceCount} voices.`);
+            break;
+          }
+          await new Promise(r => setTimeout(r, 1000));
         }
-      };
-      
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-      
-      // Silent warm-up on mount (some browsers need this)
-      const silent = new SpeechSynthesisUtterance(' ');
-      silent.volume = 0;
-      window.speechSynthesis.speak(silent);
-
-      return () => {
-        window.speechSynthesis.onvoiceschanged = null;
-      };
-    }
+      } catch (err) {
+        console.error("TTS: Initialization error:", err);
+      }
+    };
+    initTts();
   }, []);
 
-  const handleListen = (text: string, idx: number, isQuickChat: boolean = false) => {
+  const chunkText = (text: string): string[] => {
+    const sentenceRegex = /[^.!?\n]+[.!?\n]+/g;
+    let sentences = text.match(sentenceRegex) || [text];
+    
+    const chunks: string[] = [];
+    let currentChunk = '';
+    
+    for (const s of sentences) {
+      if (currentChunk.length + s.length > 300) {
+        if (currentChunk) chunks.push(currentChunk.trim());
+        currentChunk = s;
+      } else {
+        currentChunk += " " + s;
+      }
+    }
+    if (currentChunk.trim()) chunks.push(currentChunk.trim());
+    return chunks;
+  };
+
+  const handleListen = async (text: string, idx: number, isQuickChat: boolean = false) => {
+    ttsGeneration.current++;
+    const thisGen = ttsGeneration.current;
+    const isAndroidTauri = navigator.userAgent.includes("Android") && !!(window as any).__TAURI_INTERNALS__;
+    console.log(`[TTS] handleListen called. idx=${idx}, thisGen=${thisGen}, isAndroidTauri=${isAndroidTauri}`);
+
     if (speakingMsgIdx?.idx === idx && speakingMsgIdx?.isQuickChat === isQuickChat) {
-      if ('speechSynthesis' in window) {
+      console.log(`[TTS] Stopping active speech for idx=${idx}`);
+      setSpeakingMsgIdx(null);
+      if (isAndroidTauri) {
+        try { await stop(); } catch (e) { console.error("[TTS] Stop failed:", e); }
+      } else {
         window.speechSynthesis.cancel();
       }
-      setSpeakingMsgIdx(null);
       return;
     }
 
@@ -1081,71 +1095,207 @@ function App() {
         .replace(/[*#]/g, '') // Remove markdown
         .replace(/<[^>]*>?/gm, ''); // Remove tags
 
-      if ('speechSynthesis' in window) {
-        // Mobile Fix: Resume before cancel/speak
-        window.speechSynthesis.resume();
-        window.speechSynthesis.cancel();
-        
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = 'en-US';
-        
-        const voice = getPreferredVoice();
-        if (voice) utterance.voice = voice;
+      console.log(`[TTS] Cleaned text snippet: "${cleanText.substring(0, 50)}"`);
+      
+      // Set state IMMEDIATELY to show the stop icon
+      setSpeakingMsgIdx({ idx, isQuickChat });
+      console.log(`[TTS] State set to idx=${idx}. Stopping any prior speech...`);
 
-        utterance.onend = () => setSpeakingMsgIdx(null);
-        utterance.onerror = (e) => {
-          console.error('TTS Error:', e);
-          setSpeakingMsgIdx(null);
-        };
-        
-        window.speechSynthesis.speak(utterance);
-        setSpeakingMsgIdx({ idx, isQuickChat });
+      // Stop any existing speech safely BEFORE starting new speech
+      if (isAndroidTauri) {
+        try { await stop(); } catch (e) { console.warn("[TTS] Pre-stop failed:", e); }
       } else {
-        console.warn("Speech Synthesis not supported");
+        window.speechSynthesis.cancel();
+      }
+      console.log(`[TTS] Pre-stop done. Chunking text...`);
+      
+      const chunks = chunkText(cleanText);
+      console.log(`[TTS] Speaking ${chunks.length} chunk(s)...`);
+
+      if (isAndroidTauri) {
+        // Wait for TTS engine to be ready (may not be initialized on first use)
+        let initWait = 0;
+        while (initWait < 6) { // Max 3 seconds (6 x 500ms)  
+          try {
+            const ready = await isInitialized();
+            console.log(`[TTS] isInitialized=${ready} (attempt ${initWait + 1})`);
+            if (ready) break;
+          } catch(e) { console.warn('[TTS] isInitialized check failed:', e); }
+          await new Promise(r => setTimeout(r, 500));
+          initWait++;
+        }
+
+        for (let i = 0; i < chunks.length; i++) {
+          // Check if we've been cancelled by a newer request
+          if (ttsGeneration.current !== thisGen) {
+            console.log(`[TTS] Cancelled at chunk ${i}: gen ${thisGen} vs current ${ttsGeneration.current}.`);
+            return;
+          }
+
+          console.log(`[TTS] Speaking chunk ${i+1}/${chunks.length}...`);
+          try {
+            await speak({
+              text: chunks[i],
+              queueMode: i === 0 ? 'flush' : 'add'
+            } as any);
+            console.log(`[TTS] Chunk ${i+1} speak() resolved successfully.`);
+          } catch(speakErr) {
+            console.error(`[TTS] speak() chunk ${i+1} THREW:`, speakErr);
+            throw speakErr; // Re-throw to outer catch
+          }
+          
+          // Small delay to prevent IPC throughput issues on mobile
+          await new Promise(r => setTimeout(r, 100));
+        }
+
+        // Monitoring loop with GRACE PERIOD to allow Android engine to start
+        console.log(`[TTS] All chunks sent. Waiting grace period...`);
+        await new Promise(r => setTimeout(r, 1500));
+        
+        let pollCount = 0;
+        let consecutiveFalse = 0;
+        
+        while (ttsGeneration.current === thisGen && pollCount < 600) { // Max 10 mins
+          try {
+              const active = await isSpeaking();
+              console.log(`[TTS] Poll ${pollCount}: isSpeaking=${active}, consecutiveFalse=${consecutiveFalse}`);
+              if (!active) {
+                  consecutiveFalse++;
+                  // Require 3 consecutive checks (~1.5s total gap) to confirm truly stopped
+                  // This accounts for gaps between chunk processing
+                  if (consecutiveFalse >= 3) break;
+              } else {
+                  consecutiveFalse = 0; // Reset if speaking
+              }
+          } catch(e) {
+              console.warn("[TTS] isSpeaking check failed:", e);
+          }
+          await new Promise(r => setTimeout(r, 500));
+          pollCount++;
+        }
+      } else { // Web Speech API fallback (Browser and Desktop Tauri)
+        if (!('speechSynthesis' in window)) {
+          console.error("Web Speech API not supported.");
+          setSpeakingMsgIdx(null);
+          return;
+        }
+
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || voices.find(voice => voice.lang === 'en-US') || voices[0];
+
+        for (let i = 0; i < chunks.length; i++) {
+          if (ttsGeneration.current !== thisGen) {
+            console.log(`[TTS] Web Speech API: Cancelled at chunk ${i}: gen ${thisGen} vs current ${ttsGeneration.current}.`);
+            window.speechSynthesis.cancel();
+            return;
+          }
+
+          const utterance = new SpeechSynthesisUtterance(chunks[i]);
+          if (preferredVoice) {
+            utterance.voice = preferredVoice;
+          }
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.volume = 1.0;
+
+          await new Promise<void>((resolve, reject) => {
+            utterance.onend = () => {
+              console.log(`[TTS] Web Speech API: Chunk ${i+1} finished.`);
+              resolve();
+            };
+            utterance.onerror = (event) => {
+              console.error(`[TTS] Web Speech API: Error speaking chunk ${i+1}:`, event);
+              reject(event);
+            };
+            window.speechSynthesis.speak(utterance);
+            console.log(`[TTS] Web Speech API: Speaking chunk ${i+1}/${chunks.length}...`);
+          });
+        }
+      }
+
+      console.log(`[TTS] Polling ended. gen match: ${ttsGeneration.current === thisGen}. Resetting state.`);
+      if (ttsGeneration.current === thisGen) {
+        setSpeakingMsgIdx(null);
       }
     } catch (err) {
-      console.error('Speech synthesis failed:', err);
-      setSpeakingMsgIdx(null);
+      console.error('[TTS] OUTER CATCH - TTS failed:', err);
+      if (ttsGeneration.current === thisGen) {
+        setSpeakingMsgIdx(null);
+      }
     }
   };
 
-  const handleListenDictionaryWord = (word: string) => {
+  const handleListenDictionaryWord = async (word: string) => {
+    ttsGeneration.current++;
+    const thisGen = ttsGeneration.current;
+    const isAndroidTauri = navigator.userAgent.includes("Android") && !!(window as any).__TAURI_INTERNALS__;
+
     if (isDictionarySpeaking) {
-      if ('speechSynthesis' in window) {
+      setIsDictionarySpeaking(false);
+      if (isAndroidTauri) {
+        try { await stop(); } catch (e) { console.error("TTS Dictionary Stop failed:", e); }
+      } else {
         window.speechSynthesis.cancel();
       }
-      setIsDictionarySpeaking(false);
       return;
     }
 
     try {
-      if ('speechSynthesis' in window) {
-        // Mobile Fix: Resume before cancel/speak
-        window.speechSynthesis.resume();
+      setIsDictionarySpeaking(true);
+      if (isAndroidTauri) {
+        try { await stop(); } catch (e) { console.warn("TTS Stop failed:", e); }
+      } else {
         window.speechSynthesis.cancel();
-        
-        const utterance = new SpeechSynthesisUtterance(word);
-        utterance.lang = 'en-US';
-        // Adjust the rate slightly to sound more natural when reading a single word
-        utterance.rate = 0.9;
-        
-        const voice = getPreferredVoice();
-        if (voice) utterance.voice = voice;
-
-        utterance.onend = () => setIsDictionarySpeaking(false);
-        utterance.onerror = (e) => {
-          console.error('TTS Dictionary Error:', e);
-          setIsDictionarySpeaking(false);
-        };
-
-        window.speechSynthesis.speak(utterance);
-        setIsDictionarySpeaking(true);
       }
+
+      if (isAndroidTauri) {
+        // NATIVE path for Android
+        let initWait = 0;
+        while (initWait < 6) {
+          try { const ready = await isInitialized(); if (ready) break; } catch(e) { /**/ }
+          await new Promise(r => setTimeout(r, 500));
+          initWait++;
+        }
+        await speak({ text: word, queueMode: 'flush' } as any);
+        await new Promise(r => setTimeout(r, 1000));
+        let pollCount = 0;
+        let consecutiveFalse = 0;
+        while (ttsGeneration.current === thisGen && pollCount < 60) {
+          try {
+            const active = await isSpeaking();
+            if (!active) { consecutiveFalse++; if (consecutiveFalse >= 3) break; }
+            else { consecutiveFalse = 0; }
+          } catch(e) { /**/ }
+          await new Promise(r => setTimeout(r, 500));
+          pollCount++;
+        }
+      } else {
+        // WEB SPEECH API path for Desktop + Browser
+        if (!('speechSynthesis' in window)) { setIsDictionarySpeaking(false); return; }
+        await new Promise(r => setTimeout(r, 50));
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.localService) ||
+                               voices.find(v => v.lang.startsWith('en')) || voices[0];
+        const utterance = new SpeechSynthesisUtterance(word);
+        if (preferredVoice) utterance.voice = preferredVoice;
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        await new Promise<void>((resolve, reject) => {
+          utterance.onend = () => resolve();
+          utterance.onerror = (e) => reject(e);
+          window.speechSynthesis.speak(utterance);
+        });
+      }
+
+      if (ttsGeneration.current === thisGen) setIsDictionarySpeaking(false);
     } catch (err) {
-      console.error('Speech synthesis failed:', err);
-      setIsDictionarySpeaking(false);
+      console.error('TTS Dictionary failed:', err);
+      if (ttsGeneration.current === thisGen) setIsDictionarySpeaking(false);
     }
   };
+
+
 
   const handleExplainWithContext = async (question: string, context: Message[]) => {
     if (!question.trim() || aiService === "web") return;
@@ -1428,7 +1578,7 @@ function App() {
       return;
     }
 
-    if (!isTauri()) {
+    if (!!!(window as any).__TAURI_INTERNALS__) {
       setTerminalOutput("Error: Running Rust code requires the desktop application backend.\\n\\nBrowser mode mainly supports HTML/CSS/JS/Python.\\n");
       setIsRunning(false);
       return;
@@ -1490,7 +1640,7 @@ function App() {
       // F11: Full Screen
       if (e.key === "F11") {
         e.preventDefault();
-        if (isTauri()) {
+        if (!!(window as any).__TAURI_INTERNALS__) {
           const appWindow = getCurrentWindow();
           const isFullscreen = await appWindow.isFullscreen();
           await appWindow.setFullscreen(!isFullscreen);
@@ -1593,7 +1743,7 @@ function App() {
 
     // F11 to Toggle Full Screen
     editor.addCommand(monaco.KeyCode.F11, async () => {
-      if (isTauri()) {
+      if (!!(window as any).__TAURI_INTERNALS__) {
         const appWindow = getCurrentWindow();
         const isFullscreen = await appWindow.isFullscreen();
         await appWindow.setFullscreen(!isFullscreen);
@@ -2763,3 +2913,4 @@ function App() {
 }
 
 export default App;
+

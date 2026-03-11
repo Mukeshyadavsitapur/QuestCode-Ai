@@ -795,14 +795,17 @@ body.light-theme .history-item:hover {
 .icon-btn {
     background: none !important;
     border: none !important;
-    padding: 0.4rem !important;
+    padding: 0.6rem !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
     cursor: pointer !important;
     color: var(--text-muted) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.15s ease-out !important;
     border-radius: 50% !important;
+    touch-action: manipulation !important;
 }
 
 .icon-btn:hover {
@@ -812,7 +815,8 @@ body.light-theme .history-item:hover {
 
 .icon-btn.active {
     color: var(--accent-color) !important;
-    background-color: rgba(59, 130, 246, 0.1) !important;
+    background-color: rgba(59, 130, 246, 0.15) !important;
+    transform: scale(1.1);
     opacity: 1 !important;
 }
 

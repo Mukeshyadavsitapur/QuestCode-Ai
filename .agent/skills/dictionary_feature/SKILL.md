@@ -64,28 +64,34 @@ const triggerDefinitionFetch = async (word: string, x: number, y: number) => {
 };
 ```
 
-## 3. Robust TTS Implementation (Mobile Optimized)
+## 3. Robust Native TTS Implementation
 
-To ensure TTS works on mobile webviews, use synchronous triggers and a silent "warm-up".
+For reliable mobile support in Tauri, use the native TTS plugin with chunking and a polling grace period.
 
 ```tsx
-const handleListen = (word: string) => {
-  if (!('speechSynthesis' in window)) return;
-  
-  // Critical for mobile: resume before speak
-  window.speechSynthesis.resume();
-  window.speechSynthesis.cancel();
+import { speak, stop, isSpeaking } from "tauri-plugin-tts-api";
 
-  const utterance = new SpeechSynthesisUtterance(word);
-  utterance.lang = 'en-US';
-  utterance.rate = 0.9; // Slightly slower for clarity
-  
-  // Explicit voice selection
-  const voices = window.speechSynthesis.getVoices();
-  const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'));
-  if (preferredVoice) utterance.voice = preferredVoice;
+const handleListen = async (word: string) => {
+  try {
+    // Stop any existing speech
+    await stop();
+    
+    // Provide minimal SpeakOptions (do not add undefined/null keys to prevent Rust crashes)
+    await speak({
+      text: word,
+      queueMode: 'flush'
+    } as any);
 
-  window.speechSynthesis.speak(utterance);
+    // CRITICAL: Grace period before polling status to allow Android warm-up
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Monitoring loop for UI feedback
+    while (await isSpeaking()) {
+       await new Promise(r => setTimeout(r, 500));
+    }
+  } catch (err) {
+    console.error("Native TTS failed", err);
+  }
 };
 ```
 
@@ -130,4 +136,5 @@ const handleListen = (word: string) => {
 ## Tips for Integration
 - **Z-Index**: Ensure the popup is above all other UI elements (e.g., `2000+`).
 - **Touch Support**: Use `onTouchEnd` in addition to `onClick` for mobile responsiveness.
-- **Cleanup**: Always cancel `speechSynthesis` when closing the popup or switching words.
+- **Cleanup**: Always cancel speech when closing the popup or switching words.
+- **Grace Period**: Always include a 1.5s delay before checking `isSpeaking()` on mobile.

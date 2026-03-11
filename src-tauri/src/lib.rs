@@ -1129,6 +1129,7 @@ async fn execute_code(
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_tts::init())
         .manage(AppState {
             stop_tx: Mutex::new(None),
         })

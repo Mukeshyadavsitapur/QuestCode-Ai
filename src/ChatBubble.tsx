@@ -59,7 +59,6 @@ export const ChatBubble = ({
                                 className={`icon-btn ${speakingMsgIdx?.idx === idx && speakingMsgIdx?.isQuickChat === isQuickChat ? 'active' : ''}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    e.preventDefault();
                                     handleListen(msg.content, idx, isQuickChat);
                                 }}
                                 onTouchEnd={(e) => {

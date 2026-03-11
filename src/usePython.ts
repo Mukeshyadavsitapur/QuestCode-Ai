@@ -55,6 +55,17 @@ export function usePython() {
     });
 
     try {
+      // Monkeypatch the built-in input function to use the provided prompt string
+      await pyodide.runPythonAsync(`
+import builtins
+from js import window
+
+def custom_input(prompt_msg=""):
+    return window.prompt(prompt_msg) or ""
+
+builtins.input = custom_input
+      `);
+
       // For async input() support in Pyodide, we often have to wrap the code if we want to use true async custom modals, 
       // but for a learning application MVP, the synchronous browser prompt() bound to stdin works flawlessly and natively pauses the WASM thread!
       await pyodide.runPythonAsync(code);

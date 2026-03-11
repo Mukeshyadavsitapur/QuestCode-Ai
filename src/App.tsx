@@ -86,10 +86,14 @@ function App() {
 
   // PromptTest Chat Features State
   const [isDictionaryActive, setIsDictionaryActive] = useState(false);
-  const [dictionaryWord, setDictionaryWord] = useState('');
-  const [dictionaryResult, setDictionaryResult] = useState('');
-  const [isDictionaryLoading, setIsDictionaryLoading] = useState(false);
-  const [isDictionaryModalOpen, setIsDictionaryModalOpen] = useState(false);
+  const [dictionaryPopup, setDictionaryPopup] = useState<{
+    word: string;
+    definition: string;
+    x: number;
+    y: number;
+    isLoading: boolean;
+  } | null>(null);
+  const [isDictionarySpeaking, setIsDictionarySpeaking] = useState(false);
   const [speakingMsgIdx, setSpeakingMsgIdx] = useState<number | null>(null);
   const [isQuizGenerating, setIsQuizGenerating] = useState(false);
   const [activeQuizQuestions, setActiveQuizQuestions] = useState<any[] | null>(null);
@@ -1041,16 +1045,43 @@ function App() {
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'en-US';
         utterance.onend = () => setSpeakingMsgIdx(null);
-        utterance.onerror = () => setSpeakingMsgIdx(null);
-
-        window.speechSynthesis.speak(utterance);
+        utterance.onerror = () => setSpeakingMsgIdx(null);        window.speechSynthesis.speak(utterance);
         setSpeakingMsgIdx(idx);
       } else {
         console.warn("Speech Synthesis not supported");
       }
     } catch (err) {
-      console.error("Error playing TTS:", err);
+      console.error('Speech synthesis failed:', err);
       setSpeakingMsgIdx(null);
+    }
+  };
+
+  const handleListenDictionaryWord = (word: string) => {
+    if (isDictionarySpeaking) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsDictionarySpeaking(false);
+      return;
+    }
+
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        // Adjust the rate slightly to sound more natural when reading a single word
+        utterance.rate = 0.9;
+        
+        utterance.onend = () => setIsDictionarySpeaking(false);
+        utterance.onerror = () => setIsDictionarySpeaking(false);
+
+        window.speechSynthesis.speak(utterance);
+        setIsDictionarySpeaking(true);
+      }
+    } catch (err) {
+      console.error('Speech synthesis failed:', err);
+      setIsDictionarySpeaking(false);
     }
   };
 
@@ -1114,31 +1145,113 @@ function App() {
     }
   };
 
-  const handleDictionaryLookup = async (word: string) => {
-    if (!word) return;
-    setIsDictionaryLoading(true);
-    setIsDictionaryModalOpen(true);
-    setDictionaryWord(word);
+  const triggerDefinitionFetch = async (word: string, x: number, y: number) => {
+    setDictionaryPopup({
+      word,
+      definition: '',
+      x,
+      y,
+      isLoading: true
+    });
+
     try {
-      const prompt = `Define the word or concept "${word}" in the context of programming and ${language}. Provide a concise definition and a short example if applicable.`;
-      const response: { content: string } = await invoke("ask_question", {
-        req: {
-          api_key: getCurrentApiKey(),
-          provider: llmProvider,
-          code: code,
-          question: prompt,
-          language: language === "dsa" ? "python" : language,
-          selected_model: selectedModel
-        }
+      const prompt = `Explain the word or phrase "${word}". Give a short, basic definition and one simple example sentence. Keep it very concise.`;
+      const stream = generateAIResponseStream(prompt, [], {
+        provider: llmProvider,
+        model: selectedModel,
+        apiKey: getCurrentApiKey(),
+        openAiApiKey,
+        anthropicApiKey,
+        groqApiKey,
+        huggingFaceApiKey
       });
-      setDictionaryResult(response.content);
+
+      let fullResponse = '';
+      for await (const chunk of stream) {
+        fullResponse += chunk;
+        setDictionaryPopup(prev => prev && prev.word === word ? {
+          ...prev,
+          definition: fullResponse,
+          isLoading: false
+        } : prev);
+      }
     } catch (err) {
-      console.error("Dictionary lookup failed:", err);
-      setDictionaryResult("Failed to fetch definition.");
-    } finally {
-      setIsDictionaryLoading(false);
+      setDictionaryPopup(prev => prev && prev.word === word ? {
+        ...prev,
+        definition: 'Failed to define word.',
+        isLoading: false
+      } : prev);
     }
   };
+
+  useEffect(() => {
+    if (!isDictionaryActive) {
+      setDictionaryPopup(null);
+      return;
+    }
+
+    const handleGlobalClick = async (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+
+      if (!document.contains(target)) {
+        return; // Ignore clicks on elements that have been removed from the DOM
+      }
+
+      if (target.closest('.dictionary-popup') || target.closest('button') || target.closest('.icon-btn')) {
+        return;
+      }
+
+      const isInsideMessage = target.closest('.message-bubble');
+      const isInsideInput = target.closest('.input-textarea');
+      if (!isInsideMessage && !isInsideInput && !target.closest('.smart-content')) {
+        setDictionaryPopup(null);
+        return;
+      }
+
+      let range = null;
+      let textNode = null;
+      let offset = 0;
+
+      if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(e.clientX, e.clientY);
+        if (range) {
+          textNode = range.startContainer;
+          offset = range.startOffset;
+        }
+      } else if ((document as any).caretPositionFromPoint) {
+        const position = (document as any).caretPositionFromPoint(e.clientX, e.clientY);
+        if (position) {
+          textNode = position.offsetNode;
+          offset = position.offset;
+        }
+      }
+
+      if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return;
+
+      const text = textNode.textContent || '';
+      const isWordChar = (char: string) => /[a-zA-Z0-9\'-]/.test(char);
+
+      if (!text[offset] || !isWordChar(text[offset])) {
+        setDictionaryPopup(null);
+        return;
+      }
+
+      let start = offset;
+      let end = offset;
+      while (start > 0 && isWordChar(text[start - 1])) start--;
+      while (end < text.length && isWordChar(text[end])) end++;
+
+      const word = text.slice(start, end).trim();
+      if (!word) return;
+
+      triggerDefinitionFetch(word, e.clientX, e.clientY);
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [isDictionaryActive, llmProvider, selectedModel, apiKey, openAiApiKey, anthropicApiKey, groqApiKey, huggingFaceApiKey]);
 
   const handleGenerateQuiz = async (content: string) => {
     setIsQuizGenerating(true);
@@ -1527,29 +1640,7 @@ function App() {
       <tr {...props} className="markdown-row" />
     ),
     pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-    p: ({ node, children, ...props }: any) => {
-      if (!isDictionaryActive) return <p {...props}>{children}</p>;
-
-      const content = String(children);
-      const words = content.split(/(\s+)/);
-      return (
-        <p {...props}>
-          {words.map((part, i) => {
-            if (part.trim() === '') return part;
-            return (
-              <span
-                key={i}
-                className="dictionary-word"
-                onClick={() => handleDictionaryLookup(part.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, ""))}
-                style={{ cursor: 'help', borderBottom: '1px dotted var(--accent-color)' }}
-              >
-                {part}
-              </span>
-            );
-          })}
-        </p>
-      );
-    },
+    p: ({ node, children, ...props }: any) => <p {...props}>{children}</p>,
     code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
       const match = /language-(\w+)/.exec(className || "");
       let displayLang = match ? match[1] : "";
@@ -2496,70 +2587,68 @@ function App() {
           )
         }
 
-        {/* Dictionary Modal Overlay */}
-        {isDictionaryModalOpen && (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1500,
-            backdropFilter: 'blur(4px)',
-            animation: 'fadeIn 0.2s ease-out'
-          }}>
-            <div style={{
-              backgroundColor: 'var(--bg-secondary)',
+        {/* Dictionary Floating Popup Overlay */}
+        {dictionaryPopup && (
+          <div
+            className="dictionary-popup"
+            style={{
+              position: 'fixed',
+              left: Math.min(dictionaryPopup.x, window.innerWidth - 300) + 'px',
+              top: Math.min(dictionaryPopup.y + 20, window.innerHeight - 200) + 'px',
+              backgroundColor: 'var(--panel-bg)',
               border: '1px solid var(--border-color)',
-              borderRadius: '1.25rem',
-              width: '90%',
-              maxWidth: '500px',
-              maxHeight: '80vh',
+              borderRadius: '0.75rem',
+              width: '300px',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+              zIndex: 2000,
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-              overflow: 'hidden'
-            }}>
-              <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Book size={18} color="var(--accent-color)" />
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>Dictionary</h3>
-                </div>
-                <button onClick={() => setIsDictionaryModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto' }}>
-                <div style={{ marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em' }}>Word / Concept</span>
-                  <h2 style={{ margin: '4px 0 0 0', color: 'var(--accent-color)', fontSize: '1.5rem' }}>{dictionaryWord}</h2>
-                </div>
-
-                {isDictionaryLoading ? (
-                  <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 12px' }} />
-                    <p>Fetching definition...</p>
-                  </div>
-                ) : (
-                  <div style={{ color: 'var(--text-main)', lineHeight: 1.6 }}>
-                    <SmartContent
-                      content={dictionaryResult}
-                      markdownComponents={markdownComponents}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.1)', textAlign: 'right' }}>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => setIsDictionaryModalOpen(false)}
+              overflow: 'hidden',
+              backdropFilter: 'blur(8px)'
+            }}
+          >
+            <div style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--accent-color)' }}>{dictionaryPopup.word}</h4>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                    handleListenDictionaryWord(dictionaryPopup.word);
+                  }}
+                  style={{ background: 'none', border: 'none', color: isDictionarySpeaking ? 'var(--accent-color)' : 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title={isDictionarySpeaking ? "Stop pronunciation" : "Listen pronunciation"}
                 >
-                  Close
+                  {isDictionarySpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
                 </button>
               </div>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                  setDictionaryPopup(null);
+                  if (isDictionarySpeaking && 'speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    setIsDictionarySpeaking(false);
+                  }
+                }} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ padding: '0.75rem', color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: 1.5, maxHeight: '200px', overflowY: 'auto' }}>
+              {dictionaryPopup.isLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Loading definition...</span>
+                </div>
+              ) : (
+                <SmartContent
+                  content={dictionaryPopup.definition}
+                  markdownComponents={markdownComponents}
+                />
+              )}
             </div>
           </div>
         )}

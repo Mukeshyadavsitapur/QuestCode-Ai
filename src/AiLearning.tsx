@@ -1,7 +1,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { Sparkles, Loader2, RefreshCw, BookOpen, Copy, Terminal as TerminalIcon } from "lucide-react";
 import Prism from "prismjs";
-import { SmartContent, generateAIResponseStream } from "./aiUtils";
+import { generateAIResponseStream, Message } from "./aiUtils";
+import { ChatBubble } from "./ChatBubble";
 import "prismjs/themes/prism-tomorrow.css"; // Basic dark theme, can be overridden by custom CSS
 import "prismjs/components/prism-rust";
 import "prismjs/components/prism-python";
@@ -27,22 +28,32 @@ interface AiLearningProps {
     prevTopic?: (Topic & { groupTitle: string }) | null;
     nextTopic?: (Topic & { groupTitle: string }) | null;
     onSelectTopic?: (topic: Topic, groupTitle: string) => void;
+    isDictionaryActive?: boolean;
+    setIsDictionaryActive?: (val: boolean) => void;
+    speakingMsgIdx?: { idx: number, isQuickChat: boolean } | null;
+    handleListen?: (text: string, idx: number) => void;
+    handleGenerateQuiz?: (content: string) => void;
+    isQuizGenerating?: boolean;
 }
 
-export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ language, apiKey, openAiApiKey, anthropicApiKey, groqApiKey, huggingFaceApiKey, provider, selectedModel, topic, groupTitle, onBack, onApplyCode, prevTopic, nextTopic, onSelectTopic }, ref) => {
-    const [content, setContent] = useState<string>("");
+export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ 
+    language, apiKey, openAiApiKey, anthropicApiKey, groqApiKey, huggingFaceApiKey, provider, selectedModel, topic, groupTitle, onBack, onApplyCode, prevTopic, nextTopic, onSelectTopic,
+    isDictionaryActive, setIsDictionaryActive, speakingMsgIdx, handleListen, handleGenerateQuiz, isQuizGenerating
+}, ref) => {
+    const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [temperature, setTemperature] = useState<number>(0.3);
+    const temperature = 0.3; // Default temperature - could be passed as prop in future
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const scrollToLatestMessage = () => {
         // Wait for a tiny bit for render to finish
         setTimeout(() => {
             if (scrollRef.current) {
-                const latestQuestion = scrollRef.current.querySelector('a[href="#latest-question"]') as HTMLElement;
-                if (latestQuestion) {
-                    scrollRef.current.scrollTop = latestQuestion.offsetTop - 16;
+                const bubbles = scrollRef.current.querySelectorAll('.chat-bubble-container');
+                if (bubbles.length > 0) {
+                    const lastBubble = bubbles[bubbles.length - 1] as HTMLElement;
+                    scrollRef.current.scrollTop = lastBubble.offsetTop - 16;
                 } else {
                     scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
                 }
@@ -161,59 +172,70 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({ langu
         }
     }), []);
 
-    useImperativeHandle(ref, () => ({
-        askQuestion: async (question: string) => {
-            if (!topic) return;
+    const internalAskQuestion = async (question: string, currentMessages: Message[]) => {
+        if (!topic) return;
 
-            const timestamp = new Date().toLocaleTimeString();
-            const cleanContent = content.replace(/\[\s*\]\(#latest-question\)/g, "");
-            const newContent = cleanContent + (cleanContent ? "\n\n--- \n\n" : "") + `[ ](#latest-question)**You (${timestamp}):** ${question}\n\n*Thinking...*`;
-            setContent(newContent);
-            scrollToLatestMessage();
+        const newUserMsg: Message = { role: 'user', content: question };
+        const newThinkingMsg: Message = { role: 'ai', content: '*Thinking...*' };
 
-            try {
-                // Construct prompt with context
-                // Truncate content if too long to avoid token limits, but keep recent context
-                const contextContent = content.length > 8000 ? "..." + content.slice(-8000) : content;
+        const updatedMessages = [...currentMessages, newUserMsg, newThinkingMsg];
+        setMessages(updatedMessages);
+        scrollToLatestMessage();
 
-                const prompt = `Regarding the topic '${topic.title}' in the ${language} course.
-The current content is:
+        try {
+            // Construct context from messages
+            const contextText = currentMessages.map(m => m.role === 'user' ? `User: ${m.content}` : `AI: ${m.content}`).join("\n\n");
+            const contextContent = contextText.length > 8000 ? "..." + contextText.slice(-8000) : contextText;
+
+            const prompt = `Regarding the topic '${topic.title}' in the ${language} course.
+The current context is:
 ${contextContent}
 
 User Question: ${question}
 
 Answer the user's question in the context of this topic. Be concise and helpful. Use Markdown.`;
 
-                const stream = generateAIResponseStream(prompt, [], {
-                    provider: provider,
-                    model: selectedModel || "",
-                    apiKey: apiKey,
-                    openAiApiKey: openAiApiKey,
-                    anthropicApiKey: anthropicApiKey,
-                    groqApiKey: groqApiKey,
-                    huggingFaceApiKey: huggingFaceApiKey,
-                    temperature: temperature
+            const stream = generateAIResponseStream(prompt, [], {
+                provider: provider,
+                model: selectedModel || "",
+                apiKey: apiKey,
+                openAiApiKey: openAiApiKey,
+                anthropicApiKey: anthropicApiKey,
+                groqApiKey: groqApiKey,
+                huggingFaceApiKey: huggingFaceApiKey,
+                temperature: temperature
+            });
+
+            let fullContent = "";
+            for await (const chunk of stream) {
+                fullContent += chunk;
+                setMessages(prev => {
+                    const newArr = [...prev];
+                    newArr[newArr.length - 1] = { role: 'ai', content: fullContent };
+                    return newArr;
                 });
-
-                let fullContent = "";
-                for await (const chunk of stream) {
-                    fullContent += chunk;
-                    setContent(newContent.replace("*Thinking...*", "") + `\n\n**AI:** ${fullContent}`);
-                    scrollToLatestMessage();
-                }
-
-                const finalContent = newContent.replace("*Thinking...*", "") + `\n\n**AI:** ${fullContent}`;
-                setContent(finalContent);
-
-                // Update Cache
-                const cacheKey = `ai_learning_${language}_${topic.id}`;
-                localStorage.setItem(cacheKey, finalContent);
-
-            } catch (err) {
-                console.error(err);
-                const errorMsg = String(err);
-                setContent(newContent.replace("*Thinking...*", "") + `\n\n**Error:** Failed to get response. ${errorMsg}`);
+                scrollToLatestMessage();
             }
+
+            // Update Cache
+            const finalMessages = [...currentMessages, newUserMsg, { role: 'ai', content: fullContent }];
+            const cacheKey = `ai_learning_${language}_${topic.id}`;
+            localStorage.setItem(cacheKey, JSON.stringify(finalMessages));
+
+        } catch (err) {
+            console.error(err);
+            const errorMsg = String(err);
+            setMessages(prev => {
+                const newArr = [...prev];
+                newArr[newArr.length - 1] = { role: 'ai', content: `**Error:** Failed to get response. ${errorMsg}` };
+                return newArr;
+            });
+        }
+    };
+
+    useImperativeHandle(ref, () => ({
+        askQuestion: async (question: string) => {
+            return internalAskQuestion(question, messages);
         }
     }));
 
@@ -225,10 +247,10 @@ Answer the user's question in the context of this topic. Be concise and helpful.
 
     // Highlight code after content updates
     useEffect(() => {
-        if (content) {
+        if (messages.length > 0) {
             Prism.highlightAll();
         }
-    }, [content]);
+    }, [messages]);
 
     const fetchExplanation = async (currentTopic: Topic, forceRefresh = false) => {
         const cacheKey = `ai_learning_${language}_${currentTopic.id}`;
@@ -236,13 +258,22 @@ Answer the user's question in the context of this topic. Be concise and helpful.
         if (!forceRefresh) {
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
-                setContent(cached);
-                return;
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed)) {
+                        setMessages(parsed);
+                        return;
+                    }
+                } catch {
+                    // Fallback to storing as a single message
+                    setMessages([{ role: 'ai', content: cached }]);
+                    return;
+                }
             }
         }
 
         setIsLoading(true);
-        setContent("");
+        setMessages([{ role: 'ai', content: '*Thinking...*' }]);
         setError(null);
 
         try {
@@ -312,10 +343,10 @@ Answer the user's question in the context of this topic. Be concise and helpful.
             let fullContent = "";
             for await (const chunk of stream) {
                 fullContent += chunk;
-                setContent(fullContent);
+                setMessages([{ role: 'ai', content: fullContent }]);
             }
 
-            localStorage.setItem(cacheKey, fullContent);
+            localStorage.setItem(cacheKey, JSON.stringify([{ role: 'ai', content: fullContent }]));
         } catch (err) {
             console.error("Failed to fetch explanation:", err);
             setError(String(err));
@@ -350,56 +381,9 @@ Answer the user's question in the context of this topic. Be concise and helpful.
 
     return (
         <div className="learning-content" style={{ display: "flex", flexDirection: "column", height: "100%", padding: "0", overflow: "hidden" }}>
-            <div style={{
-                padding: "16px 24px",
-                borderBottom: "1px solid var(--border-color)",
-                background: "var(--panel-bg)",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px"
-            }}>
-                <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "700", color: "var(--accent-text)", flex: 1 }}>
-                    {topic.id} {topic.title}
-                </h2>
 
-                <select
-                    value={temperature}
-                    onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                    className="settings-input"
-                    style={{
-                        padding: "6px 8px",
-                        borderRadius: "4px",
-                        background: "var(--bg-color)",
-                        color: "var(--text-main)",
-                        border: "1px solid var(--border-color)",
-                        marginRight: "8px",
-                        fontSize: "0.85rem",
-                        width: "auto",
-                        maxWidth: "140px",
-                        cursor: "pointer"
-                    }}
-                    title="Creativity Level (Temperature)"
-                >
-                    <option value={0.1}>Focused (0.1)</option>
-                    <option value={0.3}>Default (0.3)</option>
-                    <option value={0.5}>Balanced (0.5)</option>
-                    <option value={0.8}>Creative (0.8)</option>
-                    <option value={1.0}>Exploratory (1.0)</option>
-                </select>
 
-                <button
-                    onClick={() => fetchExplanation(topic, true)}
-                    disabled={isLoading}
-                    className="btn btn-secondary"
-                    style={{ padding: "6px 12px", fontSize: "0.85rem", opacity: isLoading ? 0.5 : 1 }}
-                    title="Regenerate Explanation"
-                >
-                    <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} style={{ marginRight: "6px" }} />
-                    {isLoading ? "Generating..." : "Regenerate"}
-                </button>
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px" }} className="custom-markdown-content" ref={scrollRef}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0" }} className="custom-markdown-content" ref={scrollRef}>
                 {isLoading ? (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", minHeight: "300px" }}>
                         <Loader2 className="animate-spin" size={48} style={{ marginBottom: "24px", color: "var(--accent-text)" }} />
@@ -407,7 +391,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                         <p style={{ opacity: 0.7 }}>Writing custom examples for <strong>{topic.title}</strong>.</p>
                     </div>
                 ) : error ? (
-                    <div style={{ color: "#ff6b6b", padding: "24px", border: "1px solid rgba(255, 107, 107, 0.3)", borderRadius: "12px", background: "rgba(255, 107, 107, 0.05)" }}>
+                    <div style={{ color: "#ff6b6b", padding: "24px", border: "1px solid rgba(255, 107, 107, 0.3)", borderRadius: "12px", background: "rgba(255, 107, 107, 0.05)", margin: "20px" }}>
                         <h3 style={{ marginTop: 0 }}>Unable to load content</h3>
                         <p>{error}</p>
                         <button className="btn btn-primary" onClick={() => fetchExplanation(topic)} style={{ marginTop: "16px" }}>
@@ -415,11 +399,35 @@ Answer the user's question in the context of this topic. Be concise and helpful.
                         </button>
                     </div>
                 ) : (
-                    <div className="markdown-body">
-                        <SmartContent
-                            content={content}
-                            markdownComponents={markdownComponents}
-                        />
+                    <div className="description-container" style={{ padding: "0 12px", paddingBottom: "100px" }} onPointerDown={(e) => e.stopPropagation()}>
+                        {messages.map((msg, idx) => (
+                            <ChatBubble
+                                key={idx}
+                                msg={msg}
+                                idx={idx}
+                                isLast={idx === messages.length - 1}
+                                isDictionaryActive={isDictionaryActive}
+                                setIsDictionaryActive={setIsDictionaryActive}
+                                speakingMsgIdx={speakingMsgIdx}
+                                handleListen={handleListen ? (text, idx) => handleListen(text, idx) : undefined}
+                                handleTryAgain={(idx) => {
+                                    const userMsg = messages[idx - 1];
+                                    if (userMsg && userMsg.role === 'user') {
+                                        // Follow-up Q&A: ask the question again with context up to before the user's msg
+                                        const newMessages = messages.slice(0, idx - 1);
+                                        setMessages(newMessages);
+                                        internalAskQuestion(userMsg.content, newMessages);
+                                    } else {
+                                        // Initial topic explanation: regenerate it
+                                        if (topic) fetchExplanation(topic, true);
+                                    }
+                                }}
+                                handleGenerateQuiz={handleGenerateQuiz}
+                                markdownComponents={markdownComponents}
+                                isExplaining={isLoading}
+                                isQuizGenerating={isQuizGenerating}
+                            />
+                        ))}
 
                         {(prevTopic || nextTopic) && (
                             <div style={{ display: "flex", justifyContent: "space-between", marginTop: "40px", borderTop: "1px solid var(--border-color)", paddingTop: "24px", gap: "16px" }}>

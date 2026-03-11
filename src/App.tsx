@@ -22,8 +22,9 @@ import {
   PanelRight,
   PanelLeft,
   PanelLeftClose,
-  RefreshCw, Trash2, BookOpen, VolumeX, Volume2
+  Trash2, RefreshCw, VolumeX, Volume2
 } from "lucide-react";
+import { ChatBubble } from "./ChatBubble";
 import { SettingsModal } from "./SettingsModal";
 import { Shortcuts } from "./Shortcuts";
 import { themes } from "./themes";
@@ -94,10 +95,11 @@ function App() {
     isLoading: boolean;
   } | null>(null);
   const [isDictionarySpeaking, setIsDictionarySpeaking] = useState(false);
-  const [speakingMsgIdx, setSpeakingMsgIdx] = useState<number | null>(null);
+  const [speakingMsgIdx, setSpeakingMsgIdx] = useState<{idx: number, isQuickChat: boolean} | null>(null);
   const [isQuizGenerating, setIsQuizGenerating] = useState(false);
   const [activeQuizQuestions, setActiveQuizQuestions] = useState<any[] | null>(null);
   const [input, setInput] = useState("");
+  const [temperature, setTemperature] = useState<number>(0.3);
   const [isExplaining, setIsExplaining] = useState(false);
   const { isPyodideLoading, runPython } = usePython();
 
@@ -561,20 +563,10 @@ function App() {
     setViewMode("ai");
   };
 
-  const handleSendQuickChat = async () => {
-    if (!quickChatInput.trim() || aiService === "web") return;
-
-    let userQuestion = quickChatInput;
-    setQuickChatInput("");
-
-    const isFirstMessage = quickChatMessages.length === 1 && quickChatMessages[0].role === 'system';
-
+  const sendQuickChatMessage = async (userQuestion: string, contextMessages: Message[]) => {
     const newUserMsg: Message = { role: 'user', content: userQuestion };
     const newThinkingMsg: Message = { role: 'ai', content: '*Thinking...*' };
-
-    const updatedMessages = isFirstMessage
-      ? [newUserMsg, newThinkingMsg]
-      : [...quickChatMessages, newUserMsg, newThinkingMsg];
+    const updatedMessages = [...contextMessages, newUserMsg, newThinkingMsg];
 
     setQuickChatMessages(updatedMessages);
     scrollToLatestMessage(quickChatScrollRef);
@@ -592,14 +584,15 @@ function App() {
 
     setIsQuickChatExplaining(true);
     try {
-      const stream = generateAIResponseStream(userQuestion, quickChatMessages.filter(m => m.role !== 'system'), {
+      const stream = generateAIResponseStream(userQuestion, contextMessages.filter(m => m.role !== 'system'), {
         provider: llmProvider,
         model: selectedModel,
         apiKey,
         openAiApiKey,
         anthropicApiKey,
         groqApiKey,
-        huggingFaceApiKey
+        huggingFaceApiKey,
+        temperature
       });
 
       let fullContent = "";
@@ -657,6 +650,15 @@ function App() {
     }
   };
 
+  const handleSendQuickChat = async () => {
+    if (!quickChatInput.trim() || aiService === "web") return;
+    const userQuestion = quickChatInput;
+    setQuickChatInput("");
+    const isFirstMessage = quickChatMessages.length === 1 && quickChatMessages[0].role === 'system';
+    const context = isFirstMessage ? [] : quickChatMessages;
+    await sendQuickChatMessage(userQuestion, context);
+  };
+
   const handleDeleteChat = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setChats((prev) => prev.filter((c) => c.id !== id));
@@ -701,7 +703,8 @@ function App() {
         openAiApiKey,
         anthropicApiKey,
         groqApiKey,
-        huggingFaceApiKey
+        huggingFaceApiKey,
+        temperature
       });
 
       let fullContent = "";
@@ -791,7 +794,8 @@ function App() {
         openAiApiKey,
         anthropicApiKey,
         groqApiKey,
-        huggingFaceApiKey
+        huggingFaceApiKey,
+        temperature
       });
 
       let fullContent = "";
@@ -1025,8 +1029,8 @@ function App() {
 
 
 
-  const handleListen = async (text: string, idx: number) => {
-    if (speakingMsgIdx === idx) {
+  const handleListen = async (text: string, idx: number, isQuickChat: boolean = false) => {
+    if (speakingMsgIdx?.idx === idx && speakingMsgIdx?.isQuickChat === isQuickChat) {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
@@ -1046,7 +1050,7 @@ function App() {
         utterance.lang = 'en-US';
         utterance.onend = () => setSpeakingMsgIdx(null);
         utterance.onerror = () => setSpeakingMsgIdx(null);        window.speechSynthesis.speak(utterance);
-        setSpeakingMsgIdx(idx);
+        setSpeakingMsgIdx({ idx, isQuickChat });
       } else {
         console.warn("Speech Synthesis not supported");
       }
@@ -1104,7 +1108,8 @@ function App() {
         openAiApiKey,
         anthropicApiKey,
         groqApiKey,
-        huggingFaceApiKey
+        huggingFaceApiKey,
+        temperature
       });
 
       let fullContent = "";
@@ -1142,6 +1147,15 @@ function App() {
       const newMessages = messages.slice(0, idx - 1);
       setMessages(newMessages);
       handleExplainWithContext(userMsg.content, newMessages);
+    }
+  };
+
+  const handleTryAgainQuickChat = (idx: number) => {
+    const userMsg = quickChatMessages[idx - 1];
+    if (userMsg && userMsg.role === 'user') {
+      const contextMessages = quickChatMessages.slice(0, idx - 1);
+      setQuickChatMessages(contextMessages);
+      sendQuickChatMessage(userMsg.content, contextMessages);
     }
   };
 
@@ -2113,63 +2127,25 @@ function App() {
                   <div style={{ display: viewMode === "ai" ? "flex" : "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
                     {aiService === "api" ? (
                       <>
-                        <div className="description-container" ref={mainChatScrollRef} style={{ padding: "0 16px", paddingBottom: "100px" }}>
-                          {messages.map((msg, idx) => {
-                            return (
-                              <div key={idx} className={`chat-bubble-container ${msg.role}`} data-msg-idx={idx}>
-                                <div className={`message-bubble ${msg.role}`}>
-                                  {msg.role === 'ai' && msg.content && msg.content !== '*Thinking...*' && (
-                                    <div className="msg-bubble-tools">
-                                      <button
-                                        className={`icon-btn ${isDictionaryActive ? 'active' : ''}`}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setIsDictionaryActive(!isDictionaryActive);
-                                        }}
-                                        title={isDictionaryActive ? "Disable Dictionary Mode" : "Enable Dictionary Mode (Click words)"}
-                                      >
-                                        <BookOpen size={16} />
-                                      </button>
-                                      <button
-                                        className={`icon-btn ${speakingMsgIdx === idx ? 'active' : ''}`}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          e.preventDefault();
-                                          handleListen(msg.content, idx);
-                                        }}
-                                        title={speakingMsgIdx === idx ? "Stop listening" : "Listen"}
-                                      >
-                                        {speakingMsgIdx === idx ? <VolumeX size={15} /> : <Volume2 size={15} />}
-                                      </button>
-                                    </div>
-                                  )}
-
-                                  <SmartContent
-                                    content={msg.content}
-                                    markdownComponents={markdownComponents}
-                                  />
-
-                                  {msg.role === 'ai' && idx === messages.length - 1 && (
-                                    <div className="chat-reference-anchor"></div>
-                                  )}
-
-                                  {/* Action Bar */}
-                                  {msg.role === 'ai' && msg.content && msg.content !== '*Thinking...*' && (
-                                    <div className="msg-action-bar">
-                                      <button className="msg-action-btn" onClick={() => handleTryAgain(idx)}>
-                                        <RefreshCw size={16} /> <span>Try again</span>
-                                      </button>
-
-                                      <button className="msg-action-btn" disabled={isQuizGenerating} onClick={() => handleGenerateQuiz(msg.content)}>
-                                        <Zap size={16} /> <span>{isQuizGenerating ? 'Generating...' : 'Generate Quiz'}</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                         </div>
+                        <div className="description-container" ref={mainChatScrollRef} style={{ padding: "0 12px", paddingBottom: "100px" }}>
+                          {messages.map((msg, idx) => (
+                            <ChatBubble
+                              key={idx}
+                              msg={msg}
+                              idx={idx}
+                              isLast={idx === messages.length - 1}
+                              isDictionaryActive={isDictionaryActive}
+                              setIsDictionaryActive={setIsDictionaryActive}
+                              speakingMsgIdx={speakingMsgIdx}
+                              handleListen={handleListen}
+                              handleTryAgain={handleTryAgain}
+                              handleGenerateQuiz={handleGenerateQuiz}
+                              markdownComponents={markdownComponents}
+                              isExplaining={isExplaining}
+                              isQuizGenerating={isQuizGenerating}
+                            />
+                          ))}
+                        </div>
                        </>
                      ) : (
                        <div
@@ -2279,6 +2255,12 @@ function App() {
                       prevTopic={prevTopic}
                       nextTopic={nextTopic}
                       onSelectTopic={handleSelectTopic}
+                      isDictionaryActive={isDictionaryActive}
+                      setIsDictionaryActive={setIsDictionaryActive}
+                      speakingMsgIdx={speakingMsgIdx}
+                      handleListen={handleListen}
+                      handleGenerateQuiz={handleGenerateQuiz}
+                      isQuizGenerating={isQuizGenerating}
                     />
                   </div>
 
@@ -2286,7 +2268,29 @@ function App() {
 
                   {/* Shared AI Controls */}
                   {((viewMode === "ai" && aiService === "api") || viewMode === "learning") && (
-                    <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px" }}>
+                    <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                      <select
+                        value={temperature}
+                        onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                        className="settings-input"
+                        style={{
+                            padding: "6px 8px",
+                            borderRadius: "4px",
+                            background: "var(--bg-color)",
+                            color: "var(--text-main)",
+                            border: "1px solid var(--border-color)",
+                            fontSize: "0.85rem",
+                            width: "auto",
+                            cursor: "pointer"
+                        }}
+                        title="Creativity Level (Temperature)"
+                      >
+                        <option value={0.1}>Focused</option>
+                        <option value={0.3}>Default</option>
+                        <option value={0.5}>Balanced</option>
+                        <option value={0.8}>Creative</option>
+                        <option value={1.0}>Exploratory</option>
+                      </select>
                       <textarea
                         className="ai-input"
                         placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
@@ -2304,7 +2308,7 @@ function App() {
                           }
                         }}
                         rows={1}
-                        style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden" }}
+                        style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
                       />
                       <button className="btn btn-primary" onClick={handleSend}>
                         <Send size={18} />
@@ -2545,19 +2549,49 @@ function App() {
                     </button>
                   </div>
                 </div>
-                <div className="description-container" style={{ flex: 1, padding: "16px", overflowY: "auto" }} onPointerDown={(e) => e.stopPropagation()} ref={quickChatScrollRef}>
+                <div className="description-container" style={{ flex: 1, padding: "0 12px", overflowY: "auto", paddingBottom: "100px" }} onPointerDown={(e) => e.stopPropagation()} ref={quickChatScrollRef}>
                   {quickChatMessages.map((msg, idx) => (
-                    <div key={idx} className={`chat-bubble-container ${msg.role}`}>
-                      <div className={`chat-bubble ${msg.role}`}>
-                        <SmartContent
-                          content={msg.content}
-                          markdownComponents={quickChatMarkdownComponents}
-                        />
-                      </div>
-                    </div>
+                    <ChatBubble
+                      key={idx}
+                      msg={msg}
+                      idx={idx}
+                      isLast={idx === quickChatMessages.length - 1}
+                      isDictionaryActive={isDictionaryActive}
+                      setIsDictionaryActive={setIsDictionaryActive}
+                      speakingMsgIdx={speakingMsgIdx}
+                      handleListen={handleListen}
+                      handleTryAgain={handleTryAgainQuickChat}
+                      handleGenerateQuiz={handleGenerateQuiz}
+                      markdownComponents={quickChatMarkdownComponents}
+                      isExplaining={isQuickChatExplaining}
+                      isQuizGenerating={isQuizGenerating}
+                      isQuickChat={true}
+                    />
                   ))}
                 </div>
-                <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", padding: "12px" }} onPointerDown={(e) => e.stopPropagation()}>
+                <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", padding: "12px", display: "flex", gap: "8px", alignItems: "center" }} onPointerDown={(e) => e.stopPropagation()}>
+                  <select
+                        value={temperature}
+                        onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                        className="settings-input"
+                        style={{
+                            padding: "6px 8px",
+                            borderRadius: "4px",
+                            background: "var(--bg-color)",
+                            color: "var(--text-main)",
+                            border: "1px solid var(--border-color)",
+                            fontSize: "0.85rem",
+                            width: "auto",
+                            cursor: "pointer"
+                        }}
+                        title="Creativity Level (Temperature)"
+                  >
+                      <option value={0.1}>Focused</option>
+                      <option value={0.3}>Default</option>
+                      <option value={0.5}>Balanced</option>
+                      <option value={0.8}>Creative</option>
+                      <option value={1.0}>Exploratory</option>
+                  </select>
                   <textarea
                     className="ai-input"
                     placeholder="Ask a quick question..."
@@ -2576,7 +2610,7 @@ function App() {
                     }}
                     disabled={isQuickChatExplaining}
                     rows={1}
-                    style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden" }}
+                    style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
                   />
                   <button className="btn btn-primary" onClick={handleSendQuickChat} disabled={isQuickChatExplaining}>
                     {isQuickChatExplaining ? <Zap size={18} className="animate-pulse" /> : <Send size={18} />}

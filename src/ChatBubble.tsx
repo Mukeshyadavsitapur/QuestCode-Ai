@@ -85,7 +85,7 @@ export const ChatBubble = ({
                                         disabled={isExplaining}
                                     >
                                         <RefreshCw size={16} className={isExplaining ? "animate-spin" : ""} />
-                                        <span>Try again</span>
+                                        <span>Regenerate</span>
                                     </button>
                                 )}
                                 {handleGenerateQuiz && (

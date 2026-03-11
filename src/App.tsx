@@ -86,7 +86,7 @@ function App() {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
 
   // PromptTest Chat Features State
-  const [isDictionaryActive, setIsDictionaryActive] = useState(false);
+  const [isDictionaryActive, setIsDictionaryActive] = useState(true);
   const [dictionaryPopup, setDictionaryPopup] = useState<{
     word: string;
     definition: string;
@@ -2269,47 +2269,41 @@ function App() {
                   {/* Shared AI Controls */}
                   {((viewMode === "ai" && aiService === "api") || viewMode === "learning") && (
                     <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-                      <select
-                        value={temperature}
-                        onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                        className="settings-input"
-                        style={{
-                            padding: "6px 8px",
-                            borderRadius: "4px",
-                            background: "var(--bg-color)",
-                            color: "var(--text-main)",
-                            border: "1px solid var(--border-color)",
-                            fontSize: "0.85rem",
-                            width: "auto",
-                            cursor: "pointer"
-                        }}
-                        title="Creativity Level (Temperature)"
-                      >
-                        <option value={0.1}>Focused</option>
-                        <option value={0.3}>Default</option>
-                        <option value={0.5}>Balanced</option>
-                        <option value={0.8}>Creative</option>
-                        <option value={1.0}>Exploratory</option>
-                      </select>
-                      <textarea
-                        className="ai-input"
-                        placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
-                        value={input}
-                        onChange={(e) => {
-                          setInput(e.target.value);
-                          e.target.style.height = 'auto';
-                          e.target.style.height = e.target.scrollHeight + 'px';
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
-                            e.preventDefault();
-                            handleSend();
-                            e.currentTarget.style.height = 'auto';
-                          }
-                        }}
-                        rows={1}
-                        style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
-                      />
+                      <div className="ai-input-wrapper">
+                        <div className="temp-control-minimal" title="Creativity Level (Temperature)">
+                          T
+                          <select
+                            value={temperature}
+                            onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                            className="temp-select-hidden"
+                          >
+                            <option value={0.1}>Focused (0.1)</option>
+                            <option value={0.3}>Default (0.3)</option>
+                            <option value={0.5}>Balanced (0.5)</option>
+                            <option value={0.8}>Creative (0.8)</option>
+                            <option value={1.0}>Exploratory (1.0)</option>
+                          </select>
+                        </div>
+                        <textarea
+                          className="ai-input"
+                          placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
+                          value={input}
+                          onChange={(e) => {
+                            setInput(e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
+                              e.preventDefault();
+                              handleSend();
+                              e.currentTarget.style.height = 'auto';
+                            }
+                          }}
+                          rows={1}
+                          style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
+                        />
+                      </div>
                       <button className="btn btn-primary" onClick={handleSend}>
                         <Send size={18} />
                       </button>
@@ -2570,48 +2564,42 @@ function App() {
                   ))}
                 </div>
                 <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", padding: "12px", display: "flex", gap: "8px", alignItems: "center" }} onPointerDown={(e) => e.stopPropagation()}>
-                  <select
+                  <div className="ai-input-wrapper">
+                    <div className="temp-control-minimal" title="Creativity Level (Temperature)">
+                      T
+                      <select
                         value={temperature}
                         onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                        className="settings-input"
-                        style={{
-                            padding: "6px 8px",
-                            borderRadius: "4px",
-                            background: "var(--bg-color)",
-                            color: "var(--text-main)",
-                            border: "1px solid var(--border-color)",
-                            fontSize: "0.85rem",
-                            width: "auto",
-                            cursor: "pointer"
-                        }}
-                        title="Creativity Level (Temperature)"
-                  >
-                      <option value={0.1}>Focused</option>
-                      <option value={0.3}>Default</option>
-                      <option value={0.5}>Balanced</option>
-                      <option value={0.8}>Creative</option>
-                      <option value={1.0}>Exploratory</option>
-                  </select>
-                  <textarea
-                    className="ai-input"
-                    placeholder="Ask a quick question..."
-                    value={quickChatInput}
-                    onChange={(e) => {
-                      setQuickChatInput(e.target.value);
-                      e.target.style.height = 'auto';
-                      e.target.style.height = e.target.scrollHeight + 'px';
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !isQuickChatExplaining) {
-                        e.preventDefault();
-                        handleSendQuickChat();
-                        e.currentTarget.style.height = 'auto';
-                      }
-                    }}
-                    disabled={isQuickChatExplaining}
-                    rows={1}
-                    style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
-                  />
+                        className="temp-select-hidden"
+                      >
+                        <option value={0.1}>Focused (0.1)</option>
+                        <option value={0.3}>Default (0.3)</option>
+                        <option value={0.5}>Balanced (0.5)</option>
+                        <option value={0.8}>Creative (0.8)</option>
+                        <option value={1.0}>Exploratory (1.0)</option>
+                      </select>
+                    </div>
+                    <textarea
+                      className="ai-input"
+                      placeholder="Ask a quick question..."
+                      value={quickChatInput}
+                      onChange={(e) => {
+                        setQuickChatInput(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !isQuickChatExplaining) {
+                          e.preventDefault();
+                          handleSendQuickChat();
+                          e.currentTarget.style.height = 'auto';
+                        }
+                      }}
+                      disabled={isQuickChatExplaining}
+                      rows={1}
+                      style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
+                    />
+                  </div>
                   <button className="btn btn-primary" onClick={handleSendQuickChat} disabled={isQuickChatExplaining}>
                     {isQuickChatExplaining ? <Zap size={18} className="animate-pulse" /> : <Send size={18} />}
                   </button>

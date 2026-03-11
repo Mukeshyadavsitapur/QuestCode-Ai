@@ -44,6 +44,11 @@ export const ChatBubble = ({
                                     e.stopPropagation();
                                     setIsDictionaryActive(!isDictionaryActive);
                                 }}
+                                onTouchEnd={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setIsDictionaryActive(!isDictionaryActive);
+                                }}
                                 title={isDictionaryActive ? "Disable Dictionary Mode" : "Enable Dictionary Mode (Click words)"}
                             >
                                 <BookOpen size={16} />
@@ -55,6 +60,11 @@ export const ChatBubble = ({
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     e.preventDefault();
+                                    handleListen(msg.content, idx, isQuickChat);
+                                }}
+                                onTouchEnd={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                     handleListen(msg.content, idx, isQuickChat);
                                 }}
                                 title={speakingMsgIdx?.idx === idx && speakingMsgIdx?.isQuickChat === isQuickChat ? "Stop listening" : "Listen"}

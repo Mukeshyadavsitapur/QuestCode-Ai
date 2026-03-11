@@ -1028,8 +1028,45 @@ function App() {
 
 
 
+  // TTS Voice Selection Helper
+  const getPreferredVoice = () => {
+    if (!('speechSynthesis' in window)) return null;
+    const voices = window.speechSynthesis.getVoices();
+    // Try to find a high-quality English voice (e.g., Google or Samantha)
+    const preferred = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Samantha')));
+    if (preferred) return preferred;
+    // Fallback to any English voice
+    const anyEnglish = voices.find(v => v.lang.startsWith('en'));
+    if (anyEnglish) return anyEnglish;
+    // Last fallback
+    return voices[0] || null;
+  };
 
-  const handleListen = async (text: string, idx: number, isQuickChat: boolean = false) => {
+  // Pre-load voices for mobile
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+          console.log(`TTS: Loaded ${voices.length} voices.`);
+        }
+      };
+      
+      loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+      
+      // Silent warm-up on mount (some browsers need this)
+      const silent = new SpeechSynthesisUtterance(' ');
+      silent.volume = 0;
+      window.speechSynthesis.speak(silent);
+
+      return () => {
+        window.speechSynthesis.onvoiceschanged = null;
+      };
+    }
+  }, []);
+
+  const handleListen = (text: string, idx: number, isQuickChat: boolean = false) => {
     if (speakingMsgIdx?.idx === idx && speakingMsgIdx?.isQuickChat === isQuickChat) {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -1045,11 +1082,23 @@ function App() {
         .replace(/<[^>]*>?/gm, ''); // Remove tags
 
       if ('speechSynthesis' in window) {
+        // Mobile Fix: Resume before cancel/speak
+        window.speechSynthesis.resume();
         window.speechSynthesis.cancel();
+        
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.lang = 'en-US';
+        
+        const voice = getPreferredVoice();
+        if (voice) utterance.voice = voice;
+
         utterance.onend = () => setSpeakingMsgIdx(null);
-        utterance.onerror = () => setSpeakingMsgIdx(null);        window.speechSynthesis.speak(utterance);
+        utterance.onerror = (e) => {
+          console.error('TTS Error:', e);
+          setSpeakingMsgIdx(null);
+        };
+        
+        window.speechSynthesis.speak(utterance);
         setSpeakingMsgIdx({ idx, isQuickChat });
       } else {
         console.warn("Speech Synthesis not supported");
@@ -1071,14 +1120,23 @@ function App() {
 
     try {
       if ('speechSynthesis' in window) {
+        // Mobile Fix: Resume before cancel/speak
+        window.speechSynthesis.resume();
         window.speechSynthesis.cancel();
+        
         const utterance = new SpeechSynthesisUtterance(word);
         utterance.lang = 'en-US';
         // Adjust the rate slightly to sound more natural when reading a single word
         utterance.rate = 0.9;
         
+        const voice = getPreferredVoice();
+        if (voice) utterance.voice = voice;
+
         utterance.onend = () => setIsDictionarySpeaking(false);
-        utterance.onerror = () => setIsDictionarySpeaking(false);
+        utterance.onerror = (e) => {
+          console.error('TTS Dictionary Error:', e);
+          setIsDictionarySpeaking(false);
+        };
 
         window.speechSynthesis.speak(utterance);
         setIsDictionarySpeaking(true);
@@ -2638,6 +2696,12 @@ function App() {
                     if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
                     handleListenDictionaryWord(dictionaryPopup.word);
                   }}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.nativeEvent) (e.nativeEvent as any).stopImmediatePropagation();
+                    handleListenDictionaryWord(dictionaryPopup.word);
+                  }}
                   style={{ background: 'none', border: 'none', color: isDictionarySpeaking ? 'var(--accent-color)' : 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   title={isDictionarySpeaking ? "Stop pronunciation" : "Listen pronunciation"}
                 >
@@ -2654,6 +2718,16 @@ function App() {
                     setIsDictionarySpeaking(false);
                   }
                 }} 
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (e.nativeEvent) (e.nativeEvent as any).stopImmediatePropagation();
+                  setDictionaryPopup(null);
+                  if (isDictionarySpeaking && 'speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    setIsDictionarySpeaking(false);
+                  }
+                }}
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
               >
                 <X size={16} />

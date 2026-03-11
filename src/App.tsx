@@ -1130,7 +1130,7 @@ function App() {
   const handleGenerateQuiz = async (content: string) => {
     setIsQuizGenerating(true);
     try {
-      const prompt = `Generate a 3-question multiple choice quiz based on this text:\n\n${content}\n\nFormat the response EXACTLY as a JSON array of objects. Each object should have 'question' (string), 'options' (array of strings), and 'correctAnswerIndex' (integer 0-3). No other text.`;
+      const prompt = `Generate a 10-question multiple choice quiz based on this text:\n\n${content}\n\nFormat the response EXACTLY as a JSON array of objects. Each object should have 'question' (string), 'options' (array of strings), and 'correctAnswerIndex' (integer 0-3). No other text.`;
       const response: { content: string } = await invoke("ask_question", {
         req: {
           api_key: getCurrentApiKey(),
@@ -1753,7 +1753,8 @@ function App() {
   }, [language, selectedTopic]);
 
   return (
-    <div className="app-container">
+    <>
+      <div className="app-container">
 
 
       <main className="main-content">
@@ -2475,7 +2476,7 @@ function App() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1100,
+            zIndex: 1500,
             backdropFilter: 'blur(4px)',
             animation: 'fadeIn 0.2s ease-out'
           }}>
@@ -2534,16 +2535,16 @@ function App() {
           </div>
         )}
 
-        {/* Quiz Overlay */}
-        {activeQuizQuestions && (
-          <Quiz
-            questions={activeQuizQuestions}
-            onClose={() => setActiveQuizQuestions(null)}
-          />
-        )}
-
       </main >
-    </div >
+      </div>
+      {/* Quiz Overlay */}
+      {activeQuizQuestions && (
+        <Quiz
+          questions={activeQuizQuestions}
+          onClose={() => setActiveQuizQuestions(null)}
+        />
+      )}
+    </>
   );
 }
 

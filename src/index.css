@@ -16,7 +16,7 @@
     /* New Brand Tokens for AI Chat */
     --bg-primary: var(--bg-color);
     --bg-secondary: var(--panel-bg);
-    --bg-tertiary: #161b22;
+    --bg-tertiary: var(--secondary-color);
     --text-primary: var(--text-main);
     --text-secondary: var(--text-muted);
     --accent-primary: var(--accent-color);

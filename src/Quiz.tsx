@@ -87,36 +87,15 @@ const Quiz: React.FC<QuizProps> = ({ questions, onClose }) => {
                                 <div className="stat-label">Incorrect</div>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', width: '100%', flexWrap: 'wrap', marginTop: '1rem' }}>
+                        <div className="quiz-summary-actions">
                             <button
-                                className="msg-action-btn"
-                                style={{
-                                    background: 'var(--accent-primary)',
-                                    color: 'white',
-                                    padding: '0.8rem 2rem',
-                                    borderRadius: '1.5rem',
-                                    fontSize: '1rem',
-                                    fontWeight: 600,
-                                    flex: 1,
-                                    minWidth: '150px'
-                                }}
+                                className="quiz-summary-btn primary"
                                 onClick={onClose}
                             >
                                 Close Quiz
                             </button>
                             <button
-                                className="msg-action-btn"
-                                style={{
-                                    background: 'var(--bg-tertiary)',
-                                    color: 'var(--text-primary)',
-                                    padding: '0.8rem 2rem',
-                                    borderRadius: '1.5rem',
-                                    fontSize: '1rem',
-                                    fontWeight: 600,
-                                    border: '1.5px solid var(--border-color)',
-                                    flex: 1,
-                                    minWidth: '150px'
-                                }}
+                                className="quiz-summary-btn secondary"
                                 onClick={handleRetake}
                             >
                                 Retake Quiz

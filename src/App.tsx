@@ -228,8 +228,19 @@ function App() {
   // AI Service Mode (API or Web)
   const [aiService, setAiService] = useState<"api" | "web">("api");
 
-  // Editor State
-  const [isEditorVisible, setIsEditorVisible] = useState(true);
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleMobileResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener("resize", handleMobileResize);
+    return () => window.removeEventListener("resize", handleMobileResize);
+  }, []);
+
+  // Editor State — on mobile, start with only AI assistant visible
+  const [isEditorVisible, setIsEditorVisible] = useState(() => window.innerWidth > 768);
 
   // Terminal State
   const [terminalOutput, setTerminalOutput] = useState("");
@@ -661,6 +672,8 @@ function App() {
     setIsExplaining(true);
     setViewMode("ai");
     setIsAiAssistantVisible(true);
+    // On mobile: showing AI assistant hides editor
+    if (isMobile) setIsEditorVisible(false);
 
     if (!isTauri()) {
       setMessages([{ role: 'system', content: "## Browser Mode\n\nAI features require the desktop application to access the backend. Please download the full application." }]);
@@ -1761,7 +1774,7 @@ function App() {
         <PanelGroup orientation="horizontal">
           {isAiAssistantVisible && (
             <>
-               <Panel defaultSize={50} minSize={30}>
+               <Panel defaultSize={isMobile ? 100 : 50} minSize={isMobile ? 100 : 30}>
                 <div className="panel" style={{ position: "relative" }}>
                   {isSettingsOpen ? (
                       <SettingsModal
@@ -1826,7 +1839,15 @@ function App() {
                       </button>
                       <button
                         className={`tab-btn ${!isEditorVisible ? "active" : ""}`}
-                        onClick={() => setIsEditorVisible(!isEditorVisible)}
+                        onClick={() => {
+                          if (isMobile) {
+                            // On mobile: this button toggles between panels
+                            setIsEditorVisible(true);
+                            setIsAiAssistantVisible(false);
+                          } else {
+                            setIsEditorVisible(!isEditorVisible);
+                          }
+                        }}
                         style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
                         title={isEditorVisible ? "Hide Editor (F4)" : "Show Editor (F4)"}
                       >
@@ -2205,12 +2226,12 @@ function App() {
                   )}
                 </div>
               </Panel>
-              <PanelResizeHandle className="resizer horizontal" />
+              {!isMobile && <PanelResizeHandle className="resizer horizontal" />}
             </>
           )}
 
           {isEditorVisible && (
-            <Panel defaultSize={50} minSize={30}>
+            <Panel defaultSize={isMobile ? 100 : 50} minSize={isMobile ? 100 : 30}>
               <PanelGroup orientation={terminalLayout}>
                 <Panel defaultSize={70} minSize={20}>
                   <div className="panel">
@@ -2244,7 +2265,15 @@ function App() {
                         <button
                           className={`tab-btn ${!isAiAssistantVisible ? "active" : ""}`}
                           title={isAiAssistantVisible ? "Hide AI Assistant (Ctrl+Alt+B)" : "Show AI Assistant (Ctrl+Alt+B)"}
-                          onClick={() => setIsAiAssistantVisible(!isAiAssistantVisible)}
+                          onClick={() => {
+                            if (isMobile) {
+                              // On mobile: this button toggles between panels
+                              setIsAiAssistantVisible(true);
+                              setIsEditorVisible(false);
+                            } else {
+                              setIsAiAssistantVisible(!isAiAssistantVisible);
+                            }
+                          }}
                           style={{ padding: "4px 8px" }}
                         >
                           {isAiAssistantVisible ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}

@@ -183,17 +183,18 @@ body.light-theme .markdown-row:hover {
 }
 
 /* Chat Bubble Styles */
-.message-bubble-wrapper {
+.chat-bubble-container {
   display: flex;
   width: 100%;
   margin-bottom: 1.5rem;
 }
 
-.message-bubble-wrapper.user {
+.chat-bubble-container.user {
   justify-content: flex-end;
 }
 
-.message-bubble-wrapper.ai {
+.chat-bubble-container.ai,
+.chat-bubble-container.system {
   justify-content: flex-start;
 }
 
@@ -213,7 +214,8 @@ body.light-theme .markdown-row:hover {
   border-bottom-right-radius: 0.25rem;
 }
 
-.message-bubble.ai {
+.message-bubble.ai,
+.message-bubble.system {
   max-width: 100%;
   background-color: transparent;
   color: var(--text-primary);
@@ -443,7 +445,8 @@ body.light-theme .markdown-row:hover {
 }
 
 /* ── AI Message Action Bar (Gemini-style) ── */
-.message-bubble-wrapper.ai {
+.chat-bubble-container.ai,
+.chat-bubble-container.system {
   flex-direction: column;
   align-items: flex-start;
 }

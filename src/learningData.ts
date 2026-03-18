@@ -598,11 +598,12 @@ export const TOPICS_ML: TopicGroup[] = [
     {
         title: "2. Supervised Learning - Linear Models",
         topics: [
-            { id: "2.1", title: "Ordinary Least Squares (Linear Regression)" },
-            { id: "2.2", title: "Ridge Regression & Lasso" },
-            { id: "2.3", title: "Logistic Regression" },
-            { id: "2.4", title: "Stochastic Gradient Descent (SGD)" },
-            { id: "2.5", title: "Practice Questions" },
+            { id: "2.1", title: "Linear Regression Part 1" },
+            { id: "2.2", title: "Model Representation" },
+            { id: "2.3", title: "Optional Lab: Model Representation" },
+            { id: "2.4", title: "Cost Function Formula" },
+            { id: "2.5", title: "Cost Function Intuition" },
+            { id: "2.6", title: "Practice Questions" },
         ],
     },
     {

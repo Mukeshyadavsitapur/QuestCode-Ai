@@ -447,6 +447,49 @@ print(f"Total fruit: {total_fruit}")
 
 ---
 
+## 🏗️ Task 4: Building a List
+In Machine Learning, we often work with lists of data. Let's create a list of the ML types you've learned.
+
+\`\`\`python
+# Create a list of the ML types
+ml_types = ["Regression", "Classification", "Clustering", "Anomaly Detection"]
+
+# Add one more to the list!
+ml_types.append("Dimensionality Reduction")
+
+print(f"We will learn about: {ml_types}")
+\`\`\`
+
+---
+
+## 🤖 Task 5: Your First ML Function
+Functions help us reuse code. Let's create a greeting function for a "Machine Learning Pupil".
+
+\`\`\`python
+# Task: Define and call the function
+def greet_learner(name, rank):
+    print(f"Welcome, {name}! Your current rank is: {rank}")
+
+greet_learner("Future Scientist", "ML Padawan")
+\`\`\`
+
+---
+
+## ⚠️ Task 6: Conditional Test (If/Else)
+Imagine you are building a system to flag large tumors. Let's write a simple check.
+
+\`\`\`python
+# Task: Guess the output first!
+tumor_size = 7.5 # in mm
+
+if tumor_size > 5.0:
+    print("⚠️ Warning: Large tumor detected!")
+else:
+    print("✅ Status: Normal size.")
+\`\`\`
+
+---
+
 ## 🎓 Week 1 Complete!
 
 Congratulations on finishing the first week of **Machine Learning Introduction**! You've covered:
@@ -459,6 +502,412 @@ Congratulations on finishing the first week of **Machine Learning Introduction**
 
 > [!IMPORTANT]
 > You are now ready to dive deep into your first real algorithm starting next week: **Linear Regression**!
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "2.1": `
+# Linear Regression Part 1 (Chapter 2.1)
+
+Welcome to Course 1! Today, we’re going to look at the overall process of supervised learning and dive into our very first model: **Linear Regression**.
+
+## 📏 What is Linear Regression?
+
+Linear regression is probably the most widely used learning algorithm in the world today. At its core, it simply means **fitting a straight line to your data**. 
+
+> [!TIP]
+> **Why start here?** Many of the concepts you learn with linear regression will apply to almost every other machine learning model you’ll see later in this specialization.
+
+---
+
+## 🏠 The Portland Housing Problem
+
+Imagine you’re a real estate agent in Portland. A client wants to sell her house, and she asks, *"How much do you think I can get for this?"* To answer this, you look at a dataset of houses that were recently sold in the city.
+
+### 📊 Visualizing the Data
+We plot the data where:
+- **Horizontal Axis (x):** Size of the house in square feet.
+- **Vertical Axis (y):** Price of the house in thousands of dollars.
+
+![Linear Regression Housing Plot](/ml_notes/linear_regression_housing_plot.png)
+
+Each little cross on the graph represents a house. If your client's house is **1,250 square feet**, you can use the straight line fit to the data to predict a price of about **$220,000**.
+
+---
+
+## 🧠 Supervised Learning Recap
+
+This is a **Supervised Learning** model because we are training it with the "right answers."
+- You give the model examples (house sizes).
+- You also give it the correct output (the actual sale prices).
+
+Since the model predicts a **number** (like 220,000 or 1.5), it is specifically a **Regression Model**.
+
+| Type | Predicts... | Example |
+| :--- | :--- | :--- |
+| **Regression** | Continuous Numbers | House Prices, Stock Value |
+| **Classification** | Discrete Categories | Cat vs. Dog, Spam vs. Not Spam |
+
+---
+
+## 📝 Machine Learning Notation
+
+To talk about these concepts effectively, we use a standard set of mathematical notations. Don't worry if you don't memorize them all at once—they will become second nature over time!
+
+![ML Notation Guide](/ml_notes/ml_notation_guide.png)
+
+### Key Terms:
+1.  **x**: The **Input Variable** (also called a **feature**). In our example, this is the House Size.
+2.  **y**: The **Output Variable** (also called the **target variable**). This is what we want to predict (the Price).
+3.  **m**: The total number of **training examples** (rows in your data table).
+4.  **(x, y)**: A single training example (one pair of input and output).
+5.  **(x⁽ⁱ⁾, y⁽ⁱ⁾)**: The **i-th** training example. The superscript **(i)** is NOT exponentiation (it's not $x^2$); it simply refers to the row number in your table.
+
+### Example Training Set (m = 47)
+
+| Size (x) | Price (y) | Notation |
+| :--- | :--- | :--- |
+| 2,104 | 400 | (x⁽¹⁾, y⁽¹⁾) |
+| 1,600 | 330 | (x⁽²⁾, y⁽²⁾) |
+| 2,400 | 369 | (x⁽³⁾, y⁽³⁾) |
+
+---
+
+## 🚀 What's Next?
+
+In the next video, we’ll look at how to take this training set and feed it to a learning algorithm so it can actually "learn" that straight line!
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "2.2": `
+# The Model Representation (Chapter 2.2)
+
+In this lesson, we’ll explore how a supervised learning algorithm actually works. What does it do with the data, and what exactly does it output?
+
+## 🔄 The Supervised Learning Workflow
+
+To train a model, we feed the **Training Set** (Input Features + Output Targets) into a **Learning Algorithm**. The algorithm then produces a **Function (f)**.
+
+![Supervised Learning Workflow](/ml_notes/supervised_learning_workflow.png)
+
+### How it predicts:
+1.  You give the function a **new input (x)** (e.g., house size).
+2.  The function outputs an **estimate or prediction**, which we call **ŷ (y-hat)**.
+
+> [!NOTE]
+> **ŷ vs. y**: In machine learning, **y** refers to the actual true value from the data, while **ŷ** is the estimated value predicted by the model.
+
+---
+
+## 📐 Mathematically Representing the Model
+
+A key question is: *What mathematical formula do we use for f?* 
+
+For now, we’ll stick with a straight line. This is represented by the formula:
+
+### f_w,b(x) = wx + b
+
+![Linear Equation Visual](/ml_notes/linear_equation_visual.png)
+
+- **w and b** are numbers called **parameters** (or weights and biases).
+- The values of **w** and **b** determine exactly where the line sits on the graph and how it predicts **ŷ** for a given **x**.
+
+---
+
+## 🏷️ Univariate Linear Regression
+
+Since we are using only **one input variable** (house size x), this model is called **Univariate Linear Regression**.
+- **Uni** = One (Latin)
+- **Variate** = Variable
+
+It’s a fancy way of saying "Linear regression with one variable." Later, we’ll see models that take many inputs (like number of bedrooms, age of the house, etc.).
+
+---
+
+## 💻 Optional Lab: Model Representation
+
+In the next step, you can look at an optional lab to see how to define a straight line function in Python. You'll be able to:
+1.  Choose values for **w** and **b**.
+2.  See how the line changes on the graph.
+3.  Try to manually "fit" the line to the training data.
+
+---
+
+## 🧠 Moving Forward: The Cost Function
+
+To make this model work automatically, we need a way to tell the computer how "good" its line is. This is where the **Cost Function** comes in—one of the most important ideas in all of AI.
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "2.3": `
+# Optional Lab: Model Representation (Chapter 2.3)
+
+Welcome to your first programming lab! In this lab, you will implement the model function **f_w,b(x) = wx + b** for linear regression with one variable.
+
+## 🎯 Lab Goals
+- Implement the linear regression model using Python and NumPy.
+- Visualize your data and your model's predictions using Matplotlib.
+- Gain an intuition for how parameters **w** and **b** affect the model's fit.
+
+---
+
+## 📝 Notation Summary
+
+Here is a quick reference for the notation we will use in this lab:
+
+![Notation Reference Card](/ml_notes/notation_reference_card.png)
+
+| Notation | Description | Python Variable |
+| :--- | :--- | :--- |
+| **x** | Training Example feature (Size in 1000 sqft) | \`x_train\` |
+| **y** | Training Example targets (Price in $1000s) | \`y_train\` |
+| **x^(i), y^(i)** | i-th Training Example | \`x_i, y_i\` |
+| **m** | Number of training examples | \`m\` |
+| **w** | Parameter: weight | \`w\` |
+| **b** | Parameter: bias | \`b\` |
+| **f_w,b(x^(i))** | Model prediction at x^(i) | \`f_wb\` |
+
+---
+
+## 🛠️ Tools of the Trade
+We will use two essential Python libraries:
+1.  **NumPy**: The standard library for scientific computing.
+2.  **Matplotlib**: The most popular library for plotting data.
+
+\`\`\`python
+import numpy as np
+import matplotlib.pyplot as plt
+\`\`\`
+
+---
+
+## 🏠 Problem Statement
+
+We'll use a simple dataset with two houses:
+- **House 1**: 1,000 sqft sold for $300,000.
+- **House 2**: 2,000 sqft sold for $500,000.
+
+| Size (1000 sqft) | Price ($1000s) |
+| :--- | :--- |
+| 1.0 | 300 |
+| 2.0 | 500 |
+
+### 1. Creating the Training Data
+Data is stored in one-dimensional NumPy arrays. 
+
+\`\`\`python
+x_train = np.array([1.0, 2.0])
+y_train = np.array([300.0, 500.0])
+print(f"x_train = {x_train}")
+print(f"y_train = {y_train}")
+\`\`\`
+
+### 2. Number of Training Examples (m)
+We can use \`.shape\` or \`len()\` to find how many examples we have.
+
+\`\`\`python
+m = x_train.shape[0]
+print(f"Number of training examples is: {m}")
+\`\`\`
+
+---
+
+## 📊 Plotting the Data
+Using \`plt.scatter()\`, we can visualize our training points as red crosses.
+
+![Lab Data Plot](/ml_notes/lab_data_plot.png)
+
+\`\`\`python
+plt.scatter(x_train, y_train, marker='x', c='r')
+plt.title("Housing Prices")
+plt.ylabel('Price (in 1000s of dollars)')
+plt.xlabel('Size (1000 sqft)')
+plt.show()
+\`\`\`
+
+---
+
+## 🤖 The Model Function
+
+The function for linear regression is **f_wb(x_i) = w * x_i + b**. Let's implement a function to compute this for all our points.
+
+\`\`\`python
+def compute_model_output(x, w, b):
+    m = x.shape[0]
+    f_wb = np.zeros(m) # Initialize an array of zeros
+    for i in range(m):
+        f_wb[i] = w * x[i] + b
+    return f_wb
+\`\`\`
+
+### Testing parameters w=100 and b=100
+If we set these parameters, let's see how our line looks:
+
+\`\`\`python
+w = 100
+b = 100
+tmp_f_wb = compute_model_output(x_train, w, b)
+
+plt.plot(x_train, tmp_f_wb, c='b', label='Our Prediction')
+plt.scatter(x_train, y_train, marker='x', c='r', label='Actual Values')
+plt.legend()
+plt.show()
+\`\`\`
+
+---
+
+## 💡 Challenge
+In the example above, **w=100** and **b=100** did not fit the data. **Can you find the right values?**
+
+> [!TIP]
+> Try **w = 200** and **b = 100**.
+
+### 🚀 Making a Prediction
+Once you have the right parameters, you can predict the price for a house with **1200 sqft** (x = 1.2):
+
+\`\`\`python
+w = 200                         
+b = 100    
+x_i = 1.2
+prediction = w * x_i + b    
+print(f"Prediction: \${prediction:.0f} thousand dollars")
+\`\`\`
+
+---
+
+## 🎓 Summary
+Congratulations! You've learned how a linear regression model uses parameters to establish relationships between features and targets.
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "2.4": `
+# Cost Function Formula (Chapter 2.4)
+
+To build a model that actually listens to data, we need a way to measure how well it's doing. This is where the **Cost Function** comes in. It provides the "score" that tells us how far off our predictions are.
+
+## 🛠️ The Parameters: w and b
+
+In our model **f_w,b(x) = wx + b**, the values **w** and **b** are called the **parameters**. You can think of them as the knobs you can turn to adjust your line:
+- **w** is the **slope** (gradient).
+- **b** is the **y-intercept** (bias).
+
+![Parameter Intuition](/ml_notes/cost_function_parameter_intuition.png)
+
+Depending on what values you pick, you get a different line. Our goal is to find the values that make the line fit the data as closely as possible.
+
+---
+
+## 📏 Measuring the Error
+
+How do we define "closeness"? We look at the difference between the actual value **y** and our predicted value **ŷ**.
+
+### Error = ŷ - y
+
+For every point in our training set, we calculate this gap. If the gap is small, the model is doing well!
+
+![Error Visualization](/ml_notes/cost_function_error_visualization.png)
+
+---
+
+## 📐 The Squared Error Cost Function
+
+Mathematically, we don't just want the sum of errors (since positive and negative errors would cancel out). Instead, we take the **square** of each error. 
+
+### J(w,b) = 1/2m * sum( (f_w,b(x^i) - y^i)^2 )
+
+![Cost Function Formula](/ml_notes/cost_function_formula.png)
+
+### Why 1/2m?
+- **m**: We divide by the number of examples to get the *average* error. This way, the cost doesn't just grow because we added more data.
+- **2**: We divide by 2 just to make internal calculus calculations a bit cleaner later on. It doesn't change which values of **w** and **b** are the best!
+
+---
+
+## 🏆 Summary
+- The **Cost Function J(w,b)** measures the total error of our model.
+- A **high cost** means the line is a poor fit.
+- A **low cost** (approaching zero) means the line fits the data beautifully.
+
+In the next lesson, we will see how to visualize this cost function in 3D to see the "valley" where the best parameters live!
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "2.5": `
+# Cost Function Intuition (Chapter 2.5)
+
+Now that we have the math for the Cost Function, let's build some intuition about what it's actually doing. To make things easy to visualize, we'll use a simplified version of our model.
+
+## ⚖️ Simplified Model
+
+Instead of **f_w,b(x) = wx + b**, we'll set the bias **b = 0**. This means our line must pass through the origin (0,0).
+
+### f_w(x) = wx
+
+Now we only have one parameter to worry about: **w**.
+
+---
+
+## 📊 Side-by-Side: f_w(x) vs J(w)
+
+To understand how the cost works, we need to look at two different graphs at the same time:
+1.  **Left Graph (The Model)**: Shows our training data and the line defined by **w**.
+2.  **Right Graph (The Cost)**: Shows the value of **J(w)** for different values of **w**.
+
+![f_w vs J(w)](/ml_notes/cost_function_fw_vs_jw.png)
+
+---
+
+## 🚶 Walkthrough: Changing w
+
+Let's see what happens to the cost as we change the slope **w** using a training set with three points: **(1,1), (2,2), and (3,3)**.
+
+### Case 1: w = 1
+- The model is **f(x) = 1 * x**.
+- Our predictions: **f(1)=1, f(2)=2, f(3)=3**.
+- **Error**: Every prediction matches the target exactly!
+- **Cost**: **J(1) = 0**.
+- *This is the global minimum (the bottom of our cost curve).*
+
+### Case 2: w = 0.5
+- The model is **f(x) = 0.5 * x**.
+- Our predictions: **f(1)=0.5, f(2)=1, f(3)=1.5**.
+- **Error**: We are "missing" the targets.
+- **Cost**: **J(0.5) ≈ 0.58**.
+- *The cost is starting to climb.*
+
+### Case 3: w = 0
+- The model is **f(x) = 0**.
+- **Cost**: **J(0) ≈ 2.33**.
+- *Even higher error.*
+
+---
+
+## 🎢 The Cost Curve (Parabola)
+
+If we plot the cost **J(w)** for many different values of **w**, we get a U-shaped curve called a **parabola**.
+
+![Cost Parabola](/ml_notes/cost_function_parabola_min.png)
+
+### The Goal of Learning
+Our goal in Machine Learning is to find the **w** that is at the very bottom of this "valley". 
+
+![Accumulated Error](/ml_notes/cost_error_summation.png)
+
+The lower the point on the cost curve, the better our line fits the data!
+
+## 🎓 Summary
+- For every choice of **w**, there is a corresponding **total cost**.
+- The cost function **J(w)** helps us find the "sweet spot" for our parameter.
+- Minimizing **J(w)** is the key to training our model.
 
 ---
 

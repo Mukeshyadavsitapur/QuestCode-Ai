@@ -16,7 +16,8 @@ export const looksLikeHtml = (content: string) => {
     return (
         (trimmed.startsWith('<') && trimmed.endsWith('>')) ||
         (trimmed.includes('<div') && trimmed.includes('</div>')) ||
-        (trimmed.includes('<table') && trimmed.includes('</table>'))
+        (trimmed.includes('<table') && trimmed.includes('</table>')) ||
+        (trimmed.includes('<details') && trimmed.includes('</details>'))
     );
 };
 

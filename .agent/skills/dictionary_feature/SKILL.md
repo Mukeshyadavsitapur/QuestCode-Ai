@@ -22,8 +22,8 @@ Use `caretRangeFromPoint` to detect which word was clicked. This should be restr
 const handleGlobalClick = (e: MouseEvent) => {
   const target = e.target as HTMLElement;
   
-  // Ignore clicks inside the popup itself or on buttons
-  if (target.closest('.dictionary-popup') || target.closest('button')) return;
+  // Ignore clicks inside the popup itself, on buttons, or interactive summary tags
+  if (target.closest('.dictionary-popup') || target.closest('button') || target.closest('summary')) return;
 
   const selection = window.getSelection();
   const range = (document as any).caretRangeFromPoint(e.clientX, e.clientY);

@@ -1406,7 +1406,7 @@ function App() {
         return; // Ignore clicks on elements that have been removed from the DOM
       }
 
-      if (target.closest('.dictionary-popup') || target.closest('button') || target.closest('.icon-btn')) {
+      if (target.closest('.dictionary-popup') || target.closest('button') || target.closest('.icon-btn') || target.closest('summary')) {
         return;
       }
 

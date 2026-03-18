@@ -7,6 +7,7 @@ import "prismjs/themes/prism-tomorrow.css"; // Basic dark theme, can be overridd
 import "prismjs/components/prism-rust";
 import "prismjs/components/prism-python";
 import { Topic } from "./learningData";
+import { OFFLINE_LEARNING_DATA } from "./offlineLearningData";
 
 export interface AiLearningHandle {
     askQuestion: (question: string) => Promise<void>;
@@ -256,6 +257,16 @@ Answer the user's question in the context of this topic. Be concise and helpful.
         const cacheKey = `ai_learning_${language}_${currentTopic.id}`;
 
         if (!forceRefresh) {
+            // Check for offline data first
+            const offlineData = OFFLINE_LEARNING_DATA[language]?.[currentTopic.id];
+            if (offlineData) {
+                const initialOfflineMsg = [{ role: 'ai' as const, content: offlineData }];
+                setMessages(initialOfflineMsg);
+                localStorage.setItem(cacheKey, JSON.stringify(initialOfflineMsg));
+                setIsLoading(false);
+                return;
+            }
+
             const cached = localStorage.getItem(cacheKey);
             if (cached) {
                 try {

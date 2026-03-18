@@ -14,7 +14,7 @@ export interface AiLearningHandle {
 }
 
 interface AiLearningProps {
-    language: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml";
+    language: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes";
     apiKey: string;
     openAiApiKey: string;
     anthropicApiKey: string;

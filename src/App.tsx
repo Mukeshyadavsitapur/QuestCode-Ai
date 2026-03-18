@@ -9,6 +9,7 @@ import {
   Separator as PanelResizeHandle
 } from "react-resizable-panels";
 import Editor, { loader } from "@monaco-editor/react";
+import { Notebook } from "./Notebook";
 import { Rnd } from "react-rnd";
 import {
   Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus,
@@ -23,7 +24,8 @@ import {
   PanelRight,
   PanelLeft,
   PanelLeftClose,
-  Trash2, RefreshCw, VolumeX, Volume2
+  Trash2, RefreshCw, VolumeX, Volume2,
+  Cloud, Server, ExternalLink
 } from "lucide-react";
 import { ChatBubble } from "./ChatBubble";
 import { SettingsModal } from "./SettingsModal";
@@ -34,7 +36,11 @@ import { AiLearning, AiLearningHandle } from "./AiLearning";
 import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, TOPICS_HTML, TOPICS_CSS, TOPICS_JS, TOPICS_ML, Topic } from "./learningData";
 import Quiz from "./Quiz";
 import "./App.css";
-import { DEFAULT_RUST_CODE, DEFAULT_PYTHON_CODE, DEFAULT_HTML_CODE, DEFAULT_CSS_CODE, DEFAULT_JS_CODE, DEFAULT_ML_CODE } from "./defaultCode";
+import {
+  DEFAULT_RUST_CODE, DEFAULT_PYTHON_CODE, DEFAULT_HTML_CODE, DEFAULT_CSS_CODE, DEFAULT_JS_CODE,
+  DEFAULT_ML_CODE,
+  DEFAULT_ML_NOTES_CODE,
+} from "./defaultCode";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
 import "prismjs/components/prism-rust";
@@ -69,15 +75,17 @@ function App() {
   // Helper to get default code for a language
   const getDefaultCode = (lang: string) => {
     if (lang === "rust") return DEFAULT_RUST_CODE;
+    if (lang === "python") return DEFAULT_PYTHON_CODE;
     if (lang === "html") return DEFAULT_HTML_CODE;
     if (lang === "css") return DEFAULT_CSS_CODE;
     if (lang === "javascript") return DEFAULT_JS_CODE;
     if (lang === "ml") return DEFAULT_ML_CODE;
+    if (lang === "ml-notes") return DEFAULT_ML_NOTES_CODE;
     return DEFAULT_PYTHON_CODE;
   };
 
-  const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml">(() => {
-    return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml") || "python";
+  const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes">(() => {
+    return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes") || "python";
   });
 
   // Initialize code from localStorage based on valid language
@@ -85,6 +93,23 @@ function App() {
     const savedCode = localStorage.getItem(`code_${language}`);
     return savedCode || getDefaultCode(language);
   });
+  
+  // Jupyter Notebook State
+  const [jupyterMode, setJupyterMode] = useState<"lite" | "local">(() => {
+    return (localStorage.getItem("jupyter_mode") as "lite" | "local") || "lite";
+  });
+  const [jupyterLocalUrl, setJupyterLocalUrl] = useState(() => {
+    return localStorage.getItem("jupyter_local_url") || "http://localhost:8888";
+  });
+  const [jupyterRefreshKey, setJupyterRefreshKey] = useState(0);
+
+  useEffect(() => {
+    localStorage.setItem("jupyter_mode", jupyterMode);
+  }, [jupyterMode]);
+
+  useEffect(() => {
+    localStorage.setItem("jupyter_local_url", jupyterLocalUrl);
+  }, [jupyterLocalUrl]);
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
 
   // PromptTest Chat Features State
@@ -97,7 +122,7 @@ function App() {
     isLoading: boolean;
   } | null>(null);
   const [isDictionarySpeaking, setIsDictionarySpeaking] = useState(false);
-  const [speakingMsgIdx, setSpeakingMsgIdx] = useState<{idx: number, isQuickChat: boolean} | null>(null);
+  const [speakingMsgIdx, setSpeakingMsgIdx] = useState<{ idx: number, isQuickChat: boolean } | null>(null);
   const [isQuizGenerating, setIsQuizGenerating] = useState(false);
   const [activeQuizQuestions, setActiveQuizQuestions] = useState<any[] | null>(null);
   const ttsGeneration = useRef(0);
@@ -191,7 +216,7 @@ function App() {
     else if (language === "html") topics = TOPICS_HTML;
     else if (language === "css") topics = TOPICS_CSS;
     else if (language === "javascript") topics = TOPICS_JS;
-    else if (language === "ml") topics = TOPICS_ML;
+    else if (language === "ml" || language === "ml-notes") topics = TOPICS_ML;
 
     setExpandedGroups(new Set(topics.map(t => t.title)));
   }, [language]);
@@ -905,15 +930,26 @@ function App() {
     }
   }, [code, language]);
 
-  const handleLanguageChange = (newLang: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml") => {
+  const handleLanguageChange = (newLang: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes") => {
     setLanguage(newLang);
     localStorage.setItem("language", newLang);
-    setIsSettingsOpen(false);
 
-    // Load saved code for new language or default
-    const savedCode = localStorage.getItem(`code_${newLang}`);
-    const newCode = savedCode || getDefaultCode(newLang);
-    setCode(newCode);
+    // If switching to ml-notes, ensure the code is valid JSON for Notebook
+    if (newLang === "ml-notes") {
+      try {
+        JSON.parse(code); // Check if current code is valid JSON
+      } catch (e) {
+        // If not valid JSON, set to default ML notes code
+        setCode(getDefaultCode(newLang));
+      }
+    } else {
+      // Load saved code for new language or default
+      const savedCode = localStorage.getItem(`code_${newLang}`);
+      const newCode = savedCode || getDefaultCode(newLang);
+      setCode(newCode);
+    }
+
+    setIsSettingsOpen(false);
 
     // Load saved topic for new language or default
     const savedTopicParams = localStorage.getItem(`topic_${newLang}`);
@@ -922,13 +958,13 @@ function App() {
 
     // Trigger Preview Update if needed
     if (newLang === "html") {
-      setWebPreviewContent(newCode);
+      setWebPreviewContent(code);
     } else if (newLang === "css") {
-      const hasHtmlStructure = /<html|<body|<head/i.test(newCode);
+      const hasHtmlStructure = /<html|<body|<head/i.test(code);
 
       if (hasHtmlStructure) {
-        let contentToRender = newCode;
-        const htmlMatch = newCode.match(/([\s\S]*<\/(?:html|body)>)([\s\S]*)/i);
+        let contentToRender = code;
+        const htmlMatch = code.match(/([\s\S]*<\/(?:html|body)>)([\s\S]*)/i);
 
         if (htmlMatch) {
           const htmlPart = htmlMatch[1];
@@ -948,7 +984,7 @@ function App() {
                               <!DOCTYPE html>
                               <html>
                                 <head>
-                                  <style>${newCode}</style>
+                                  <style>${code}</style>
                                 </head>
                                 <body>
                                   <div class="preview-container">
@@ -1008,8 +1044,8 @@ function App() {
   };
 
   const handleCycleLanguage = () => {
-    const languages: ("python" | "rust" | "dsa" | "html" | "css" | "javascript" | "ml")[] =
-      ["python", "rust", "dsa", "html", "css", "javascript", "ml"];
+    const languages: ("python" | "rust" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes")[] =
+      ["python", "rust", "dsa", "html", "css", "javascript", "ml", "ml-notes"];
     const currentIndex = languages.indexOf(language);
     const nextIndex = (currentIndex + 1) % languages.length;
     handleLanguageChange(languages[nextIndex]);
@@ -1026,7 +1062,7 @@ function App() {
         console.log("TTS: Initializing native engine...");
         for (let i = 0; i < 15; i++) {
           const status = await isInitialized();
-          console.log(`TTS: Initialization poll ${i+1}: initialized=${status.initialized}, voices=${status.voiceCount}`);
+          console.log(`TTS: Initialization poll ${i + 1}: initialized=${status.initialized}, voices=${status.voiceCount}`);
           if (status.initialized && status.voiceCount > 0) {
             console.log(`TTS: Native engine ready with ${status.voiceCount} voices.`);
             break;
@@ -1043,10 +1079,10 @@ function App() {
   const chunkText = (text: string): string[] => {
     const sentenceRegex = /[^.!?\n]+[.!?\n]+/g;
     let sentences = text.match(sentenceRegex) || [text];
-    
+
     const chunks: string[] = [];
     let currentChunk = '';
-    
+
     for (const s of sentences) {
       if (currentChunk.length + s.length > 300) {
         if (currentChunk) chunks.push(currentChunk.trim());
@@ -1083,7 +1119,7 @@ function App() {
         .replace(/<[^>]*>?/gm, ''); // Remove tags
 
       console.log(`[TTS] Cleaned text snippet: "${cleanText.substring(0, 50)}"`);
-      
+
       // Set state IMMEDIATELY to show the stop icon
       setSpeakingMsgIdx({ idx, isQuickChat });
       console.log(`[TTS] State set to idx=${idx}. Stopping any prior speech...`);
@@ -1095,7 +1131,7 @@ function App() {
         window.speechSynthesis.cancel();
       }
       console.log(`[TTS] Pre-stop done. Chunking text...`);
-      
+
       const chunks = chunkText(cleanText);
       console.log(`[TTS] Speaking ${chunks.length} chunk(s)...`);
 
@@ -1107,7 +1143,7 @@ function App() {
             const ready = await isInitialized();
             console.log(`[TTS] isInitialized=${ready} (attempt ${initWait + 1})`);
             if (ready) break;
-          } catch(e) { console.warn('[TTS] isInitialized check failed:', e); }
+          } catch (e) { console.warn('[TTS] isInitialized check failed:', e); }
           await new Promise(r => setTimeout(r, 500));
           initWait++;
         }
@@ -1119,18 +1155,18 @@ function App() {
             return;
           }
 
-          console.log(`[TTS] Speaking chunk ${i+1}/${chunks.length}...`);
+          console.log(`[TTS] Speaking chunk ${i + 1}/${chunks.length}...`);
           try {
             await speak({
               text: chunks[i],
               queueMode: i === 0 ? 'flush' : 'add'
             } as any);
-            console.log(`[TTS] Chunk ${i+1} speak() resolved successfully.`);
-          } catch(speakErr) {
-            console.error(`[TTS] speak() chunk ${i+1} THREW:`, speakErr);
+            console.log(`[TTS] Chunk ${i + 1} speak() resolved successfully.`);
+          } catch (speakErr) {
+            console.error(`[TTS] speak() chunk ${i + 1} THREW:`, speakErr);
             throw speakErr; // Re-throw to outer catch
           }
-          
+
           // Small delay to prevent IPC throughput issues on mobile
           await new Promise(r => setTimeout(r, 100));
         }
@@ -1138,24 +1174,24 @@ function App() {
         // Monitoring loop with GRACE PERIOD to allow Android engine to start
         console.log(`[TTS] All chunks sent. Waiting grace period...`);
         await new Promise(r => setTimeout(r, 1500));
-        
+
         let pollCount = 0;
         let consecutiveFalse = 0;
-        
+
         while (ttsGeneration.current === thisGen && pollCount < 600) { // Max 10 mins
           try {
-              const active = await isSpeaking();
-              console.log(`[TTS] Poll ${pollCount}: isSpeaking=${active}, consecutiveFalse=${consecutiveFalse}`);
-              if (!active) {
-                  consecutiveFalse++;
-                  // Require 3 consecutive checks (~1.5s total gap) to confirm truly stopped
-                  // This accounts for gaps between chunk processing
-                  if (consecutiveFalse >= 3) break;
-              } else {
-                  consecutiveFalse = 0; // Reset if speaking
-              }
-          } catch(e) {
-              console.warn("[TTS] isSpeaking check failed:", e);
+            const active = await isSpeaking();
+            console.log(`[TTS] Poll ${pollCount}: isSpeaking=${active}, consecutiveFalse=${consecutiveFalse}`);
+            if (!active) {
+              consecutiveFalse++;
+              // Require 3 consecutive checks (~1.5s total gap) to confirm truly stopped
+              // This accounts for gaps between chunk processing
+              if (consecutiveFalse >= 3) break;
+            } else {
+              consecutiveFalse = 0; // Reset if speaking
+            }
+          } catch (e) {
+            console.warn("[TTS] isSpeaking check failed:", e);
           }
           await new Promise(r => setTimeout(r, 500));
           pollCount++;
@@ -1187,15 +1223,15 @@ function App() {
 
           await new Promise<void>((resolve, reject) => {
             utterance.onend = () => {
-              console.log(`[TTS] Web Speech API: Chunk ${i+1} finished.`);
+              console.log(`[TTS] Web Speech API: Chunk ${i + 1} finished.`);
               resolve();
             };
             utterance.onerror = (event) => {
-              console.error(`[TTS] Web Speech API: Error speaking chunk ${i+1}:`, event);
+              console.error(`[TTS] Web Speech API: Error speaking chunk ${i + 1}:`, event);
               reject(event);
             };
             window.speechSynthesis.speak(utterance);
-            console.log(`[TTS] Web Speech API: Speaking chunk ${i+1}/${chunks.length}...`);
+            console.log(`[TTS] Web Speech API: Speaking chunk ${i + 1}/${chunks.length}...`);
           });
         }
       }
@@ -1239,7 +1275,7 @@ function App() {
         // NATIVE path for Android
         let initWait = 0;
         while (initWait < 6) {
-          try { const ready = await isInitialized(); if (ready) break; } catch(e) { /**/ }
+          try { const ready = await isInitialized(); if (ready) break; } catch (e) { /**/ }
           await new Promise(r => setTimeout(r, 500));
           initWait++;
         }
@@ -1252,7 +1288,7 @@ function App() {
             const active = await isSpeaking();
             if (!active) { consecutiveFalse++; if (consecutiveFalse >= 3) break; }
             else { consecutiveFalse = 0; }
-          } catch(e) { /**/ }
+          } catch (e) { /**/ }
           await new Promise(r => setTimeout(r, 500));
           pollCount++;
         }
@@ -1262,7 +1298,7 @@ function App() {
         await new Promise(r => setTimeout(r, 50));
         const voices = window.speechSynthesis.getVoices();
         const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.localService) ||
-                               voices.find(v => v.lang.startsWith('en')) || voices[0];
+          voices.find(v => v.lang.startsWith('en')) || voices[0];
         const utterance = new SpeechSynthesisUtterance(word);
         if (preferredVoice) utterance.voice = preferredVoice;
         utterance.rate = 0.9;
@@ -1507,7 +1543,7 @@ function App() {
 
     if (!isTerminalVisible) setIsTerminalVisible(true);
 
-    if (language === "html" || language === "css") {
+    if (language === "html" || language === "css" || language === "ml-notes") {
       return;
     }
 
@@ -1515,18 +1551,18 @@ function App() {
     setTerminalOutput("");
 
     if (language === "python" || language === "dsa" || language === "ml") {
-       if (isPyodideLoading) {
-           setTerminalOutput("Error: Python engine is still loading... Please wait a moment and try again.\\n");
-           setIsRunning(false);
-           return;
-       }
-       
-       await runPython(
-         code, 
-         (str) => setTerminalOutput(prev => prev + str)
-       );
-       setIsRunning(false);
-       return;
+      if (isPyodideLoading) {
+        setTerminalOutput("Error: Python engine is still loading... Please wait a moment and try again.\\n");
+        setIsRunning(false);
+        return;
+      }
+
+      await runPython(
+        code,
+        (str) => setTerminalOutput(prev => prev + str)
+      );
+      setIsRunning(false);
+      return;
     }
 
     if (language === "javascript") {
@@ -1541,24 +1577,24 @@ function App() {
         console.error = (...args) => {
           logOutput += args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(" ") + "\\n";
         };
-        
+
         let evalResult = undefined;
         try {
-           // eslint-disable-next-line no-eval
-           evalResult = eval(code);
+          // eslint-disable-next-line no-eval
+          evalResult = eval(code);
         } catch (e: any) {
-           logOutput += `\\nError: ${e.message}`;
+          logOutput += `\\nError: ${e.message}`;
         }
 
         console.log = originalLog;
         console.error = originalError;
-        
+
         if (evalResult !== undefined && typeof evalResult !== 'function') {
-           logOutput += `\\n=> ${typeof evalResult === 'object' ? JSON.stringify(evalResult) : String(evalResult)}`;
+          logOutput += `\\n=> ${typeof evalResult === 'object' ? JSON.stringify(evalResult) : String(evalResult)}`;
         }
-        
+
         setTerminalOutput(logOutput);
-      } catch(e: any) {
+      } catch (e: any) {
         setTerminalOutput(`Error executing JS: ${e.message}`);
       }
       setIsRunning(false);
@@ -1574,7 +1610,7 @@ function App() {
     try {
       // Check if we are running on mobile securely
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       if (isMobile && language === "rust") {
         setTerminalOutput("🎓 Rust Execution Notice:\\n\\nCompiling and running Rust code locally requires a full Rust Toolchain (rustc), which is not available on mobile phones.\\n\\nTo run your Rust code, please use the Desktop version of QuestCode-Ai! You can still use 'Explain Code' here on mobile.");
         setIsRunning(false);
@@ -2054,7 +2090,7 @@ function App() {
     else if (language === "html") topics = TOPICS_HTML;
     else if (language === "css") topics = TOPICS_CSS;
     else if (language === "javascript") topics = TOPICS_JS;
-    else if (language === "ml") topics = TOPICS_ML;
+    else if (language === "ml" || language === "ml-notes") topics = TOPICS_ML;
 
     const flatTopics = topics.flatMap(group => group.topics.map((t: Topic) => ({ ...t, groupTitle: group.title })));
     const currentIndex = flatTopics.findIndex((t: Topic) => t.id === selectedTopic?.id);
@@ -2070,13 +2106,13 @@ function App() {
       <div className="app-container">
 
 
-      <main className="main-content">
-        <PanelGroup orientation="horizontal">
-          {isAiAssistantVisible && (
-            <>
-               <Panel defaultSize={isMobile ? 100 : 50} minSize={isMobile ? 100 : 30}>
-                <div className="panel" style={{ position: "relative" }}>
-                  {isSettingsOpen ? (
+        <main className="main-content">
+          <PanelGroup orientation="horizontal">
+            {isAiAssistantVisible && (
+              <>
+                <Panel defaultSize={isMobile ? 100 : 50} minSize={isMobile ? 100 : 30}>
+                  <div className="panel" style={{ position: "relative" }}>
+                    {isSettingsOpen ? (
                       <SettingsModal
                         isOpen={isSettingsOpen}
                         onClose={() => setIsSettingsOpen(false)}
@@ -2100,793 +2136,868 @@ function App() {
                         setSelectedModel={setSelectedModel}
                         activeModel={activeModel}
                       />
-                  ) : (
-                    <>
-                  <div className="panel-header">
-                    <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                      <button
-                        id="sidebar-toggle"
-                        className="tab-btn"
-                        onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                        style={{ padding: "4px" }}
-                        title="Toggle History (Ctrl+B)"
-                      >
-                        <Menu size={18} />
-                      </button>
-                      <button className={`tab-btn ${viewMode === "ai" ? "active" : ""}`} onClick={() => setViewMode("ai")}>
-                        <MessageSquare size={14} /> AI
-                      </button>
-                      <button
-                        className={`tab-btn ${isQuickChatOpen ? "active" : ""}`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setIsQuickChatOpen(!isQuickChatOpen);
-                          if (!isQuickChatOpen && !currentQuickChatId) {
-                            setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
-                          }
-                        }}
-                        onTouchEnd={(e) => {
-                          e.preventDefault();
-                          setIsQuickChatOpen(!isQuickChatOpen);
-                          if (!isQuickChatOpen && !currentQuickChatId) {
-                            setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
-                          }
-                        }}
-                        style={{ border: "none", color: "var(--accent-color)", padding: "8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
-                        title="Quick Chat (Ctrl+P)"
-                      >
-                        <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} />
-                      </button>
-                      <button
-                        className={`tab-btn ${!isEditorVisible ? "active" : ""}`}
-                        onClick={() => {
-                          if (isMobile) {
-                            // On mobile: this button toggles between panels
-                            setIsEditorVisible(true);
-                            setIsAiAssistantVisible(false);
-                          } else {
-                            setIsEditorVisible(!isEditorVisible);
-                          }
-                        }}
-                        style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
-                        title={isEditorVisible ? "Hide Editor (F4)" : "Show Editor (F4)"}
-                      >
-                        <PanelRight size={14} />
-                      </button>
-
-                      <button
-                        className={`tab-btn ${isSettingsOpen ? "active" : ""}`}
-                        onClick={() => setIsSettingsOpen(prev => !prev)}
-                        style={{ border: "none", color: isSettingsOpen ? "var(--accent-color)" : "var(--text-muted)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
-                        title="Settings (F1)"
-                      >
-                        <Settings size={14} />
-                      </button>
-
-                    </div>
-
-                    {viewMode === "ai" && (
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                          className="tab-btn active"
-                          style={{ fontSize: "0.75rem", padding: "4px 12px", minWidth: "120px", display: "flex", justifyContent: "center" }}
-                          onClick={toggleAiService}
-                        >
-                          {aiService === "api" ? (
-                            <><Bot size={12} style={{ marginRight: 6 }} /> QuestCode AI</>
-                          ) : (
-                            <><Globe size={12} style={{ marginRight: 6 }} /> {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"} Web</>
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Sidebar Overlay (Chat History OR Learning Topics) */}
-                  {isHistoryOpen && (
-                    <div className="chat-history-sidebar" ref={sidebarRef}>
-                      {viewMode === "learning" ? (
-                        // Learning Topics Sidebar
-                        <div className="sidebar-content" style={{ padding: "16px" }}>
-                          <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
+                    ) : (
+                      <>
+                        <div className="panel-header">
+                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                             <button
-                              className="btn btn-secondary"
-                              onClick={() => { setViewMode("ai"); setIsHistoryOpen(true); }}
-                              style={{ marginRight: "10px", padding: "4px" }}
+                              id="sidebar-toggle"
+                              className="tab-btn"
+                              onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                              style={{ padding: "4px" }}
+                              title="Toggle History (Ctrl+B)"
                             >
-                              <ArrowLeft size={16} />
+                              <Menu size={18} />
                             </button>
-                            <h3 style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-color)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                              {language.toUpperCase()} Course
-                            </h3>
+                            <button className={`tab-btn ${viewMode === "ai" ? "active" : ""}`} onClick={() => setViewMode("ai")}>
+                              <MessageSquare size={14} /> AI
+                            </button>
+                            <button
+                              className={`tab-btn ${isQuickChatOpen ? "active" : ""}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setIsQuickChatOpen(!isQuickChatOpen);
+                                if (!isQuickChatOpen && !currentQuickChatId) {
+                                  setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
+                                }
+                              }}
+                              onTouchEnd={(e) => {
+                                e.preventDefault();
+                                setIsQuickChatOpen(!isQuickChatOpen);
+                                if (!isQuickChatOpen && !currentQuickChatId) {
+                                  setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
+                                }
+                              }}
+                              style={{ border: "none", color: "var(--accent-color)", padding: "8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
+                              title="Quick Chat (Ctrl+P)"
+                            >
+                              <Zap size={14} fill={isQuickChatOpen ? "currentColor" : "none"} />
+                            </button>
+                            <button
+                              className={`tab-btn ${!isEditorVisible ? "active" : ""}`}
+                              onClick={() => {
+                                if (isMobile) {
+                                  // On mobile: this button toggles between panels
+                                  setIsEditorVisible(true);
+                                  setIsAiAssistantVisible(false);
+                                } else {
+                                  setIsEditorVisible(!isEditorVisible);
+                                }
+                              }}
+                              style={{ border: "none", color: "var(--accent-color)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
+                              title={isEditorVisible ? "Hide Editor (F4)" : "Show Editor (F4)"}
+                            >
+                              <PanelRight size={14} />
+                            </button>
+
+                            <button
+                              className={`tab-btn ${isSettingsOpen ? "active" : ""}`}
+                              onClick={() => setIsSettingsOpen(prev => !prev)}
+                              style={{ border: "none", color: isSettingsOpen ? "var(--accent-color)" : "var(--text-muted)", padding: "4px 8px", marginLeft: "4px", borderRadius: "4px", display: "flex", alignItems: "center", gap: "6px" }}
+                              title="Settings (F1)"
+                            >
+                              <Settings size={14} />
+                            </button>
+
                           </div>
 
-                          {(
-                            language === "rust" ? TOPICS_RUST :
-                              language === "python" ? TOPICS_PYTHON :
-                                language === "dsa" ? TOPICS_DSA :
-                                  language === "html" ? TOPICS_HTML :
-                                    language === "css" ? TOPICS_CSS :
-                                      language === "ml" ? TOPICS_ML :
-                                        TOPICS_JS
-                          ).map((group) => (
-                            <div key={group.title} style={{ marginBottom: "12px" }}>
+                          {viewMode === "ai" && (
+                            <div style={{ display: "flex", gap: 8 }}>
                               <button
-                                onClick={() => toggleGroup(group.title)}
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  width: "100%",
-                                  background: "transparent",
-                                  border: "none",
-                                  padding: "6px 0",
-                                  cursor: "pointer",
-                                  color: "var(--text-main)",
-                                  fontSize: "0.85rem",
-                                  fontWeight: "600"
-                                }}
+                                className="tab-btn active"
+                                style={{ fontSize: "0.75rem", padding: "4px 12px", minWidth: "120px", display: "flex", justifyContent: "center" }}
+                                onClick={toggleAiService}
                               >
-                                <span style={{ color: "var(--text-muted)", marginRight: "6px" }}>
-                                  {expandedGroups.has(group.title) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                </span>
-                                {group.title}
+                                {aiService === "api" ? (
+                                  <><Bot size={12} style={{ marginRight: 6 }} /> QuestCode AI</>
+                                ) : (
+                                  <><Globe size={12} style={{ marginRight: 6 }} /> {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"} Web</>
+                                )}
                               </button>
-
-                              {expandedGroups.has(group.title) && (
-                                <div style={{ marginLeft: "14px", borderLeft: "1px solid var(--border-color)", paddingLeft: "8px", marginTop: "4px" }}>
-                                  {group.topics.map(topic => (
-                                    <button
-                                      key={topic.id}
-                                      onClick={() => handleSelectTopic(topic, group.title)}
-                                      className={`history-item ${selectedTopic?.id === topic.id ? "active" : ""}`}
-                                      style={{
-                                        width: "100%",
-                                        justifyContent: "flex-start",
-                                        fontSize: "0.8rem",
-                                        padding: "6px 8px",
-                                        marginBottom: "2px",
-                                        border: "none",
-                                        textAlign: "left"
-                                      }}
-                                    >
-                                      <span style={{ opacity: 0.7, marginRight: "6px", fontSize: "0.75rem" }}>{topic.id}</span>
-                                      <span>{topic.title}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
                             </div>
-                          ))}
+                          )}
                         </div>
-                      ) : (
-                        // Chat History Sidebar
-                        <>
-                          <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
-                              <Plus size={16} /> New Chat
-                            </button>
-                            <button
-                              className="btn btn-secondary"
-                              style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                              onClick={() => {
-                                setViewMode("docs");
-                                setIsHistoryOpen(false);
-                              }}
-                            >
-                              <Book size={16} /> Official Docs
-                            </button>
-                            <button
-                              className="btn btn-secondary"
-                              style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                              onClick={() => {
-                                setViewMode("learning");
-                                setIsHistoryOpen(true); // Keep sidebar open for topic selection
-                              }}
-                            >
-                              <Sparkles size={16} /> Getting Started with AI
-                            </button>
-                          </div>
-                          <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
 
-                            <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: "8px" }}><MessageSquare size={12} /> Recent Activity</div>
-                            {chats.length === 0 ? (
-                              <div className="empty-history">No history yet</div>
-                            ) : (
-                              <>
-                                {chats.slice(0, visibleChats).map((chat) => (
-                                  <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
-                                    <MessageSquare size={14} />
-                                    <span className="history-title">{chat.title}</span>
-                                    <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
-                                      <Trash2 size={12} />
-                                    </button>
-                                  </div>
-                                ))}
-                                {visibleChats < chats.length && (
+                        {/* Sidebar Overlay (Chat History OR Learning Topics) */}
+                        {isHistoryOpen && (
+                          <div className="chat-history-sidebar" ref={sidebarRef}>
+                            {viewMode === "learning" ? (
+                              // Learning Topics Sidebar
+                              <div className="sidebar-content" style={{ padding: "16px" }}>
+                                <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
                                   <button
                                     className="btn btn-secondary"
-                                    style={{ width: "100%", justifyContent: "center", marginTop: "8px", fontSize: "0.8rem", padding: "6px", border: "1px solid var(--border-color)" }}
-                                    onClick={() => setVisibleChats(prev => prev + 20)}
+                                    onClick={() => { setViewMode("ai"); setIsHistoryOpen(true); }}
+                                    style={{ marginRight: "10px", padding: "4px" }}
                                   >
-                                    Load More
+                                    <ArrowLeft size={16} />
                                   </button>
-                                )}
+                                  <h3 style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-color)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                    {language.toUpperCase()} Course
+                                  </h3>
+                                </div>
+
+                                {(
+                                  language === "rust" ? TOPICS_RUST :
+                                    language === "python" ? TOPICS_PYTHON :
+                                      language === "dsa" ? TOPICS_DSA :
+                                        language === "html" ? TOPICS_HTML :
+                                          language === "css" ? TOPICS_CSS :
+                                            language === "ml" || language === "ml-notes" ? TOPICS_ML :
+                                              TOPICS_JS
+                                ).map((group) => (
+                                  <div key={group.title} style={{ marginBottom: "12px" }}>
+                                    <button
+                                      onClick={() => toggleGroup(group.title)}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        width: "100%",
+                                        background: "transparent",
+                                        border: "none",
+                                        padding: "6px 0",
+                                        cursor: "pointer",
+                                        color: "var(--text-main)",
+                                        fontSize: "0.85rem",
+                                        fontWeight: "600"
+                                      }}
+                                    >
+                                      <span style={{ color: "var(--text-muted)", marginRight: "6px" }}>
+                                        {expandedGroups.has(group.title) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                      </span>
+                                      {group.title}
+                                    </button>
+
+                                    {expandedGroups.has(group.title) && (
+                                      <div style={{ marginLeft: "14px", borderLeft: "1px solid var(--border-color)", paddingLeft: "8px", marginTop: "4px" }}>
+                                        {group.topics.map(topic => (
+                                          <button
+                                            key={topic.id}
+                                            onClick={() => handleSelectTopic(topic, group.title)}
+                                            className={`history-item ${selectedTopic?.id === topic.id ? "active" : ""}`}
+                                            style={{
+                                              width: "100%",
+                                              justifyContent: "flex-start",
+                                              fontSize: "0.8rem",
+                                              padding: "6px 8px",
+                                              marginBottom: "2px",
+                                              border: "none",
+                                              textAlign: "left"
+                                            }}
+                                          >
+                                            <span style={{ opacity: 0.7, marginRight: "6px", fontSize: "0.75rem" }}>{topic.id}</span>
+                                            <span>{topic.title}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              // Chat History Sidebar
+                              <>
+                                <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                  <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
+                                    <Plus size={16} /> New Chat
+                                  </button>
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                                    onClick={() => {
+                                      setViewMode("docs");
+                                      setIsHistoryOpen(false);
+                                    }}
+                                  >
+                                    <Book size={16} /> Official Docs
+                                  </button>
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                                    onClick={() => {
+                                      setViewMode("learning");
+                                      setIsHistoryOpen(true); // Keep sidebar open for topic selection
+                                    }}
+                                  >
+                                    <Sparkles size={16} /> Getting Started with AI
+                                  </button>
+                                </div>
+                                <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+
+                                  <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: "8px" }}><MessageSquare size={12} /> Recent Activity</div>
+                                  {chats.length === 0 ? (
+                                    <div className="empty-history">No history yet</div>
+                                  ) : (
+                                    <>
+                                      {chats.slice(0, visibleChats).map((chat) => (
+                                        <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
+                                          <MessageSquare size={14} />
+                                          <span className="history-title">{chat.title}</span>
+                                          <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
+                                            <Trash2 size={12} />
+                                          </button>
+                                        </div>
+                                      ))}
+                                      {visibleChats < chats.length && (
+                                        <button
+                                          className="btn btn-secondary"
+                                          style={{ width: "100%", justifyContent: "center", marginTop: "8px", fontSize: "0.8rem", padding: "6px", border: "1px solid var(--border-color)" }}
+                                          onClick={() => setVisibleChats(prev => prev + 20)}
+                                        >
+                                          Load More
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                               </>
                             )}
                           </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+                        )}
 
-                  <div style={{ display: viewMode === "ai" ? "flex" : "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
-                    {aiService === "api" ? (
-                      <>
-                        <div className="description-container" ref={mainChatScrollRef} style={{ padding: "0 12px", paddingBottom: "100px" }}>
-                          {messages.map((msg, idx) => (
-                            <ChatBubble
-                              key={idx}
-                              msg={msg}
-                              idx={idx}
-                              isLast={idx === messages.length - 1}
-                              isDictionaryActive={isDictionaryActive}
-                              setIsDictionaryActive={setIsDictionaryActive}
-                              speakingMsgIdx={speakingMsgIdx}
-                              handleListen={handleListen}
-                              handleTryAgain={handleTryAgain}
-                              handleGenerateQuiz={handleGenerateQuiz}
-                              markdownComponents={markdownComponents}
-                              isExplaining={isExplaining}
-                              isQuizGenerating={isQuizGenerating}
-                            />
-                          ))}
-                        </div>
-                       </>
-                     ) : (
-                       <div
-                         style={{
-                          flex: 1,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          padding: 24,
-                          textAlign: "center",
-                        }}
-                      >
-                        <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
-                          <Globe size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
-                          <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Open Web LLM</h3>
-                          <p style={{ color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>
-                            Select your preferred web LLM to chat, analyze images, and more. We'll copy your code to the clipboard for you.
-                          </p>
-                          <select
-                            className="settings-input"
-                            style={{ appearance: 'auto', WebkitAppearance: 'auto' as any, marginBottom: 24, padding: "8px 12px", width: "100%", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-color)", borderRadius: 4 }}
-                            value={webLlm}
-                            onChange={(e) => setWebLlm(e.target.value)}
-                          >
-                            <option value="groq">Groq</option>
-                            <option value="huggingface">Hugging Face</option>
-                            <option value="gemini">Google Gemini</option>
-                            <option value="openai">OpenAI (ChatGPT)</option>
-                            <option value="anthropic">Anthropic (Claude)</option>
-                          </select>
-                          <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleOpenWebLlm}>
-                            <Copy size={16} /> Copy Code & Open {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: viewMode === "docs" ? "flex" : "none", flex: 1, flexDirection: "column" }}>
-                    {(language === "rust" || language === "python" || language === "ml") ? (
-                      <iframe
-                        src={language === "rust" ? "https://doc.rust-lang.org/book/" : language === "ml" ? "https://scikit-learn.org/stable/user_guide.html" : "https://docs.python.org/3/"}
-                        title="Documentation"
-                        style={{ flex: 1, border: "none", width: "100%", height: "100%", backgroundColor: "var(--bg-color)" }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          flex: 1,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          padding: 24,
-                          textAlign: "center",
-                          height: "100%"
-                        }}
-                      >
-                        <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
-                          <Book size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
-                          <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Official Documentation</h3>
-                          <p style={{ color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.5 }}>
-                            MDN documentation cannot be embedded directly. Please open it in your browser.
-                          </p>
-                          <button
-                            className="btn btn-primary"
-                            style={{ width: "100%", justifyContent: "center" }}
-                            onClick={async () => {
-                              const url =
-                                language === "html" ? "https://developer.mozilla.org/en-US/docs/Web/HTML" :
-                                  language === "css" ? "https://developer.mozilla.org/en-US/docs/Web/CSS" :
-                                    "https://developer.mozilla.org/en-US/docs/Web/JavaScript";
-                              try {
-                                await openUrl(url);
-                              } catch (e) {
-                                window.open(url, "_blank");
-                              }
-                            }}
-                          >
-                            <Globe size={16} style={{ marginRight: 8 }} /> Open {language.toUpperCase()} Docs
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: viewMode === "shortcuts" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
-                    <Shortcuts />
-                  </div>
-
-                  <div style={{ display: viewMode === "learning" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
-                    <AiLearning
-                      ref={learningRef}
-                      language={language}
-                      apiKey={apiKey}
-                      openAiApiKey={openAiApiKey}
-                      anthropicApiKey={anthropicApiKey}
-                      groqApiKey={groqApiKey}
-                      huggingFaceApiKey={huggingFaceApiKey}
-                      provider={llmProvider}
-                      selectedModel={selectedModel}
-                      topic={selectedTopic}
-                      groupTitle={selectedGroup}
-                      onBack={() => setIsHistoryOpen(true)}
-                      onApplyCode={setCode}
-                      prevTopic={prevTopic}
-                      nextTopic={nextTopic}
-                      onSelectTopic={handleSelectTopic}
-                      isDictionaryActive={isDictionaryActive}
-                      setIsDictionaryActive={setIsDictionaryActive}
-                      speakingMsgIdx={speakingMsgIdx}
-                      handleListen={handleListen}
-                      handleGenerateQuiz={handleGenerateQuiz}
-                      isQuizGenerating={isQuizGenerating}
-                    />
-                  </div>
-
-
-
-                  {/* Shared AI Controls */}
-                  {((viewMode === "ai" && aiService === "api") || viewMode === "learning") && (
-                    <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
-                      <div className="ai-input-wrapper">
-                        <div className="temp-control-minimal" title="Creativity Level (Temperature)">
-                          T
-                          <select
-                            value={temperature}
-                            onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                            className="temp-select-hidden"
-                          >
-                            <option value={0.1}>Focused (0.1)</option>
-                            <option value={0.3}>Default (0.3)</option>
-                            <option value={0.5}>Balanced (0.5)</option>
-                            <option value={0.8}>Creative (0.8)</option>
-                            <option value={1.0}>Exploratory (1.0)</option>
-                          </select>
-                        </div>
-                        <textarea
-                          className="ai-input"
-                          placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
-                          value={input}
-                          onChange={(e) => {
-                            setInput(e.target.value);
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
-                              e.preventDefault();
-                              handleSend();
-                              e.currentTarget.style.height = 'auto';
-                            }
-                          }}
-                          rows={1}
-                          style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
-                        />
-                      </div>
-                      <button className="btn btn-primary" onClick={handleSend}>
-                        <Send size={18} />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Removed duplicate Floating Quick Chat Modal here */}
-                  </>
-                  )}
-                </div>
-              </Panel>
-              {!isMobile && <PanelResizeHandle className="resizer horizontal" />}
-            </>
-          )}
-
-          {isEditorVisible && (
-            <Panel defaultSize={isMobile ? 100 : 50} minSize={isMobile ? 100 : 30}>
-              <PanelGroup orientation={terminalLayout}>
-                <Panel defaultSize={70} minSize={20}>
-                  <div className="panel">
-                    <div className="panel-header">
-                      <select
-                        value={language}
-                        onChange={(e) => handleLanguageChange(e.target.value as any)}
-                        className="language-select"
-                        style={{
-                          background: "transparent",
-                          color: "var(--text-main)",
-                          border: "none",
-                          padding: "4px 8px",
-                          borderRadius: "6px",
-                          cursor: "pointer",
-                          outline: "none",
-                          fontWeight: "600",
-                          fontSize: "0.85rem",
-                          marginTop: -2
-                        }}
-                      >
-                        <option value="python">🐍 Python</option>
-                        <option value="rust">🦀 Rust</option>
-                        <option value="dsa">📊 DSA</option>
-                        <option value="html">🌐 HTML</option>
-                        <option value="css">🎨 CSS</option>
-                        <option value="javascript">📜 JavaScript</option>
-                        <option value="ml">🤖 ML Model</option>
-                      </select>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                          className={`tab-btn ${!isAiAssistantVisible ? "active" : ""}`}
-                          title={isAiAssistantVisible ? "Hide AI Assistant (Ctrl+Alt+B)" : "Show AI Assistant (Ctrl+Alt+B)"}
-                          onClick={() => {
-                            if (isMobile) {
-                              // On mobile: this button toggles between panels
-                              setIsAiAssistantVisible(true);
-                              setIsEditorVisible(false);
-                            } else {
-                              setIsAiAssistantVisible(!isAiAssistantVisible);
-                            }
-                          }}
-                          style={{ padding: "4px 8px" }}
-                        >
-                          {isAiAssistantVisible ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
-                        </button>
-                        <button
-                          className={`tab-btn mobile-hidden ${isMinimapVisible ? "active" : ""}`}
-                          title={isMinimapVisible ? "Hide Minimap" : "Show Minimap"}
-                          onClick={() => setIsMinimapVisible(!isMinimapVisible)}
-                          style={{ padding: "4px 8px" }}
-                        >
-                          <Layout size={14} />
-                        </button>
-                        <button
-                          className={`tab-btn mobile-hidden`}
-                          title={terminalLayout === "vertical" ? "Move Terminal to Right (F7)" : "Move Terminal to Bottom (F7)"}
-                          onClick={() => setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical")}
-                          style={{ padding: "4px 8px" }}
-                        >
-                          {terminalLayout === "vertical" ? <PanelRight size={14} /> : <PanelBottom size={14} />}
-                        </button>
-                        <button
-                          className={`tab-btn ${isTerminalVisible ? "active" : ""}`}
-                          title={language === "html" || language === "css" ? "Toggle Preview (Ctrl+`)" : (isTerminalVisible ? "Hide Terminal (Ctrl+`)" : "Show Terminal (Ctrl+`)")}
-                          onClick={() => setIsTerminalVisible(!isTerminalVisible)}
-                          style={{ padding: "4px 8px" }}
-                        >
-                          {language === "html" || language === "css" ? <Eye size={14} /> : <TerminalIcon size={14} />}
-                        </button>
-                        <button
-                          className="btn btn-sm btn-primary mobile-icon-btn"
-                          onClick={handleExplain}
-                          title="Explain Code (Ctrl+Alt+C)"
-                          disabled={isExplaining || aiService === "web"}
-                          style={{
-                            marginRight: 8,
-                            padding: "4px 12px",
-                            fontSize: "0.8rem",
-                            opacity: aiService === "web" ? 0.5 : 1,
-                            cursor: aiService === "web" ? "not-allowed" : "pointer"
-                          }}
-                        >
-                          <span style={{ marginLeft: 0 }}>{isExplaining ? <><Sparkles size={14} className="animate-pulse" style={{ marginRight: 6 }} /><span className="action-btn-text"> Thinking...</span></> : <><Sparkles size={14} style={{ marginRight: 6 }} /><span className="action-btn-text"> Explain Code</span></>}</span>
-                        </button>
-                        <button
-                          className={`btn btn-sm btn-primary mobile-icon-btn ${isRunning ? "is-running" : ""}`}
-                          onClick={handleRunCode}
-                          title="Run Code (F5 / Ctrl+Enter)"
-                          style={{
-                            padding: "4px 12px",
-                            fontSize: "0.8rem",
-                            backgroundColor: isRunning ? "#ef4444" : "var(--accent-color)", // Red when running (only visible on desktop)
-                            transition: "background-color 0.2s"
-                          }}
-                        >
-                          {isRunning ? (
-                            <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /><span className="action-btn-text"> Stop</span></>
-                          ) : (language === "html" || language === "css") ? (
-                            <><Globe size={12} style={{ marginRight: 6 }} /><span className="action-btn-text"> Preview</span></>
+                        <div style={{ display: viewMode === "ai" ? "flex" : "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+                          {aiService === "api" ? (
+                            <>
+                              <div className="description-container" ref={mainChatScrollRef} style={{ padding: "0 12px", paddingBottom: "100px" }}>
+                                {messages.map((msg, idx) => (
+                                  <ChatBubble
+                                    key={idx}
+                                    msg={msg}
+                                    idx={idx}
+                                    isLast={idx === messages.length - 1}
+                                    isDictionaryActive={isDictionaryActive}
+                                    setIsDictionaryActive={setIsDictionaryActive}
+                                    speakingMsgIdx={speakingMsgIdx}
+                                    handleListen={handleListen}
+                                    handleTryAgain={handleTryAgain}
+                                    handleGenerateQuiz={handleGenerateQuiz}
+                                    markdownComponents={markdownComponents}
+                                    isExplaining={isExplaining}
+                                    isQuizGenerating={isQuizGenerating}
+                                  />
+                                ))}
+                              </div>
+                            </>
                           ) : (
-                            <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg><span className="action-btn-text"> Run Code</span></>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="editor-container" style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column" }}>
-                        <Editor
-                          height="100%"
-                          language={language === "ml" || language === "dsa" ? "python" : language}
-                          theme={theme}
-                          value={code}
-                          onChange={(value) => setCode(value || "")}
-                          onMount={handleEditorMount}
-                          options={{
-                            minimap: { enabled: isMinimapVisible },
-                            fontSize: 14,
-                            fontFamily: '"JetBrains Mono", monospace',
-                            lineNumbers: "on",
-                            scrollBeyondLastLine: false,
-                            automaticLayout: true,
-                          }}
-                        />
-                    </div>
-                  </div >
-                </Panel >
-
-                {isTerminalVisible && (
-                  <>
-                    <PanelResizeHandle className={`resizer ${terminalLayout}`} />
-                    <Panel defaultSize={30} minSize={15}>
-                      <div className="panel" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-                        {(language === "html" || language === "css") ? (
-                          <>
-                            <div className="panel-header" style={{ justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", padding: "8px 16px", background: "var(--panel-bg)" }}>
-                              <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "var(--text-main)" }}>WEB PREVIEW</span>
-                              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                                {language === "html" ? "index.html" : "style.css (Wrapped)"}
+                            <div
+                              style={{
+                                flex: 1,
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: 24,
+                                textAlign: "center",
+                              }}
+                            >
+                              <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
+                                <Globe size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
+                                <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Open Web LLM</h3>
+                                <p style={{ color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>
+                                  Select your preferred web LLM to chat, analyze images, and more. We'll copy your code to the clipboard for you.
+                                </p>
+                                <select
+                                  className="settings-input"
+                                  style={{ appearance: 'auto', WebkitAppearance: 'auto' as any, marginBottom: 24, padding: "8px 12px", width: "100%", backgroundColor: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-color)", borderRadius: 4 }}
+                                  value={webLlm}
+                                  onChange={(e) => setWebLlm(e.target.value)}
+                                >
+                                  <option value="groq">Groq</option>
+                                  <option value="huggingface">Hugging Face</option>
+                                  <option value="gemini">Google Gemini</option>
+                                  <option value="openai">OpenAI (ChatGPT)</option>
+                                  <option value="anthropic">Anthropic (Claude)</option>
+                                </select>
+                                <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleOpenWebLlm}>
+                                  <Copy size={16} /> Copy Code & Open {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"}
+                                </button>
                               </div>
                             </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: viewMode === "docs" ? "flex" : "none", flex: 1, flexDirection: "column" }}>
+                          {(language === "rust" || language === "python" || language === "ml") ? (
                             <iframe
-                              srcDoc={webPreviewContent}
-                              title="Web Preview"
-                              style={{ flex: 1, border: "none", background: "white", width: "100%" }}
-                              sandbox="allow-scripts"
+                              src={language === "rust" ? "https://doc.rust-lang.org/book/" : language === "ml" ? "https://scikit-learn.org/stable/user_guide.html" : "https://docs.python.org/3/"}
+                              title="Documentation"
+                              style={{ flex: 1, border: "none", width: "100%", height: "100%", backgroundColor: "var(--bg-color)" }}
                             />
-                          </>
+                          ) : (
+                            <div
+                              style={{
+                                flex: 1,
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: 24,
+                                textAlign: "center",
+                                height: "100%"
+                              }}
+                            >
+                              <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
+                                <Book size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
+                                <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Official Documentation</h3>
+                                <p style={{ color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.5 }}>
+                                  MDN documentation cannot be embedded directly. Please open it in your browser.
+                                </p>
+                                <button
+                                  className="btn btn-primary"
+                                  style={{ width: "100%", justifyContent: "center" }}
+                                  onClick={async () => {
+                                    const url =
+                                      language === "html" ? "https://developer.mozilla.org/en-US/docs/Web/HTML" :
+                                        language === "css" ? "https://developer.mozilla.org/en-US/docs/Web/CSS" :
+                                          "https://developer.mozilla.org/en-US/docs/Web/JavaScript";
+                                    try {
+                                      await openUrl(url);
+                                    } catch (e) {
+                                      window.open(url, "_blank");
+                                    }
+                                  }}
+                                >
+                                  <Globe size={16} style={{ marginRight: 8 }} /> Open {language.toUpperCase()} Docs
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: viewMode === "shortcuts" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
+                          <Shortcuts />
+                        </div>
+
+                        <div style={{ display: viewMode === "learning" ? "flex" : "none", flex: 1, flexDirection: "column", overflow: "hidden" }}>
+                          <AiLearning
+                            ref={learningRef}
+                            language={language}
+                            apiKey={apiKey}
+                            openAiApiKey={openAiApiKey}
+                            anthropicApiKey={anthropicApiKey}
+                            groqApiKey={groqApiKey}
+                            huggingFaceApiKey={huggingFaceApiKey}
+                            provider={llmProvider}
+                            selectedModel={selectedModel}
+                            topic={selectedTopic}
+                            groupTitle={selectedGroup}
+                            onBack={() => setIsHistoryOpen(true)}
+                            onApplyCode={setCode}
+                            prevTopic={prevTopic}
+                            nextTopic={nextTopic}
+                            onSelectTopic={handleSelectTopic}
+                            isDictionaryActive={isDictionaryActive}
+                            setIsDictionaryActive={setIsDictionaryActive}
+                            speakingMsgIdx={speakingMsgIdx}
+                            handleListen={handleListen}
+                            handleGenerateQuiz={handleGenerateQuiz}
+                            isQuizGenerating={isQuizGenerating}
+                          />
+                        </div>
+
+
+
+                        {/* Shared AI Controls */}
+                        {((viewMode === "ai" && aiService === "api") || viewMode === "learning") && (
+                          <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", zIndex: 10, padding: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div className="ai-input-wrapper">
+                              <div className="temp-control-minimal" title="Creativity Level (Temperature)">
+                                T
+                                <select
+                                  value={temperature}
+                                  onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                                  className="temp-select-hidden"
+                                >
+                                  <option value={0.1}>Focused (0.1)</option>
+                                  <option value={0.3}>Default (0.3)</option>
+                                  <option value={0.5}>Balanced (0.5)</option>
+                                  <option value={0.8}>Creative (0.8)</option>
+                                  <option value={1.0}>Exploratory (1.0)</option>
+                                </select>
+                              </div>
+                              <textarea
+                                className="ai-input"
+                                placeholder={viewMode === "learning" && selectedTopic ? `Ask about ${selectedTopic.title}...` : "Ask a question about this code..."}
+                                value={input}
+                                onChange={(e) => {
+                                  setInput(e.target.value);
+                                  e.target.style.height = 'auto';
+                                  e.target.style.height = e.target.scrollHeight + 'px';
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey) {
+                                    e.preventDefault();
+                                    handleSend();
+                                    e.currentTarget.style.height = 'auto';
+                                  }
+                                }}
+                                rows={1}
+                                style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
+                              />
+                            </div>
+                            <button className="btn btn-primary" onClick={handleSend}>
+                              <Send size={18} />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Removed duplicate Floating Quick Chat Modal here */}
+                      </>
+                    )}
+                  </div>
+                </Panel>
+                {!isMobile && <PanelResizeHandle className="resizer horizontal" />}
+              </>
+            )}
+
+            {isEditorVisible && (
+              <Panel defaultSize={isMobile ? 100 : 50} minSize={isMobile ? 100 : 30}>
+                <PanelGroup orientation={terminalLayout}>
+                  <Panel defaultSize={70} minSize={20}>
+                    <div className="panel">
+                      <div className="panel-header">
+                        <select
+                          value={language}
+                          onChange={(e) => handleLanguageChange(e.target.value as any)}
+                          className="language-select"
+                          style={{
+                            background: "transparent",
+                            color: "var(--text-main)",
+                            border: "none",
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            outline: "none",
+                            fontWeight: "600",
+                            fontSize: "0.85rem",
+                            marginTop: -2
+                          }}
+                        >
+                          <option value="python">🐍 Python</option>
+                          <option value="rust">🦀 Rust</option>
+                          <option value="dsa">📊 DSA</option>
+                          <option value="html">🌐 HTML</option>
+                          <option value="css">🎨 CSS</option>
+                          <option value="javascript">📜 JavaScript</option>
+                          <option value="ml">🤖 ML Course</option>
+                          <option value="ml-notes">📘 ML Notes</option>
+                        </select>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            className={`tab-btn ${!isAiAssistantVisible ? "active" : ""}`}
+                            title={isAiAssistantVisible ? "Hide AI Assistant (Ctrl+Alt+B)" : "Show AI Assistant (Ctrl+Alt+B)"}
+                            onClick={() => {
+                              if (isMobile) {
+                                // On mobile: this button toggles between panels
+                                setIsAiAssistantVisible(true);
+                                setIsEditorVisible(false);
+                              } else {
+                                setIsAiAssistantVisible(!isAiAssistantVisible);
+                              }
+                            }}
+                            style={{ padding: "4px 8px" }}
+                          >
+                            {isAiAssistantVisible ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
+                          </button>
+                          
+                          {language === "ml-notes" ? (
+                            <>
+                              <div style={{ display: "flex", background: "var(--bg-secondary)", borderRadius: "6px", overflow: "hidden", border: "1px solid var(--border-color)" }}>
+                                <button 
+                                  className={`btn btn-sm ${jupyterMode === "lite" ? "btn-primary" : "btn-secondary"}`}
+                                  onClick={() => setJupyterMode("lite")}
+                                  title="JupyterLite (Cloud)"
+                                  style={{ padding: "4px 8px", border: "none", borderRadius: 0 }}
+                                >
+                                  <Cloud size={14} /><span className="mobile-hidden" style={{ marginLeft: 6 }}>Cloud</span>
+                                </button>
+                                <button 
+                                  className={`btn btn-sm ${jupyterMode === "local" ? "btn-primary" : "btn-secondary"}`}
+                                  onClick={() => setJupyterMode("local")}
+                                  title="Local Server"
+                                  style={{ padding: "4px 8px", border: "none", borderRadius: 0 }}
+                                >
+                                  <Server size={14} /><span className="mobile-hidden" style={{ marginLeft: 6 }}>Local</span>
+                                </button>
+                              </div>
+
+                              {jupyterMode === "local" && !isMobile && (
+                                <input 
+                                  type="text" 
+                                  value={jupyterLocalUrl}
+                                  onChange={(e) => setJupyterLocalUrl(e.target.value)}
+                                  style={{ 
+                                      padding: "4px 8px", 
+                                      fontSize: "0.80rem", 
+                                      borderRadius: "6px", 
+                                      border: "1px solid var(--border-color)", 
+                                      background: "var(--input-bg)", 
+                                      color: "var(--text-main)",
+                                      width: "160px"
+                                  }}
+                                  placeholder="http://localhost:8888"
+                                />
+                              )}
+
+                              <button 
+                                  className="btn btn-sm btn-secondary" 
+                                  onClick={() => setJupyterRefreshKey(prev => prev + 1)}
+                                  style={{ padding: "4px 8px" }}
+                                  title="Reload Jupyter Env"
+                              >
+                                  <RefreshCw size={14} />
+                              </button>
+                              
+                              <a 
+                                  href={jupyterMode === "lite" ? "https://jupyterlite.github.io/demo/lab/index.html" : jupyterLocalUrl}
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  className="btn btn-sm btn-secondary"
+                                  style={{ padding: "4px 8px", display: "flex", alignItems: "center", textDecoration: "none" }}
+                                  title="Open Externally"
+                              >
+                                  <span className="mobile-hidden" style={{ marginRight: 6 }}>Open Externally</span> <ExternalLink size={14} />
+                              </a>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                className={`tab-btn mobile-hidden ${isMinimapVisible ? "active" : ""}`}
+                                title={isMinimapVisible ? "Hide Minimap" : "Show Minimap"}
+                                onClick={() => setIsMinimapVisible(!isMinimapVisible)}
+                                style={{ padding: "4px 8px" }}
+                              >
+                                <Layout size={14} />
+                              </button>
+                              <button
+                                className={`tab-btn mobile-hidden`}
+                                title={terminalLayout === "vertical" ? "Move Terminal to Right (F7)" : "Move Terminal to Bottom (F7)"}
+                                onClick={() => setTerminalLayout(prev => prev === "vertical" ? "horizontal" : "vertical")}
+                                style={{ padding: "4px 8px" }}
+                              >
+                                {terminalLayout === "vertical" ? <PanelRight size={14} /> : <PanelBottom size={14} />}
+                              </button>
+                              <button
+                                className={`tab-btn ${isTerminalVisible ? "active" : ""}`}
+                                title={language === "html" || language === "css" ? "Toggle Preview (Ctrl+`)" : (isTerminalVisible ? "Hide Terminal (Ctrl+`)" : "Show Terminal (Ctrl+`)")}
+                                onClick={() => setIsTerminalVisible(!isTerminalVisible)}
+                                style={{ padding: "4px 8px" }}
+                              >
+                                {language === "html" || language === "css" ? <Eye size={14} /> : <TerminalIcon size={14} />}
+                              </button>
+                              <button
+                                className="btn btn-sm btn-primary mobile-icon-btn"
+                                onClick={handleExplain}
+                                title="Explain Code (Ctrl+Alt+C)"
+                                disabled={isExplaining || aiService === "web"}
+                                style={{
+                                  marginRight: 8,
+                                  padding: "4px 12px",
+                                  fontSize: "0.8rem",
+                                  opacity: aiService === "web" ? 0.5 : 1,
+                                  cursor: aiService === "web" ? "not-allowed" : "pointer"
+                                }}
+                              >
+                                <span style={{ marginLeft: 0 }}>{isExplaining ? <><Sparkles size={14} className="animate-pulse" style={{ marginRight: 6 }} /><span className="action-btn-text"> Thinking...</span></> : <><Sparkles size={14} style={{ marginRight: 6 }} /><span className="action-btn-text"> Explain Code</span></>}</span>
+                              </button>
+                              <button
+                                className={`btn btn-sm btn-primary mobile-icon-btn ${isRunning ? "is-running" : ""}`}
+                                onClick={handleRunCode}
+                                title="Run Code (F5 / Ctrl+Enter)"
+                                style={{
+                                  padding: "4px 12px",
+                                  fontSize: "0.8rem",
+                                  backgroundColor: isRunning ? "#ef4444" : "var(--accent-color)",
+                                  transition: "background-color 0.2s"
+                                }}
+                              >
+                                {isRunning ? (
+                                  <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /><span className="action-btn-text"> Stop</span></>
+                                ) : (language === "html" || language === "css") ? (
+                                  <><Globe size={12} style={{ marginRight: 6 }} /><span className="action-btn-text"> Preview</span></>
+                                ) : (
+                                  <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg><span className="action-btn-text"> Run Code</span></>
+                                )}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="editor-container" style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                        {language === "ml-notes" ? (
+                          <Notebook
+                            theme={theme}
+                            mode={jupyterMode}
+                            localUrl={jupyterLocalUrl}
+                            refreshKey={jupyterRefreshKey}
+                            onCellsChange={(newCellsJson) => setCode(newCellsJson)}
+                          />
                         ) : (
-                          <Terminal output={terminalOutput} isRunning={isRunning} onClear={() => setTerminalOutput("")} />
+                          <Editor
+                            height="100%"
+                            language={language === "ml" || language === "dsa" ? "python" : language}
+                            theme={theme}
+                            value={code}
+                            onChange={(value) => setCode(value || "")}
+                            onMount={handleEditorMount}
+                            options={{
+                              minimap: { enabled: isMinimapVisible },
+                              fontSize: 14,
+                              fontFamily: '"JetBrains Mono", monospace',
+                              lineNumbers: "on",
+                              scrollBeyondLastLine: false,
+                              automaticLayout: true,
+                            }}
+                          />
                         )}
                       </div>
-                    </Panel>
-                  </>
-                )
-                }
-              </PanelGroup >
-            </Panel >
-          )}
-        </PanelGroup >
+                    </div >
+                  </Panel >
 
-        {/* Floating Quick Chat Modal - Moved to root of main-content to allow dragging anywhere */}
-        {
-          isQuickChatOpen && (
-            <Rnd
-              size={{
-                width: typeof window !== 'undefined' ? Math.min(quickChatGeometry.width, window.innerWidth - 20) : quickChatGeometry.width,
-                height: typeof window !== 'undefined' ? Math.min(quickChatGeometry.height, window.innerHeight - 80) : quickChatGeometry.height
-              }}
-              position={{
-                x: typeof window !== 'undefined' ? Math.min(Math.max(0, quickChatGeometry.x), window.innerWidth - 50) : quickChatGeometry.x,
-                y: typeof window !== 'undefined' ? Math.max(0, quickChatGeometry.y) : quickChatGeometry.y
-              }}
-              onDragStop={(_e, d) => {
-                setQuickChatGeometry((prev: any) => ({ ...prev, x: d.x, y: d.y }));
-              }}
-              onResizeStop={(_e, _direction, ref, _delta, position) => {
-                setQuickChatGeometry({
-                  width: parseInt(ref.style.width, 10),
-                  height: parseInt(ref.style.height, 10),
-                  ...position
-                });
-              }}
-              minWidth={300}
-              minHeight={300}
-              bounds="parent"
-              dragHandleClassName="quick-chat-drag-handle"
+                  {isTerminalVisible && (
+                    <>
+                      <PanelResizeHandle className={`resizer ${terminalLayout}`} />
+                      <Panel defaultSize={30} minSize={15}>
+                        <div className="panel" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                          {(language === "html" || language === "css") ? (
+                            <>
+                              <div className="panel-header" style={{ justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", padding: "8px 16px", background: "var(--panel-bg)" }}>
+                                <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "var(--text-main)" }}>WEB PREVIEW</span>
+                                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                  {language === "html" ? "index.html" : "style.css (Wrapped)"}
+                                </div>
+                              </div>
+                              <iframe
+                                srcDoc={webPreviewContent}
+                                title="Web Preview"
+                                style={{ flex: 1, border: "none", background: "white", width: "100%" }}
+                                sandbox="allow-scripts"
+                              />
+                            </>
+                          ) : (
+                            <Terminal output={terminalOutput} isRunning={isRunning} onClear={() => setTerminalOutput("")} />
+                          )}
+                        </div>
+                      </Panel>
+                    </>
+                  )
+                  }
+                </PanelGroup >
+              </Panel >
+            )}
+          </PanelGroup >
+
+          {/* Floating Quick Chat Modal - Moved to root of main-content to allow dragging anywhere */}
+          {
+            isQuickChatOpen && (
+              <Rnd
+                size={{
+                  width: typeof window !== 'undefined' ? Math.min(quickChatGeometry.width, window.innerWidth - 20) : quickChatGeometry.width,
+                  height: typeof window !== 'undefined' ? Math.min(quickChatGeometry.height, window.innerHeight - 80) : quickChatGeometry.height
+                }}
+                position={{
+                  x: typeof window !== 'undefined' ? Math.min(Math.max(0, quickChatGeometry.x), window.innerWidth - 50) : quickChatGeometry.x,
+                  y: typeof window !== 'undefined' ? Math.max(0, quickChatGeometry.y) : quickChatGeometry.y
+                }}
+                onDragStop={(_e, d) => {
+                  setQuickChatGeometry((prev: any) => ({ ...prev, x: d.x, y: d.y }));
+                }}
+                onResizeStop={(_e, _direction, ref, _delta, position) => {
+                  setQuickChatGeometry({
+                    width: parseInt(ref.style.width, 10),
+                    height: parseInt(ref.style.height, 10),
+                    ...position
+                  });
+                }}
+                minWidth={300}
+                minHeight={300}
+                bounds="parent"
+                dragHandleClassName="quick-chat-drag-handle"
+                style={{
+                  zIndex: 1000,
+                  position: 'fixed'
+                }}
+              >
+                <div style={{
+                  width: "100%",
+                  height: "100%",
+                  background: "var(--bg-color)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "12px",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden"
+                }}>
+                  <div className="quick-chat-drag-handle" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--border-color)", background: "var(--panel-bg)", cursor: "move" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-color)", fontWeight: "bold" }}>
+                      <Zap size={16} fill="currentColor" /> Quick Chat
+                    </div>
+                    <div style={{ display: "flex", gap: "8px" }} onPointerDown={(e) => e.stopPropagation()}>
+                      <button onClick={() => {
+                        setCurrentQuickChatId(null);
+                        setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
+                      }} onTouchEnd={(e) => {
+                        e.preventDefault();
+                        setCurrentQuickChatId(null);
+                        setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
+                      }} className="btn btn-secondary" style={{ padding: "4px 8px", fontSize: "0.8rem" }}>
+                        <Plus size={14} /> New
+                      </button>
+                      <button onClick={() => setIsQuickChatOpen(false)} onTouchEnd={(e) => { e.preventDefault(); setIsQuickChatOpen(false); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
+                        <X size={18} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="description-container" style={{ flex: 1, padding: "0 12px", overflowY: "auto", paddingBottom: "100px" }} onPointerDown={(e) => e.stopPropagation()} ref={quickChatScrollRef}>
+                    {quickChatMessages.map((msg, idx) => (
+                      <ChatBubble
+                        key={idx}
+                        msg={msg}
+                        idx={idx}
+                        isLast={idx === quickChatMessages.length - 1}
+                        isDictionaryActive={isDictionaryActive}
+                        setIsDictionaryActive={setIsDictionaryActive}
+                        speakingMsgIdx={speakingMsgIdx}
+                        handleListen={handleListen}
+                        handleTryAgain={handleTryAgainQuickChat}
+                        handleGenerateQuiz={handleGenerateQuiz}
+                        markdownComponents={quickChatMarkdownComponents}
+                        isExplaining={isQuickChatExplaining}
+                        isQuizGenerating={isQuizGenerating}
+                        isQuickChat={true}
+                      />
+                    ))}
+                  </div>
+                  <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", padding: "12px", display: "flex", gap: "8px", alignItems: "center" }} onPointerDown={(e) => e.stopPropagation()}>
+                    <div className="ai-input-wrapper">
+                      <div className="temp-control-minimal" title="Creativity Level (Temperature)">
+                        T
+                        <select
+                          value={temperature}
+                          onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                          className="temp-select-hidden"
+                        >
+                          <option value={0.1}>Focused (0.1)</option>
+                          <option value={0.3}>Default (0.3)</option>
+                          <option value={0.5}>Balanced (0.5)</option>
+                          <option value={0.8}>Creative (0.8)</option>
+                          <option value={1.0}>Exploratory (1.0)</option>
+                        </select>
+                      </div>
+                      <textarea
+                        className="ai-input"
+                        placeholder="Ask a quick question..."
+                        value={quickChatInput}
+                        onChange={(e) => {
+                          setQuickChatInput(e.target.value);
+                          e.target.style.height = 'auto';
+                          e.target.style.height = e.target.scrollHeight + 'px';
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !isQuickChatExplaining) {
+                            e.preventDefault();
+                            handleSendQuickChat();
+                            e.currentTarget.style.height = 'auto';
+                          }
+                        }}
+                        disabled={isQuickChatExplaining}
+                        rows={1}
+                        style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
+                      />
+                    </div>
+                    <button className="btn btn-primary" onClick={handleSendQuickChat} disabled={isQuickChatExplaining}>
+                      {isQuickChatExplaining ? <Zap size={18} className="animate-pulse" /> : <Send size={18} />}
+                    </button>
+                  </div>
+                </div>
+              </Rnd >
+            )
+          }
+
+          {/* Dictionary Floating Popup Overlay */}
+          {dictionaryPopup && (
+            <div
+              className="dictionary-popup"
               style={{
-                zIndex: 1000,
-                position: 'fixed'
+                position: 'fixed',
+                left: Math.min(dictionaryPopup.x, window.innerWidth - 300) + 'px',
+                top: Math.min(dictionaryPopup.y + 20, window.innerHeight - 200) + 'px',
+                backgroundColor: 'var(--panel-bg)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '0.75rem',
+                width: '300px',
+                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+                zIndex: 2000,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                backdropFilter: 'blur(8px)'
               }}
             >
-              <div style={{
-                width: "100%",
-                height: "100%",
-                background: "var(--bg-color)",
-                border: "1px solid var(--border-color)",
-                borderRadius: "12px",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden"
-              }}>
-                <div className="quick-chat-drag-handle" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--border-color)", background: "var(--panel-bg)", cursor: "move" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-color)", fontWeight: "bold" }}>
-                    <Zap size={16} fill="currentColor" /> Quick Chat
-                  </div>
-                  <div style={{ display: "flex", gap: "8px" }} onPointerDown={(e) => e.stopPropagation()}>
-                    <button onClick={() => {
-                      setCurrentQuickChatId(null);
-                      setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
-                    }} onTouchEnd={(e) => {
+              <div style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--accent-color)' }}>{dictionaryPopup.word}</h4>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
+                      handleListenDictionaryWord(dictionaryPopup.word);
+                    }}
+                    onTouchEnd={(e) => {
                       e.preventDefault();
-                      setCurrentQuickChatId(null);
-                      setQuickChatMessages([{ role: 'system', content: INITIAL_QUICK_CHAT_DESCRIPTION }]);
-                    }} className="btn btn-secondary" style={{ padding: "4px 8px", fontSize: "0.8rem" }}>
-                      <Plus size={14} /> New
-                    </button>
-                    <button onClick={() => setIsQuickChatOpen(false)} onTouchEnd={(e) => { e.preventDefault(); setIsQuickChatOpen(false); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}>
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
-                <div className="description-container" style={{ flex: 1, padding: "0 12px", overflowY: "auto", paddingBottom: "100px" }} onPointerDown={(e) => e.stopPropagation()} ref={quickChatScrollRef}>
-                  {quickChatMessages.map((msg, idx) => (
-                    <ChatBubble
-                      key={idx}
-                      msg={msg}
-                      idx={idx}
-                      isLast={idx === quickChatMessages.length - 1}
-                      isDictionaryActive={isDictionaryActive}
-                      setIsDictionaryActive={setIsDictionaryActive}
-                      speakingMsgIdx={speakingMsgIdx}
-                      handleListen={handleListen}
-                      handleTryAgain={handleTryAgainQuickChat}
-                      handleGenerateQuiz={handleGenerateQuiz}
-                      markdownComponents={quickChatMarkdownComponents}
-                      isExplaining={isQuickChatExplaining}
-                      isQuizGenerating={isQuizGenerating}
-                      isQuickChat={true}
-                    />
-                  ))}
-                </div>
-                <div className="ai-controls" style={{ borderTop: "1px solid var(--border-color)", background: "var(--panel-bg)", padding: "12px", display: "flex", gap: "8px", alignItems: "center" }} onPointerDown={(e) => e.stopPropagation()}>
-                  <div className="ai-input-wrapper">
-                    <div className="temp-control-minimal" title="Creativity Level (Temperature)">
-                      T
-                      <select
-                        value={temperature}
-                        onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                        className="temp-select-hidden"
-                      >
-                        <option value={0.1}>Focused (0.1)</option>
-                        <option value={0.3}>Default (0.3)</option>
-                        <option value={0.5}>Balanced (0.5)</option>
-                        <option value={0.8}>Creative (0.8)</option>
-                        <option value={1.0}>Exploratory (1.0)</option>
-                      </select>
-                    </div>
-                    <textarea
-                      className="ai-input"
-                      placeholder="Ask a quick question..."
-                      value={quickChatInput}
-                      onChange={(e) => {
-                        setQuickChatInput(e.target.value);
-                        e.target.style.height = 'auto';
-                        e.target.style.height = e.target.scrollHeight + 'px';
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !isQuickChatExplaining) {
-                          e.preventDefault();
-                          handleSendQuickChat();
-                          e.currentTarget.style.height = 'auto';
-                        }
-                      }}
-                      disabled={isQuickChatExplaining}
-                      rows={1}
-                      style={{ resize: "none", minHeight: "40px", maxHeight: "200px", boxSizing: "border-box", overflowY: "auto", fontFamily: "inherit", overflowX: "hidden", flex: 1 }}
-                    />
-                  </div>
-                  <button className="btn btn-primary" onClick={handleSendQuickChat} disabled={isQuickChatExplaining}>
-                    {isQuickChatExplaining ? <Zap size={18} className="animate-pulse" /> : <Send size={18} />}
+                      e.stopPropagation();
+                      if (e.nativeEvent) (e.nativeEvent as any).stopImmediatePropagation();
+                      handleListenDictionaryWord(dictionaryPopup.word);
+                    }}
+                    style={{ background: 'none', border: 'none', color: isDictionarySpeaking ? 'var(--accent-color)' : 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title={isDictionarySpeaking ? "Stop pronunciation" : "Listen pronunciation"}
+                  >
+                    {isDictionarySpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
                   </button>
                 </div>
-              </div>
-            </Rnd >
-          )
-        }
-
-        {/* Dictionary Floating Popup Overlay */}
-        {dictionaryPopup && (
-          <div
-            className="dictionary-popup"
-            style={{
-              position: 'fixed',
-              left: Math.min(dictionaryPopup.x, window.innerWidth - 300) + 'px',
-              top: Math.min(dictionaryPopup.y + 20, window.innerHeight - 200) + 'px',
-              backgroundColor: 'var(--panel-bg)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '0.75rem',
-              width: '300px',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-              zIndex: 2000,
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-              backdropFilter: 'blur(8px)'
-            }}
-          >
-            <div style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--accent-color)' }}>{dictionaryPopup.word}</h4>
-                <button 
+                <button
                   onClick={(e) => {
                     e.stopPropagation();
                     if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-                    handleListenDictionaryWord(dictionaryPopup.word);
+                    setDictionaryPopup(null);
+                    if (isDictionarySpeaking && 'speechSynthesis' in window) {
+                      window.speechSynthesis.cancel();
+                      setIsDictionarySpeaking(false);
+                    }
                   }}
                   onTouchEnd={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     if (e.nativeEvent) (e.nativeEvent as any).stopImmediatePropagation();
-                    handleListenDictionaryWord(dictionaryPopup.word);
+                    setDictionaryPopup(null);
+                    if (isDictionarySpeaking && 'speechSynthesis' in window) {
+                      window.speechSynthesis.cancel();
+                      setIsDictionarySpeaking(false);
+                    }
                   }}
-                  style={{ background: 'none', border: 'none', color: isDictionarySpeaking ? 'var(--accent-color)' : 'var(--text-muted)', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  title={isDictionarySpeaking ? "Stop pronunciation" : "Listen pronunciation"}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
                 >
-                  {isDictionarySpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                  <X size={16} />
                 </button>
               </div>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-                  setDictionaryPopup(null);
-                  if (isDictionarySpeaking && 'speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                    setIsDictionarySpeaking(false);
-                  }
-                }} 
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (e.nativeEvent) (e.nativeEvent as any).stopImmediatePropagation();
-                  setDictionaryPopup(null);
-                  if (isDictionarySpeaking && 'speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                    setIsDictionarySpeaking(false);
-                  }
-                }}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-              >
-                <X size={16} />
-              </button>
+              <div style={{ padding: '0.75rem', color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: 1.5, maxHeight: '200px', overflowY: 'auto' }}>
+                {dictionaryPopup.isLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Loading definition...</span>
+                  </div>
+                ) : (
+                  <SmartContent
+                    content={dictionaryPopup.definition}
+                    markdownComponents={markdownComponents}
+                  />
+                )}
+              </div>
             </div>
-            <div style={{ padding: '0.75rem', color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: 1.5, maxHeight: '200px', overflowY: 'auto' }}>
-              {dictionaryPopup.isLoading ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)' }}>
-                  <RefreshCw size={14} className="animate-spin" />
-                  <span>Loading definition...</span>
-                </div>
-              ) : (
-                <SmartContent
-                  content={dictionaryPopup.definition}
-                  markdownComponents={markdownComponents}
-                />
-              )}
-            </div>
-          </div>
-        )}
+          )}
 
-      </main >
+        </main >
       </div>
       {/* Quiz Overlay */}
       {activeQuizQuestions && (

@@ -957,3 +957,64 @@ details[open] summary::before {
 .question:last-child {
     border-bottom: none;
 }
+
+/* Notebook Styles */
+.notebook-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.notebook-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notebook-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notebook-container::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 10px;
+}
+
+.notebook-cell {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.notebook-cell:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.cell-action-btn {
+  transition: all 0.2s ease;
+}
+
+.cell-action-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+.cell-action-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.run-btn:hover {
+  background-color: var(--accent-hover) !important;
+}
+
+.delete-btn:hover {
+  color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border-radius: 4px;
+}
+
+.add-cell-btn:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.05) !important;
+}
+
+/* Ensure the editor in the cell has correct border radius */
+.cell-editor .monaco-editor,
+.cell-editor .overflow-guard {
+  border-radius: 0 0 0 0;
+}

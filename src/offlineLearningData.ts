@@ -1,4 +1,66 @@
 export const OFFLINE_LEARNING_DATA: Record<string, Record<string, string>> = {
+    "ml-notes": {
+        "1.1": `
+# Introduction to Machine Learning (Chapter 1.1)
+
+Welcome to the world of Machine Learning! This course is inspired by Andrew Ng's world-famous ML curriculum, designed to take you from a curious beginner to a confident practitioner.
+
+## 🤖 What is Machine Learning?
+
+In traditional programming, you write a set of rules (code) and give it data to get an output. In **Machine Learning**, you give the computer data and the expected outputs, and it **learns the rules** itself!
+
+### Two Classical Definitions:
+
+1.  **Arthur Samuel (1959):** "The field of study that gives computers the ability to learn without being explicitly programmed." 
+    *   *Analogy:* Instead of teaching a child exactly how to recognize a cat by listing every feature (ears, whiskers, tail), you show them 100 pictures of cats. Eventually, the child "just knows" what a cat looks like.
+
+2.  **Tom Mitchell (1998):** "A computer program is said to learn from experience **E** with respect to some class of tasks **T** and performance measure **P**, if its performance at tasks in **T**, as measured by **P**, improves with experience **E**."
+    *   **Example (Spam Filter):**
+        *   **Task (T):** Classifying emails as spam or not spam.
+        *   **Experience (E):** Watching you mark emails as spam.
+        *   **Performance (P):** The percentage of emails correctly classified.
+
+---
+
+## 🚀 Setting Up Your Environment: Jupyter Notebook
+
+To practice Machine Learning, we use a tool called **Jupyter Notebook**. It allows you to write code, see outputs instantly, and write notes (like these!) all in one place.
+
+### Why use Jupyter?
+Unlike standard scripts, Jupyter lets you run code in **Cells**. You can run one cell, change a variable, and run the next cell without restarting everything. This is perfect for experimenting with data!
+
+### Step-by-Step Installation:
+
+1.  **The Easy Way (Anaconda):** 
+    *   Download and install [Anaconda](https://www.anaconda.com/download). It comes with Python, Jupyter, and all the ML libraries (NumPy, Pandas, Scikit-Learn) pre-installed.
+    
+2.  **The Pro Way (Pip):**
+    *   If you already have Python, open your terminal and type:
+      \`\`\`bash
+      pip install notebook
+      \`\`\`
+
+3.  **Launching Jupyter:**
+    *   Open your terminal/command prompt and type:
+      \`\`\`bash
+      jupyter notebook
+      \`\`\`
+    *   A tab will open in your web browser. Click **New > Python 3** to start your first notebook!
+
+### Your First "Notebook" Experience
+In the editor on the right, we've provided a **Notebook-like environment**. 
+- Each box is a **Cell**.
+- You can run them one by one.
+- Try typing \`print("Hello ML!")\` in the first cell and clicking the play button!
+
+---
+
+### What's Next?
+In the next chapter, we will dive into the different types of Machine Learning: **Supervised** and **Unsupervised** learning. 
+
+*This lesson is available offline to get you started immediately.*
+`,
+    },
     python: {
         "1.1": `
 # Get Started With Python (Chapter 1.1)

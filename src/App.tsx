@@ -141,6 +141,24 @@ function App() {
     return localStorage.getItem("current_chat_id");
   });
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isWideLayout, setIsWideLayout] = useState(window.innerWidth > 1200);
+
+  // Responsive Sidebar Listener
+  useEffect(() => {
+    const handleResize = () => {
+      const wide = window.innerWidth > 1200;
+      setIsWideLayout(wide);
+      if (wide) {
+        setIsHistoryOpen(true);
+      }
+    };
+    
+    // Initial check
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [visibleChats, setVisibleChats] = useState(20);
   const [isAiAssistantVisible, setIsAiAssistantVisible] = useState(true);
 
@@ -522,6 +540,7 @@ function App() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
+      if (isWideLayout) return; // Don't close on click outside in wide layout
       const toggleBtn = document.getElementById("sidebar-toggle");
       if (toggleBtn && toggleBtn.contains(event.target as Node)) {
         return;
@@ -577,7 +596,7 @@ function App() {
   const handleNewChat = () => {
     setCurrentChatId(null);
     setMessages(INITIAL_MESSAGES);
-    setIsHistoryOpen(false);
+    if (!isWideLayout) setIsHistoryOpen(false);
     setViewMode("ai");
   };
 
@@ -588,7 +607,7 @@ function App() {
   const handleSelectChat = (chat: ChatSession) => {
     setCurrentChatId(chat.id);
     setMessages(chat.messages || [{ role: 'system', content: chat.description || '' }]);
-    setIsHistoryOpen(false);
+    if (!isWideLayout) setIsHistoryOpen(false);
     setViewMode("ai");
   };
 
@@ -1871,7 +1890,7 @@ function App() {
   const handleSelectTopic = (topic: Topic, groupTitle: string) => {
     setSelectedTopic(topic);
     setSelectedGroup(groupTitle);
-    setIsHistoryOpen(false); // Close sidebar on selection logic can be here
+    if (!isWideLayout) setIsHistoryOpen(false);
   };
 
   const markdownComponents = useMemo(() => ({
@@ -2112,6 +2131,145 @@ function App() {
 
 
         <main className="main-content">
+          {/* Sidebar Overlay (Chat History OR Learning Topics) */}
+          {isHistoryOpen && (
+            <div className="chat-history-sidebar" ref={sidebarRef}>
+              {viewMode === "learning" ? (
+                // Learning Topics Sidebar
+                <div className="sidebar-content" style={{ padding: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => { setViewMode("ai"); setIsHistoryOpen(true); }}
+                      style={{ marginRight: "10px", padding: "4px" }}
+                    >
+                      <ArrowLeft size={16} />
+                    </button>
+                    <h3 style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-color)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      {language.toUpperCase()} Course
+                    </h3>
+                  </div>
+
+                  {(
+                    language === "rust" ? TOPICS_RUST :
+                      language === "python" ? TOPICS_PYTHON :
+                        language === "dsa" ? TOPICS_DSA :
+                          language === "html" ? TOPICS_HTML :
+                            language === "css" ? TOPICS_CSS :
+                              language === "ml" || language === "ml-notes" ? TOPICS_ML :
+                                TOPICS_JS
+                  ).map((group) => (
+                    <div key={group.title} style={{ marginBottom: "12px" }}>
+                      <button
+                        onClick={() => toggleGroup(group.title)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          width: "100%",
+                          background: "transparent",
+                          border: "none",
+                          padding: "6px 0",
+                          cursor: "pointer",
+                          color: "var(--text-main)",
+                          fontSize: "0.85rem",
+                          fontWeight: "600"
+                        }}
+                      >
+                        <span style={{ color: "var(--text-muted)", marginRight: "6px" }}>
+                          {expandedGroups.has(group.title) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </span>
+                        {group.title}
+                      </button>
+
+                      {expandedGroups.has(group.title) && (
+                        <div style={{ marginLeft: "14px", borderLeft: "1px solid var(--border-color)", paddingLeft: "8px", marginTop: "4px" }}>
+                          {group.topics.map(topic => (
+                            <button
+                              key={topic.id}
+                              onClick={() => handleSelectTopic(topic, group.title)}
+                              className={`history-item ${selectedTopic?.id === topic.id ? "active" : ""}`}
+                              style={{
+                                width: "100%",
+                                justifyContent: "flex-start",
+                                fontSize: "0.8rem",
+                                padding: "6px 8px",
+                                marginBottom: "2px",
+                                border: "none",
+                                textAlign: "left"
+                              }}
+                            >
+                              <span style={{ opacity: 0.7, marginRight: "6px", fontSize: "0.75rem" }}>{topic.id}</span>
+                              <span>{topic.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                // Chat History Sidebar
+                <>
+                  <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
+                      <Plus size={16} /> New Chat
+                    </button>
+                    {language !== "ml-notes" && (
+                      <button
+                        className="btn btn-secondary"
+                        style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                        onClick={() => {
+                          setViewMode("docs");
+                          if (!isWideLayout) setIsHistoryOpen(false);
+                        }}
+                      >
+                        <Book size={16} /> Official Docs
+                      </button>
+                    )}
+                    <button
+                      className="btn btn-secondary"
+                      style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                      onClick={() => {
+                        setViewMode("learning");
+                        setIsHistoryOpen(true); // Keep sidebar open for topic selection
+                      }}
+                    >
+                      <Sparkles size={16} /> Getting Started with AI
+                    </button>
+                  </div>
+                  <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+
+                    <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: "8px" }}><MessageSquare size={12} /> Recent Activity</div>
+                    {chats.length === 0 ? (
+                      <div className="empty-history">No history yet</div>
+                    ) : (
+                      <>
+                        {chats.slice(0, visibleChats).map((chat) => (
+                          <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
+                            <MessageSquare size={14} />
+                            <span className="history-title">{chat.title}</span>
+                            <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        {visibleChats < chats.length && (
+                          <button
+                            className="btn btn-secondary"
+                            onClick={() => setVisibleChats(prev => prev + 10)}
+                            style={{ margin: "10px", fontSize: "0.8rem" }}
+                          >
+                            Load More
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           <PanelGroup orientation="horizontal">
             {isAiAssistantVisible && (
               <>
@@ -2223,144 +2381,7 @@ function App() {
                           )}
                         </div>
 
-                        {/* Sidebar Overlay (Chat History OR Learning Topics) */}
-                        {isHistoryOpen && (
-                          <div className="chat-history-sidebar" ref={sidebarRef}>
-                            {viewMode === "learning" ? (
-                              // Learning Topics Sidebar
-                              <div className="sidebar-content" style={{ padding: "16px" }}>
-                                <div style={{ display: "flex", alignItems: "center", marginBottom: "16px" }}>
-                                  <button
-                                    className="btn btn-secondary"
-                                    onClick={() => { setViewMode("ai"); setIsHistoryOpen(true); }}
-                                    style={{ marginRight: "10px", padding: "4px" }}
-                                  >
-                                    <ArrowLeft size={16} />
-                                  </button>
-                                  <h3 style={{ fontSize: "0.9rem", fontWeight: "bold", color: "var(--accent-color)", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                    {language.toUpperCase()} Course
-                                  </h3>
-                                </div>
-
-                                {(
-                                  language === "rust" ? TOPICS_RUST :
-                                    language === "python" ? TOPICS_PYTHON :
-                                      language === "dsa" ? TOPICS_DSA :
-                                        language === "html" ? TOPICS_HTML :
-                                          language === "css" ? TOPICS_CSS :
-                                            language === "ml" || language === "ml-notes" ? TOPICS_ML :
-                                              TOPICS_JS
-                                ).map((group) => (
-                                  <div key={group.title} style={{ marginBottom: "12px" }}>
-                                    <button
-                                      onClick={() => toggleGroup(group.title)}
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        width: "100%",
-                                        background: "transparent",
-                                        border: "none",
-                                        padding: "6px 0",
-                                        cursor: "pointer",
-                                        color: "var(--text-main)",
-                                        fontSize: "0.85rem",
-                                        fontWeight: "600"
-                                      }}
-                                    >
-                                      <span style={{ color: "var(--text-muted)", marginRight: "6px" }}>
-                                        {expandedGroups.has(group.title) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                      </span>
-                                      {group.title}
-                                    </button>
-
-                                    {expandedGroups.has(group.title) && (
-                                      <div style={{ marginLeft: "14px", borderLeft: "1px solid var(--border-color)", paddingLeft: "8px", marginTop: "4px" }}>
-                                        {group.topics.map(topic => (
-                                          <button
-                                            key={topic.id}
-                                            onClick={() => handleSelectTopic(topic, group.title)}
-                                            className={`history-item ${selectedTopic?.id === topic.id ? "active" : ""}`}
-                                            style={{
-                                              width: "100%",
-                                              justifyContent: "flex-start",
-                                              fontSize: "0.8rem",
-                                              padding: "6px 8px",
-                                              marginBottom: "2px",
-                                              border: "none",
-                                              textAlign: "left"
-                                            }}
-                                          >
-                                            <span style={{ opacity: 0.7, marginRight: "6px", fontSize: "0.75rem" }}>{topic.id}</span>
-                                            <span>{topic.title}</span>
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              // Chat History Sidebar
-                              <>
-                                <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                  <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
-                                    <Plus size={16} /> New Chat
-                                  </button>
-                                  {language !== "ml-notes" && (
-                                    <button
-                                      className="btn btn-secondary"
-                                      style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                                      onClick={() => {
-                                        setViewMode("docs");
-                                        setIsHistoryOpen(false);
-                                      }}
-                                    >
-                                      <Book size={16} /> Official Docs
-                                    </button>
-                                  )}
-                                  <button
-                                    className="btn btn-secondary"
-                                    style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                                    onClick={() => {
-                                      setViewMode("learning");
-                                      setIsHistoryOpen(true); // Keep sidebar open for topic selection
-                                    }}
-                                  >
-                                    <Sparkles size={16} /> Getting Started with AI
-                                  </button>
-                                </div>
-                                <div className="sidebar-content" style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-
-                                  <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: "8px" }}><MessageSquare size={12} /> Recent Activity</div>
-                                  {chats.length === 0 ? (
-                                    <div className="empty-history">No history yet</div>
-                                  ) : (
-                                    <>
-                                      {chats.slice(0, visibleChats).map((chat) => (
-                                        <div key={chat.id} className={`history-item ${currentChatId === chat.id ? "active" : ""}`} onClick={() => handleSelectChat(chat)}>
-                                          <MessageSquare size={14} />
-                                          <span className="history-title">{chat.title}</span>
-                                          <button className="delete-btn" onClick={(e) => handleDeleteChat(e, chat.id)}>
-                                            <Trash2 size={12} />
-                                          </button>
-                                        </div>
-                                      ))}
-                                      {visibleChats < chats.length && (
-                                        <button
-                                          className="btn btn-secondary"
-                                          style={{ width: "100%", justifyContent: "center", marginTop: "8px", fontSize: "0.8rem", padding: "6px", border: "1px solid var(--border-color)" }}
-                                          onClick={() => setVisibleChats(prev => prev + 20)}
-                                        >
-                                          Load More
-                                        </button>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
+                        {/* Sidebar moved to top level of main-content */}
 
                         <div style={{ display: viewMode === "ai" ? "flex" : "none", flexDirection: "column", flex: 1, overflow: "hidden" }}>
                           {aiService === "api" ? (

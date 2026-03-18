@@ -138,3 +138,4 @@ const handleListen = async (word: string) => {
 - **Touch Support**: Use `onTouchEnd` in addition to `onClick` for mobile responsiveness.
 - **Cleanup**: Always cancel speech when closing the popup or switching words.
 - **Grace Period**: Always include a 1.5s delay before checking `isSpeaking()` on mobile.
+- **Environment Compatibility**: AI features are implemented using standard web APIs (streaming fetch) through `generateAIResponseStream`, making them compatible with both Tauri (desktop) and Browser/Mobile PWA environments as long as API keys are configured.

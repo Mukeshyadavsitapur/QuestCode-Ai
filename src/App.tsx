@@ -574,15 +574,9 @@ function App() {
     setQuickChatMessages(updatedMessages);
     scrollToLatestMessage(quickChatScrollRef);
 
+    // On mobile/browser, we can still use the AI if API keys are provided
     if (!!!(window as any).__TAURI_INTERNALS__) {
-      setTimeout(() => {
-        setQuickChatMessages(prev => {
-          const newArr = [...prev];
-          newArr[newArr.length - 1] = { role: 'ai', content: "**Browser Mode:** Quick Chat requires the desktop application to access the backend." };
-          return newArr;
-        });
-      }, 500);
-      return;
+      console.log("Browser Mode: AI Chat is available if API keys are configured.");
     }
 
     setIsQuickChatExplaining(true);
@@ -684,10 +678,9 @@ function App() {
     // On mobile: showing AI assistant hides editor
     if (isMobile) setIsEditorVisible(false);
 
+    // On mobile/browser, we can still use the AI if API keys are provided
     if (!!!(window as any).__TAURI_INTERNALS__) {
-      setMessages([{ role: 'system', content: "## Browser Mode\n\nAI features require the desktop application to access the backend. Please download the full application." }]);
-      setIsExplaining(false);
-      return;
+      console.log("Browser Mode: AI features are available if API keys are configured.");
     }
 
     // Add Thinking Message
@@ -778,15 +771,9 @@ function App() {
     setMessages(updatedMessages);
     scrollToLatestMessage(mainChatScrollRef);
 
+    // On mobile/browser, we can still use the AI if API keys are provided
     if (!!!(window as any).__TAURI_INTERNALS__) {
-      setTimeout(() => {
-        setMessages(prev => {
-          const newArr = [...prev];
-          newArr[newArr.length - 1] = { role: 'ai', content: "**Browser Mode:** AI Chat requires the desktop application to access the backend." };
-          return newArr;
-        });
-      }, 500);
-      return;
+      console.log("Browser Mode: AI Chat is available if API keys are configured.");
     }
 
     try {

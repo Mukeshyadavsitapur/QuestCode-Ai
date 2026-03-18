@@ -38,7 +38,6 @@ import Quiz from "./Quiz";
 import "./App.css";
 import {
   DEFAULT_RUST_CODE, DEFAULT_PYTHON_CODE, DEFAULT_HTML_CODE, DEFAULT_CSS_CODE, DEFAULT_JS_CODE,
-  DEFAULT_ML_CODE,
   DEFAULT_ML_NOTES_CODE,
 } from "./defaultCode";
 import Prism from "prismjs";
@@ -79,7 +78,7 @@ function App() {
     if (lang === "html") return DEFAULT_HTML_CODE;
     if (lang === "css") return DEFAULT_CSS_CODE;
     if (lang === "javascript") return DEFAULT_JS_CODE;
-    if (lang === "ml") return DEFAULT_ML_CODE;
+    if (lang === "ml") return DEFAULT_ML_NOTES_CODE;
     if (lang === "ml-notes") return DEFAULT_ML_NOTES_CODE;
     return DEFAULT_PYTHON_CODE;
   };
@@ -93,6 +92,8 @@ function App() {
     const savedCode = localStorage.getItem(`code_${language}`);
     return savedCode || getDefaultCode(language);
   });
+  
+  const isJupyterMode = language === "ml-notes" || language === "ml";
   
   // Jupyter Notebook State
   const [jupyterMode, setJupyterMode] = useState<"lite" | "local">(() => {
@@ -2600,7 +2601,7 @@ function App() {
                             {isAiAssistantVisible ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
                           </button>
                           
-                          {language === "ml-notes" ? (
+                          {isJupyterMode ? (
                             <>
                               <div style={{ display: "flex", background: "var(--bg-secondary)", borderRadius: "6px", overflow: "hidden", border: "1px solid var(--border-color)" }}>
                                 <button 
@@ -2724,7 +2725,7 @@ function App() {
                         </div>
                       </div>
                       <div className="editor-container" style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                        {language === "ml-notes" ? (
+                        {isJupyterMode ? (
                           <Notebook
                             theme={theme}
                             mode={jupyterMode}
@@ -2735,7 +2736,7 @@ function App() {
                         ) : (
                           <Editor
                             height="100%"
-                            language={language === "ml" || language === "dsa" ? "python" : language}
+                            language={language === "dsa" ? "python" : language}
                             theme={theme}
                             value={code}
                             onChange={(value) => setCode(value || "")}
@@ -2754,7 +2755,7 @@ function App() {
                     </div >
                   </Panel >
 
-                  {isTerminalVisible && (
+                  {isTerminalVisible && !isJupyterMode && (
                     <>
                       <PanelResizeHandle className={`resizer ${terminalLayout}`} />
                       <Panel defaultSize={30} minSize={15}>

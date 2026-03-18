@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { LAB_UTILS_UNI, QUESTCODE_AI_MPLSTYLE } from './pythonAssets';
 
 export function usePython() {
   const [isPyodideLoading, setIsPyodideLoading] = useState(true);
@@ -12,6 +13,43 @@ export function usePython() {
           indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/"
         });
         
+        // Load numpy, matplotlib, and ipympl (pinned for compatibility)
+        await pyodide.loadPackage(['numpy', 'matplotlib', 'ipympl==0.9.3']);
+        
+        // Polyfill 'js' module for matplotlib's WebAgg backend which expects 'alert' and 'document'
+        pyodide.runPython(`
+            import js
+            if not hasattr(js, 'alert'):
+                js.alert = lambda x: print(f"JS ALERT: {x}")
+            if not hasattr(js, 'document'):
+                class MockElement:
+                    def __getattr__(self, name): return lambda *args, **kwargs: MockElement()
+                class MockDocument:
+                    def __init__(self):
+                        self.body = MockElement()
+                        self.head = MockElement()
+                    def createElement(self, *args, **kwargs): return MockElement()
+                    def getElementById(self, *args, **kwargs): return MockElement()
+                    def getElementsByTagName(self, *args, **kwargs): return [MockElement()]
+                js.document = MockDocument()
+            
+            # Polyfill TimerTornado for matplotlib (fixes 'cannot import TimerTornado')
+            try:
+                import matplotlib.backends.backend_webagg_core as webagg
+                if not hasattr(webagg, 'TimerTornado'):
+                    class MockTimer:
+                        def __init__(self, *args, **kwargs): pass
+                        def start(self): pass
+                        def stop(self): pass
+                    webagg.TimerTornado = MockTimer
+            except ImportError:
+                pass
+        `);
+        
+        // Write utility files to Pyodide's virtual filesystem
+        pyodide.FS.writeFile('lab_utils_uni.py', LAB_UTILS_UNI);
+        pyodide.FS.writeFile('questcode_ai.mplstyle', QUESTCODE_AI_MPLSTYLE);
+
         // Create a custom print wrapper to capture stdout
         pyodide.setStdout({ batched: (str: string) => { console.log(str); } });
         

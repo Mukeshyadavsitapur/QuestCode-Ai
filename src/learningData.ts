@@ -602,8 +602,10 @@ export const TOPICS_ML: TopicGroup[] = [
             { id: "2.2", title: "Model Representation" },
             { id: "2.3", title: "Optional Lab: Model Representation" },
             { id: "2.4", title: "Cost Function Formula" },
-            { id: "2.5", title: "Cost Function Intuition" },
-            { id: "2.6", title: "Practice Questions" },
+            { id: "2.5", title: "Cost Function Intuition (1D)" },
+            { id: "2.6", title: "Visualizing the Cost Function (2D)" },
+            { id: "2.7", title: "Visualization Examples" },
+            { id: "2.8", title: "Optional Lab: Cost Function" },
         ],
     },
     {

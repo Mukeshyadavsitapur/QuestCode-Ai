@@ -562,7 +562,7 @@ To talk about these concepts effectively, we use a standard set of mathematical 
 2.  **y**: The **Output Variable** (also called the **target variable**). This is what we want to predict (the Price).
 3.  **m**: The total number of **training examples** (rows in your data table).
 4.  **(x, y)**: A single training example (one pair of input and output).
-5.  **(x⁽ⁱ⁾, y⁽ⁱ⁾)**: The **i-th** training example. The superscript **(i)** is NOT exponentiation (it's not $x^2$); it simply refers to the row number in your table.
+5.  **(x⁽ⁱ⁾, y⁽ⁱ⁾)**: The **i-th** training example. The superscript **(i)** is NOT exponentiation (it's not x^2); it simply refers to the row number in your table.
 
 ### Example Training Set (m = 47)
 
@@ -848,7 +848,7 @@ Now that we have the math for the Cost Function, let's build some intuition abou
 
 ## ⚖️ Simplified Model
 
-Instead of **f_w,b(x) = wx + b**, we'll set the bias **b = 0**. This means our line must pass through the origin (0,0).
+Instead of f_{w,b}(x) = wx + b, we'll set the bias **b = 0**. This means our line must pass through the origin (0,0).
 
 ### f_w(x) = wx
 
@@ -871,14 +871,14 @@ To understand how the cost works, we need to look at two different graphs at the
 Let's see what happens to the cost as we change the slope **w** using a training set with three points: **(1,1), (2,2), and (3,3)**.
 
 ### Case 1: w = 1
-- The model is **f(x) = 1 * x**.
+- The model is f(x) = 1 * x.
 - Our predictions: **f(1)=1, f(2)=2, f(3)=3**.
 - **Error**: Every prediction matches the target exactly!
 - **Cost**: **J(1) = 0**.
 - *This is the global minimum (the bottom of our cost curve).*
 
 ### Case 2: w = 0.5
-- The model is **f(x) = 0.5 * x**.
+- The model is f(x) = 0.5 * x.
 - Our predictions: **f(1)=0.5, f(2)=1, f(3)=1.5**.
 - **Error**: We are "missing" the targets.
 - **Cost**: **J(0.5) ≈ 0.58**.
@@ -908,6 +908,396 @@ The lower the point on the cost curve, the better our line fits the data!
 - For every choice of **w**, there is a corresponding **total cost**.
 - The cost function **J(w)** helps us find the "sweet spot" for our parameter.
 - Minimizing **J(w)** is the key to training our model.
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "2.6": `
+# Visualizing the Cost Function (Chapter 2.6)
+
+In the previous lesson, we simplified our model by setting b = 0. Now, let's look at the full model with both parameters **w** and **b**. This will give us a much richer understanding of how the cost function behaves in the real world.
+
+## 🎢 The 3D Surface Plot
+
+When we have two parameters, **w** and **b**, the cost function J(w,b) is no longer a simple 2D curve. Instead, it becomes a **3D surface**.
+
+![3D Surface Plot](/ml_notes/cost_function_3d_bowl.png)
+
+Many people describe this shape as:
+- A **soup bowl**
+- A **hammock**
+- A **curved dinner plate**
+
+### 📍 Understanding the Points
+Each single point on this surface represents a specific choice of **w** and **b**. 
+- The **horizontal axes** represent your parameters **w** and **b**.
+- The **vertical height** of the surface above any point is the value of the cost **J** for those specific parameters.
+- If you pick "bad" parameters, you'll be high up on the edges of the bowl.
+- If you pick "good" parameters, you'll be down near the bottom.
+
+---
+
+## 🗺️ Contour Plots (The Mount Fuji Analogy)
+
+Visualizing 3D plots on a 2D screen can be tricky. To make it easier, we often use a **Contour Plot**.
+
+If you've ever used a **topographical map** for hiking, you've seen contours! Imagine flying in a rocket ship directly over a mountain (like Mount Fuji) and looking straight down.
+
+![Mount Fuji Contour Analogy](/ml_notes/cost_function_contour_fuji.png)
+
+### How to Read a Contour Plot:
+1.  **Concentric Ovals**: These ovals (or ellipses) represent sets of points that have the **exact same height** (the same cost value J).
+2.  **Slicing the Bowl**: Imagine taking a knife and slicing our 3D bowl horizontally. Each slice creates a ring—these rings are what you see in the contour plot.
+3.  **The Minimum**: The very bottom of the bowl—the point where J is lowest—is the **center of the smallest, innermost oval**.
+
+---
+
+## 🔗 Relating Predictions to the Cost
+
+It's fascinating to see how a point on the contour plot relates to our model's line.
+
+![Bad Model Fit Correlation](/ml_notes/bad_model_fit_contour.png)
+
+- **On the Left**: We see a model line f(x). If the line is far from the data points, it's a "bad" model.
+- **On the Right**: This bad model corresponds to a point **far away from the center** of the contour plot. 
+
+As we move our parameters **w** and **b** toward the center of the ovals, our line on the left will drift closer and closer to the actual data points!
+
+## 🎓 Summary
+- The cost function J(w,b) creates a **3D bowl shape**.
+- **Contour plots** are a 2D way to visualize this 3D "valley".
+- Every point on the contour plot represents a model line.
+- The goal of Machine Learning is to find the **center of those ovals**.
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "2.7": `
+# Visualization Examples: Deep Dive into Cost (Chapter 2.7)
+
+Now that we understand the theory behind 3D surface plots and contour lines, let's look at some concrete examples of how parameters **w** and **b** change the model. This will help you "read" a cost landscape like a pro!
+
+## 🎭 Example 1: The "Perfect" Fit
+
+Imagine our training data is for houses where a 1,000 sqft house costs $200k, and a 2,000 sqft house costs $400k.
+
+- **Best Parameters**: w = 200, b = 0.
+- **The Model**: f_{w,b}(x) = 200x + 0.
+- **The Cost**: J(200, 0) = 0.
+
+![Perfect Fit Visual](/ml_notes/perfect_fit_contour.png)
+
+**On the Map**: This model sits at the very center of the smallest oval on our contour plot. It is the "Global Minimum" - the absolute bottom of the bowl.
+
+---
+
+## 🎭 Example 2: The Parallel Shift (Changing 'b')
+
+What if we keep the slope **w** correct but change the bias **b**? Let's say we set **b = 100**.
+
+- **The Model**: f_{w,b}(x) = 200x + 100.
+- **The Result**: The line maintains its steepness but slides **upwards** on the graph. Every prediction is now $100 too high!
+- **The Cost**: J increases significantly.
+
+![Parallel Shift Visual](/ml_notes/parallel_shift_contour.png)
+
+**On the Map**: You are now "climbing" one of the walls of the bowl. You've moved away from the center along the **b-axis**.
+
+---
+
+## 🎭 Example 3: The Tilt (Changing 'w')
+
+What if we have **b = 0** but set **w = 100** (too flat) or **w = 400** (too steep)?
+
+- **The Result**: The line rotates around the starting point. It fits some points but misses others by a huge margin.
+- **The Cost**: J climbs very quickly because we square those large errors!
+
+![Tilt Shift Visual](/ml_notes/tilt_shift_contour.png)
+
+**On the Map**: You are moving away from the center along the **w-axis**.
+
+---
+
+## 🏔️ Decoding the Contour Landscape
+
+Interactive tools often show a "dot" moving on a contour plot while the line moves on the data plot. Here is how to interpret different regions:
+
+| Position on Map | Model Appearance | Cost Score |
+| :--- | :--- | :--- |
+| **Inside the tiny circle** | Line passes through the middle of all points. | **Near Zero** (Excellent) |
+| **Middle-sized rings** | Line is close but slightly off or tilted. | **Moderate** (Okay) |
+| **Very large outer rings** | Line is nowhere near the data. | **High** (Poor) |
+
+> [!TIP]
+> **Pro Tip**: If the ovals in a contour plot are very "stretched" (like long cigars), it means one parameter is much more sensitive than the other. Small changes in one axis might result in huge jumps in cost!
+
+---
+
+## 🧠 Conceptual Challenge
+
+Imagine you see a model line that is **below all high-priced houses** but **above all low-priced houses**.
+1. To fix this, should you change the slope (**w**) or the intercept (**b**)?
+2. Where is your "dot" likely sitting on the contour plot? (North, South, East, or West relative to the center?)
+
+*In the next section, we will see how to build a program that moves that dot toward the center automatically!*
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "2.8": `
+# Optional Lab: Cost Function (Chapter 2.8)
+
+In this lab, you will implement and explore the cost function for linear regression with one variable.
+
+> [!IMPORTANT]
+> **Cloud Server / JupyterLite Setup**: Since you are using a cloud-based environment (like the "Lite" mode), you don't need to install anything on your computer. All you need to do is:
+> 1. Run the **Setup Cell** below to create the utility files in your cloud workspace.
+> 2. Ensure you run \`%matplotlib widget\` at the start of your notebook to enable interactive sliders.
+> 3. If you get a 'ModuleNotFoundError: ipympl', run \`pip install ipympl\` (for local/colab) or \`import piplite; await piplite.install('ipympl')\` (for Lite mode) in a new cell.
+> 4. If the slider doesn't appear, try reloading the page or clicking "Restart Kernel".
+
+\`\`\`python
+# STEP 1: CREATE UTILITY FILES
+import os
+import sys
+
+# Auto-install ipympl for interactive widgets if missing
+try:
+    import ipympl
+except ImportError:
+    print("Installing interactive widget support (ipympl)...")
+    try:
+        import piplite
+        # Explicitly install missing dependencies
+        await piplite.install('ipywidgets')
+        await piplite.install('ipython_genutils')
+        # Use deps=False to avoid conflict with newer IPython versions in JupyterLite
+        await piplite.install('ipympl==0.9.3', deps=False)
+        print("✅ ipympl 0.9.3 and widgets installed via piplite.")
+    except ImportError:
+        import subprocess
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "ipywidgets", "ipython_genutils", "ipympl==0.9.3"])
+        print("✅ ipympl 0.9.3 and widgets installed via pip.")
+    print("⚠️  IMPORTANT: Please RESTART YOUR KERNEL and run this cell again to activate widgets.")
+
+# Polyfill 'js' module for matplotlib (fixes 'cannot import alert/document from js')
+import js
+if not hasattr(js, 'alert'):
+    js.alert = lambda x: print(f"JS ALERT: {x}")
+if not hasattr(js, 'document'):
+    class MockElement:
+        def __getattr__(self, name): return lambda *args, **kwargs: MockElement()
+    class MockDocument:
+        def __init__(self):
+            self.body = MockElement()
+            self.head = MockElement()
+        def createElement(self, *args, **kwargs): return MockElement()
+        def getElementById(self, *args, **kwargs): return MockElement()
+        def getElementsByTagName(self, *args, **kwargs): return [MockElement()]
+    js.document = MockDocument()
+
+# Polyfill TimerTornado for matplotlib (fixes 'cannot import TimerTornado')
+try:
+    import matplotlib.backends.backend_webagg_core as webagg
+    if not hasattr(webagg, 'TimerTornado'):
+        class MockTimer:
+            def __init__(self, *args, **kwargs): pass
+            def start(self): pass
+            def stop(self): pass
+        webagg.TimerTornado = MockTimer
+except ImportError:
+    pass
+
+lab_utils_content = """
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+from mpl_toolkits.mplot3d import axes3d
+
+def compute_cost(x, y, w, b):
+    m = x.shape[0]
+    f_wb = w * x + b
+    cost = np.sum((f_wb - y)**2)
+    total_cost = 1 / (2 * m) * cost
+    return total_cost
+
+def plt_intuition(x_train, y_train):
+    w_range = np.linspace(0, 400, 50)
+    b_fixed = 100
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+    plt.subplots_adjust(bottom=0.25)
+    ax[0].scatter(x_train, y_train, marker='x', c='r', label="Actual")
+    w_init = 200
+    line, = ax[0].plot(x_train, w_init * x_train + b_fixed, c='b', label="Model")
+    ax[1].plot(w_range, [compute_cost(x_train, y_train, w, b_fixed) for w in w_range])
+    dot, = ax[1].plot([w_init], [compute_cost(x_train, y_train, w_init, b_fixed)], 'ro')
+    
+    ax_slider = plt.axes([0.25, 0.1, 0.5, 0.03])
+    slider = Slider(ax_slider, 'w', 0, 400, valinit=w_init)
+    def update(val):
+        w = slider.val
+        line.set_ydata(w * x_train + b_fixed)
+        dot.set_data([w], [compute_cost(x_train, y_train, w, b_fixed)])
+        fig.canvas.draw_idle()
+    slider.on_changed(update)
+    plt_intuition.slider_ref = slider
+    plt.show()
+
+def plt_stationary(x_train, y_train):
+    w_range = np.linspace(50, 350, 50); b_range = np.linspace(-100, 200, 50)
+    W, B = np.meshgrid(w_range, b_range); Z = np.zeros(W.shape)
+    for i in range(W.shape[0]):
+        for j in range(W.shape[1]):
+            Z[i,j] = compute_cost(x_train, y_train, W[i,j], B[i,j])
+    fig = plt.figure(figsize=(12, 4))
+    ax1 = fig.add_subplot(1, 2, 1, projection='3d')
+    ax1.plot_surface(W, B, Z, cmap='viridis', alpha=0.8)
+    ax2 = fig.add_subplot(1, 2, 2)
+    ax2.contour(W, B, Z, levels=20, cmap='viridis')
+    plt.show()
+    return fig, ax2, None
+
+def soup_bowl():
+    fig = plt.figure(); ax = fig.add_subplot(projection='3d')
+    x = np.linspace(-10, 10, 100); y = np.linspace(-10, 10, 100)
+    X, Y = np.meshgrid(x, y); Z = X**2 + Y**2
+    ax.plot_surface(X, Y, Z, cmap='viridis')
+    plt.show()
+
+def plt_update_onclick(*args): pass
+"""
+
+style_content = """
+axes.spines.top: False
+axes.spines.right: False
+grid.alpha: 0.3
+"""
+
+with open('lab_utils_uni.py', 'w') as f: f.write(lab_utils_content)
+with open('questcode_ai.mplstyle', 'w') as f: f.write(style_content)
+print("✅ Setup complete! lab_utils_uni.py and questcode_ai.mplstyle created.")
+print("💡 Tip: Make sure to run '%matplotlib widget' in a new cell before plotting.")
+\`\`\`
+
+## 🎯 Lab Goals
+- Implement the cost function using Python and NumPy.
+- Understand how w and b affect the cost score.
+- Visualize the convex "soup bowl" surface of the error landscape.
+
+---
+
+## 🛠️ Tools & Setup
+We will use the standard scientific stack:
+\`\`\`python
+import numpy as np
+import matplotlib.pyplot as plt
+from lab_utils_uni import plt_intuition, plt_stationary, plt_update_onclick, soup_bowl
+
+# House sizes (1000 sqft) and prices ($1000s)
+x_train = np.array([1.0, 2.0])
+y_train = np.array([300.0, 500.0])
+\`\`\`
+
+---
+
+## 📐 Computing the Cost
+
+The cost measures how well our model is predicting the target price. The formula for the cost J is:
+
+J(w,b) = 1/2m * sum( (f_{w,b}(x^i) - y^i)^2 )
+
+Where:
+- f_{w,b}(x^i) = wx^i + b is our prediction.
+- (f_{w,b}(x^i) - y^i)^2 is the squared error.
+
+### Python Implementation
+The code below calculates cost by looping over each training example.
+
+\`\`\`python
+def compute_cost(x, y, w, b): 
+    # number of training examples
+    m = x.shape[0] 
+    
+    cost_sum = 0 
+    for i in range(m): 
+        f_wb = w * x[i] + b   
+        cost = (f_wb - y[i]) ** 2  
+        cost_sum = cost_sum + cost  
+    total_cost = (1 / (2 * m)) * cost_sum  
+
+    return total_cost
+\`\`\`
+
+---
+
+## 🖱️ Cost Function Intuition (Interactive)
+
+Your goal is to find parameters w and b that minimize the cost. In a notebook environment, you can use a slider to see this in action:
+
+![Cost Slider Intuition](/ml_notes/cost_function_slider.png)
+
+\`\`\`python
+# Run this in your notebook to start the interactive slider
+plt_intuition(x_train, y_train)
+\`\`\`
+
+### Observations:
+- Cost is minimized when **w=200** (matching our previous lab).
+- Using the best w and b results in a **perfect fit** (Cost = 0).
+- Moving w away from 200 causes the cost to rise rapidly.
+
+---
+
+## 🏔️ Larger Data Set & Convex Surface
+
+What happens when data points don't fall perfectly on a line? Let's use a more realistic dataset:
+
+\`\`\`python
+x_train = np.array([1.0, 1.7, 2.0, 2.5, 3.0, 3.2])
+y_train = np.array([250, 300, 480, 430, 630, 730])
+
+plt.close('all') 
+fig, ax, dyn_items = plt_stationary(x_train, y_train)
+updater = plt_update_onclick(fig, ax, x_train, y_train, dyn_items)
+\`\`\`
+
+
+### The Convex "Soup Bowl"
+The cost function squares the loss, ensuring the error surface is **convex**. This means it will always have one single global minimum that we can find.
+
+![Symmetric Soup Bowl](/ml_notes/convex_cost_bowl.png)
+
+\`\`\`python
+# Visualizing the symmetric soup bowl
+soup_bowl()
+\`\`\`
+
+---
+
+## ✍️ Additional Practice
+
+### Exercise 1: Hand-Calculation
+If you have data points (1, 300) and (2, 500), and you choose **w=100, b=100**:
+1. Calculate f_{w,b}(1) and f_{w,b}(2).
+2. Find the error for each point.
+3. Calculate the total cost J(100, 100).
+4. *Check: Is this cost higher or lower than J(200, 100)?*
+
+### Exercise 2: Scaling Impact
+What do you think happens to the "soup bowl" shape if the house prices were in millions instead of thousands? Would the bowl get steeper or flatter?
+
+### Exercise 3: Zero Cost?
+Given the **Larger Data Set** above, is it possible to find a straight line that gives exactly J=0? Why or why not?
+
+---
+
+## 🎓 Conclusion
+- The **Cost Equation** provides a score of how well predictions match data.
+- **Minimizing cost** is how we find the "best" model.
+- The **Convex** nature of the cost function is why Machine Learning algorithms are so reliable!
 
 ---
 

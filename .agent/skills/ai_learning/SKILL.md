@@ -13,12 +13,12 @@ The AI Learning module (`src/AiLearning.tsx`) allows users to browse a curriculu
 ## Key Files
 - `src/AiLearning.tsx`: Main component for the AI learning interface.
 - `src/learningData.ts`: Defines the curriculum structure (TopicGroups and Topics).
-- `src/offlineLearningData.ts`: Stores pre-built markdown content for specific lessons.
+- `src/pythonLearningData.ts` & `src/mlLearningData.ts`: Stores pre-built markdown content for specific lessons.
 - `src/aiUtils.tsx`: Utility functions for AI response streaming.
 
 ## Offline First-Answer Mechanism
 To provide an immediate response without calling the AI:
-1.  **Define Content**: Add the lesson content in `src/offlineLearningData.ts` mapping the language and topic ID.
+1.  **Define Content**: Add the lesson content in `src/pythonLearningData.ts` or `src/mlLearningData.ts` mapping the language and topic ID.
 2.  **Check in Component**: `AiLearning.tsx` checks `OFFLINE_LEARNING_DATA[language][topic.id]` during the initial fetch.
 3.  **Caching**: If offline data is found, it is set as the initial message and also stored in `localStorage` to ensure consistency with AI-generated responses.
 
@@ -39,3 +39,13 @@ Subsequent questions from the user after the initial lesson are handled by the A
 - [x] Chapter 2.5 (Operators)
 - [x] Chapter 2.6 (Practice Questions)
 - [ ] Chapter 3+ (Planned)
+
+## Offline Lesson Progress (ML Notes)
+- [x] Chapter 1.1 (Introduction, Samuel Legend, Tools/Skills)
+- [x] Chapter 1.2 (Supervised Learning Part 1 & Regression)
+- [x] Chapter 1.3 (Supervised Learning Part 2 & Classification)
+- [x] Chapter 1.4 (Unsupervised Learning Part 1 & Clustering)
+- [x] Chapter 1.5 (Unsupervised Learning Part 2 & Anomaly/Dim. Red.)
+- [x] Chapter 1.6 (Intro to Jupyter Notebooks)
+- [x] Chapter 1.7 (Optional Lab & Week 1 Graduation)
+- [ ] Chapter 1.8+ (Planned)

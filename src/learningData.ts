@@ -586,11 +586,13 @@ export const TOPICS_ML: TopicGroup[] = [
     {
         title: "1. Introduction to Machine Learning",
         topics: [
-            { id: "1.1", title: "What is Machine Learning?" },
-            { id: "1.2", title: "Types of ML (Supervised, Unsupervised, RL)" },
-            { id: "1.3", title: "Setting up Python for ML (Scikit-Learn)" },
-            { id: "1.4", title: "ML vs Traditional Programming" },
-            { id: "1.5", title: "Practice Questions" },
+            { id: "1.1", title: "Introduction to Machine Learning" },
+            { id: "1.2", title: "Supervised Learning Part 1" },
+            { id: "1.3", title: "Supervised Learning Part 2: Classification" },
+            { id: "1.4", title: "Unsupervised Learning Part 1: Clustering" },
+            { id: "1.5", title: "Unsupervised Learning Part 2: Anomaly & Dimensionality" },
+            { id: "1.6", title: "Introduction to Jupyter Notebooks" },
+            { id: "1.7", title: "Optional Lab: Jupyter Practice" },
         ],
     },
     {

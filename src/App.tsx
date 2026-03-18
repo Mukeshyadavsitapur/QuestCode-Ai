@@ -935,6 +935,10 @@ function App() {
     setLanguage(newLang);
     localStorage.setItem("language", newLang);
 
+    if (newLang === "ml-notes" && viewMode === "docs") {
+      setViewMode("ai");
+    }
+
     // If switching to ml-notes, ensure the code is valid JSON for Notebook
     if (newLang === "ml-notes") {
       try {
@@ -2302,16 +2306,18 @@ function App() {
                                   <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
                                     <Plus size={16} /> New Chat
                                   </button>
-                                  <button
-                                    className="btn btn-secondary"
-                                    style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                                    onClick={() => {
-                                      setViewMode("docs");
-                                      setIsHistoryOpen(false);
-                                    }}
-                                  >
-                                    <Book size={16} /> Official Docs
-                                  </button>
+                                  {language !== "ml-notes" && (
+                                    <button
+                                      className="btn btn-secondary"
+                                      style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                                      onClick={() => {
+                                        setViewMode("docs");
+                                        setIsHistoryOpen(false);
+                                      }}
+                                    >
+                                      <Book size={16} /> Official Docs
+                                    </button>
+                                  )}
                                   <button
                                     className="btn btn-secondary"
                                     style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}

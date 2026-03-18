@@ -1,68 +1,5 @@
-export const OFFLINE_LEARNING_DATA: Record<string, Record<string, string>> = {
-    "ml-notes": {
-        "1.1": `
-# Introduction to Machine Learning (Chapter 1.1)
-
-Welcome to the world of Machine Learning! This course is inspired by Andrew Ng's world-famous ML curriculum, designed to take you from a curious beginner to a confident practitioner.
-
-## 🤖 What is Machine Learning?
-
-In traditional programming, you write a set of rules (code) and give it data to get an output. In **Machine Learning**, you give the computer data and the expected outputs, and it **learns the rules** itself!
-
-### Two Classical Definitions:
-
-1.  **Arthur Samuel (1959):** "The field of study that gives computers the ability to learn without being explicitly programmed." 
-    *   *Analogy:* Instead of teaching a child exactly how to recognize a cat by listing every feature (ears, whiskers, tail), you show them 100 pictures of cats. Eventually, the child "just knows" what a cat looks like.
-
-2.  **Tom Mitchell (1998):** "A computer program is said to learn from experience **E** with respect to some class of tasks **T** and performance measure **P**, if its performance at tasks in **T**, as measured by **P**, improves with experience **E**."
-    *   **Example (Spam Filter):**
-        *   **Task (T):** Classifying emails as spam or not spam.
-        *   **Experience (E):** Watching you mark emails as spam.
-        *   **Performance (P):** The percentage of emails correctly classified.
-
----
-
-## 🚀 Setting Up Your Environment: Jupyter Notebook
-
-To practice Machine Learning, we use a tool called **Jupyter Notebook**. It allows you to write code, see outputs instantly, and write notes (like these!) all in one place.
-
-### Why use Jupyter?
-Unlike standard scripts, Jupyter lets you run code in **Cells**. You can run one cell, change a variable, and run the next cell without restarting everything. This is perfect for experimenting with data!
-
-### Step-by-Step Installation:
-
-1.  **The Easy Way (Anaconda):** 
-    *   Download and install [Anaconda](https://www.anaconda.com/download). It comes with Python, Jupyter, and all the ML libraries (NumPy, Pandas, Scikit-Learn) pre-installed.
-    
-2.  **The Pro Way (Pip):**
-    *   If you already have Python, open your terminal and type:
-      \`\`\`bash
-      pip install notebook
-      \`\`\`
-
-3.  **Launching Jupyter:**
-    *   Open your terminal/command prompt and type:
-      \`\`\`bash
-      jupyter notebook
-      \`\`\`
-    *   A tab will open in your web browser. Click **New > Python 3** to start your first notebook!
-
-### Your First "Notebook" Experience
-In the editor on the right, we've provided a **Notebook-like environment**. 
-- Each box is a **Cell**.
-- You can run them one by one.
-- Try typing \`print("Hello ML!")\` in the first cell and clicking the play button!
-
----
-
-### What's Next?
-In the next chapter, we will dive into the different types of Machine Learning: **Supervised** and **Unsupervised** learning. 
-
-*This lesson is available offline to get you started immediately.*
-`,
-    },
-    python: {
-        "1.1": `
+export const PYTHON_LEARNING_DATA: Record<string, string> = {
+    "1.1": `
 # Get Started With Python (Chapter 1.1)
 
 Python is one of the most popular and versatile programming languages in the world today. It is widely used in web development, data science, artificial intelligence, automation, and more.
@@ -104,7 +41,7 @@ In the next chapter, we will write your very first Python program and understand
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "1.2": `
+    "1.2": `
 # Your First Python Program (Chapter 1.2)
 
 Now that you have Python set up, it's time to write your very first program! Traditionally, the first program anyone writes in a new language is the **"Hello, World!"** program.
@@ -138,7 +75,7 @@ In the next section, we will learn about **Comments**—a way to write notes in 
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "1.3": `
+    "1.3": `
 # Python Comments (Chapter 1.3)
 
 Comments are a way to write notes in your code that Python completely ignores. They are essential for explaining what your code does, making it easier for you and others to understand later.
@@ -155,12 +92,12 @@ print("Hello World") # You can also add comments after code
 Python doesn't have a specific "multi-line comment" symbol like \`/* ... */\` in some other languages. Instead, we use a multiline string (triple quotes) if the string is not assigned to a variable.
 
 \`\`\`python
-"""
-This is a multi-line comment.
-It is often called a 'docstring'.
-Python sees it as a string but ignores it
-if it's not being used for anything.
-"""
+# """
+# This is a multi-line comment.
+# It is often called a 'docstring'.
+# Python sees it as a string but ignores it
+# if it's not being used for anything.
+# """
 print("Comments are useful!")
 \`\`\`
 
@@ -175,7 +112,7 @@ Next, we'll learn about **Indentation**, which is one of the most unique and imp
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "1.4": `
+    "1.4": `
 # Python Indentation (Chapter 1.4)
 
 In most programming languages (like C, Java, or JavaScript), braces \`{ }\` are used to define blocks of code. However, Python uses **indentation** to indicate which lines of code belong together.
@@ -219,7 +156,7 @@ Next, we'll wrap up the introduction with some **Practice Questions** to test wh
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "1.5": `
+    "1.5": `
 <div class="practice-questions">
   <h2>Chapter 1.5: Practice Questions</h2>
   <div class="question">
@@ -256,7 +193,7 @@ Next, we'll wrap up the introduction with some **Practice Questions** to test wh
       <div class="answer-content">
         <p>The <code>#</code> symbol. Anything written after the <code>#</code> on the same line will be ignored by Python at runtime.</p>
         <pre class="language-python"><code># This is an example of a comment
-print("Focus on the code!")</code></pre>
+    print("Focus on the code!")</code></pre>
       </div>
     </details>
   </div>
@@ -352,7 +289,7 @@ print("Success")</code></pre>
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "2.1": `
+    "2.1": `
 # Chapter 2.1: Python Variables and Literals
 
 Welcome to the heart of programming! In this lesson, we'll learn how to store information so we can use it later.
@@ -446,7 +383,7 @@ print(type(price)) # Output: <class 'float'>
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "2.2": `
+    "2.2": `
 # Chapter 2.2: Naming Rules (Snake Case)
 
 In the last lesson, we learned that variables are like boxes with labels. But just like you wouldn't label a box with "!!!" or "123-ABC" in an organized warehouse, Python has some strict rules about what those labels (variable names) can look like.
@@ -523,7 +460,7 @@ In the next chapter, we will learn about **Type Conversion**—how to change dat
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "2.3": `
+    "2.3": `
 # Chapter 2.3: Python Type Conversion
 
 In programming, you often need to change data from one type to another. For example, if you get "10" from a user (which is a **String**), you can't add it to a number until you convert it into an **Integer**. This process is called **Type Conversion** (or **Type Casting**).
@@ -610,7 +547,7 @@ In the next chapter, we will learn about **Basic Input and Output**—how to ask
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "2.4": `
+    "2.4": `
 # Chapter 2.4: Python Basic Input and Output
 
 Programming is all about interaction! So far, we've only seen how to display information. In this lesson, we'll learn how to ask the user for data and show it back to them in a friendly way.
@@ -720,7 +657,7 @@ In the next chapter, we will learn about **Python Operators**—the symbols like
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "2.5": `
+    "2.5": `
 # Chapter 2.5: Python Operators
 
 In the previous lessons, we learned how to store data and get it from the user. Now, it's time to actually **do something** with that data! **Operators** are special symbols that perform operations on variables and values.
@@ -832,7 +769,7 @@ Congratulations! You've finished the Python Fundamentals section. In the next ch
 
 *This lesson is available offline to get you started immediately.*
 `,
-        "2.6": `
+    "2.6": `
 <div class="practice-questions">
   <h2>Chapter 2.6: Practice Questions</h2>
   
@@ -961,6 +898,5 @@ print("Price: {price}")</code></pre>
 </div>
 
 *This lesson is available offline to get you started immediately.*
-`
-    }
+`,
 };

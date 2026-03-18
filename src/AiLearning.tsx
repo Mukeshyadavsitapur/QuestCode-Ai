@@ -7,7 +7,13 @@ import "prismjs/themes/prism-tomorrow.css"; // Basic dark theme, can be overridd
 import "prismjs/components/prism-rust";
 import "prismjs/components/prism-python";
 import { Topic } from "./learningData";
-import { OFFLINE_LEARNING_DATA } from "./offlineLearningData";
+import { PYTHON_LEARNING_DATA } from "./pythonLearningData";
+import { ML_LEARNING_DATA } from "./mlLearningData";
+
+const ALL_OFFLINE_DATA: Record<string, Record<string, string>> = {
+    "python": PYTHON_LEARNING_DATA,
+    "ml-notes": ML_LEARNING_DATA
+};
 
 export interface AiLearningHandle {
     askQuestion: (question: string) => Promise<void>;
@@ -258,7 +264,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
 
         if (!forceRefresh) {
             // Check for offline data first
-            const offlineData = OFFLINE_LEARNING_DATA[language]?.[currentTopic.id];
+            const offlineData = ALL_OFFLINE_DATA[language]?.[currentTopic.id];
             if (offlineData) {
                 const initialOfflineMsg = [{ role: 'ai' as const, content: offlineData }];
                 setMessages(initialOfflineMsg);

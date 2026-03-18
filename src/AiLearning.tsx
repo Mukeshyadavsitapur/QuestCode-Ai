@@ -250,6 +250,10 @@ Answer the user's question in the context of this topic. Be concise and helpful.
         if (topic) {
             fetchExplanation(topic);
         }
+        // Reset scroll position to top when topic changes
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = 0;
+        }
     }, [topic, language]);
 
     // Highlight code after content updates

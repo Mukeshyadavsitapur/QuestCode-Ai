@@ -147,6 +147,17 @@ body {
     margin-bottom: 1rem;
 }
 
+.description-container img,
+.custom-markdown-content img,
+.message-bubble img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1.5rem auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .description-container code {
     background: rgba(88, 166, 255, 0.1);
     padding: 2px 4px;

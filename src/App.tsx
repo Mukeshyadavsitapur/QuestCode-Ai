@@ -1744,7 +1744,11 @@ function App() {
       // Ctrl + Alt + B: Toggle AI Assistant
       if ((e.ctrlKey || e.metaKey) && e.altKey && e.code === "KeyB") {
         e.preventDefault();
-        setIsAiAssistantVisible(prev => !prev);
+        setIsAiAssistantVisible(prev => {
+          const newState = !prev;
+          if (!newState) setIsHistoryOpen(false); // Auto-hide sidebar when expanding editor
+          return newState;
+        });
       }
 
       // Ctrl + Alt + C: Explain Code
@@ -1850,7 +1854,11 @@ function App() {
         if (physicalCode === "KeyB") {
           e.preventDefault();
           e.stopPropagation();
-          setIsAiAssistantVisible(prev => !prev);
+          setIsAiAssistantVisible(prev => {
+            const newState = !prev;
+            if (!newState) setIsHistoryOpen(false); // Auto-hide sidebar when expanding editor
+            return newState;
+          });
         } else if (physicalCode === "KeyC") {
           e.preventDefault();
           e.stopPropagation();
@@ -2620,7 +2628,11 @@ function App() {
                                 setIsAiAssistantVisible(true);
                                 setIsEditorVisible(false);
                               } else {
-                                setIsAiAssistantVisible(!isAiAssistantVisible);
+                                setIsAiAssistantVisible(prev => {
+                                  const newState = !prev;
+                                  if (!newState) setIsHistoryOpen(false); // Auto-hide sidebar when expanding editor
+                                  return newState;
+                                });
                               }
                             }}
                             style={{ padding: "4px 8px" }}

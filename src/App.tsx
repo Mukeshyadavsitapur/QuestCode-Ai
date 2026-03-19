@@ -134,7 +134,7 @@ function App() {
   const [temperature, setTemperature] = useState<number>(0.3);
   const [isExplaining, setIsExplaining] = useState(false);
   const [webLlmCopied, setWebLlmCopied] = useState(false);
-  const { isPyodideLoading, runPython, error: pyodideError } = usePython();
+  const { isPyodideLoading, runPython, stopPython, error: pyodideError } = usePython();
 
   // AI Chat History State
   const [chats, setChats] = useState<ChatSession[]>(() => {
@@ -1562,7 +1562,11 @@ function App() {
     if (isRunning) {
       // If already running, treating this as a STOP request
       try {
-        await invoke("stop_execution");
+        if (language === "python" || language === "dsa" || language === "ml") {
+          stopPython();
+        } else {
+          await invoke("stop_execution");
+        }
       } catch (error) {
         console.error("Failed to stop execution:", error);
       }
@@ -2763,6 +2767,19 @@ function App() {
                                 style={{ padding: "4px 8px" }}
                               >
                                 {language === "html" || language === "css" ? <Eye size={14} /> : <TerminalIcon size={14} />}
+                              </button>
+                              <button
+                                className="btn btn-sm btn-secondary mobile-icon-btn"
+                                onClick={() => setCode("")}
+                                title="Clear Editor"
+                                style={{
+                                  marginRight: 8,
+                                  padding: "4px 12px",
+                                  fontSize: "0.8rem",
+                                }}
+                              >
+                                <Trash2 size={14} style={{ marginRight: 6 }} />
+                                <span className="action-btn-text">Clear</span>
                               </button>
                               <button
                                 className="btn btn-sm btn-primary mobile-icon-btn"

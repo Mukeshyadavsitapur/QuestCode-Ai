@@ -1,15 +1,17 @@
 import { useEffect } from "react";
-import { Server, Cloud } from "lucide-react";
+import { Server, Cloud, ArrowLeft } from "lucide-react";
 
 interface NotebookProps {
   theme: string;
   mode: "lite" | "local";
   localUrl: string;
   refreshKey: number;
+  appliedCode: string | null;
+  onClearApplied: () => void;
   onCellsChange: (cellsJson: string) => void;
 }
 
-export function Notebook({ theme, mode, localUrl, refreshKey, onCellsChange }: NotebookProps) {
+export function Notebook({ theme, mode, localUrl, refreshKey, appliedCode, onClearApplied, onCellsChange }: NotebookProps) {
   // Give a default valid JSON string so App.tsx doesn't complain about invalid JSON if it checks
   useEffect(() => {
     onCellsChange(JSON.stringify([{ type: "jupyter_iframe" }]));
@@ -19,14 +21,54 @@ export function Notebook({ theme, mode, localUrl, refreshKey, onCellsChange }: N
     return theme === "vs-dark" ? "?theme=JupyterLab Dark" : "?theme=JupyterLab Light";
   };
 
+  const getIframeSrc = () => {
+    if (mode === "lite" && appliedCode) {
+        // Use REPL mode for automatic code injection
+        const baseUrl = "https://jupyterlite.github.io/demo/repl/index.html";
+        const kernel = "python";
+        const code = encodeURIComponent(appliedCode);
+        return `${baseUrl}?kernel=${kernel}&code=${code}${theme === "vs-dark" ? "&theme=JupyterLab Dark" : "&theme=JupyterLab Light"}`;
+    }
+    
+    return mode === "lite" ? `https://jupyterlite.github.io/demo/lab/index.html${getThemeParam()}` : localUrl;
+  };
+
   return (
     <div className="notebook-container" style={{ 
         height: "100%", 
         background: "var(--code-bg)", 
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden"
+        overflow: "hidden",
+        position: "relative"
     }}>
+      {/* Overlay Button when in Applied Code mode */}
+      {appliedCode && mode === "lite" && (
+        <div style={{
+            position: "absolute",
+            top: "10px",
+            right: "20px",
+            zIndex: 100,
+            display: "flex",
+            gap: "8px"
+        }}>
+            <button 
+                className="btn btn-sm btn-primary"
+                onClick={onClearApplied}
+                style={{ 
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "0.75rem",
+                    padding: "6px 12px"
+                }}
+            >
+                <ArrowLeft size={14} /> Back to Full Lab
+            </button>
+        </div>
+      )}
+
       {/* Iframe View */}
       <div style={{ flex: 1, position: "relative" }}>
           {mode === "local" ? (
@@ -42,16 +84,16 @@ export function Notebook({ theme, mode, localUrl, refreshKey, onCellsChange }: N
           ) : (
              <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--code-bg)" }}>
                  <Cloud size={48} style={{ color: "var(--text-muted)", opacity: 0.5, marginBottom: "16px" }} />
-                 <p style={{ color: "var(--text-main)", fontWeight: 600 }}>Loading JupyterLite...</p>
+                 <p style={{ color: "var(--text-main)", fontWeight: 600 }}>Loading Jupyter Environment...</p>
                  <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", maxWidth: "400px", textAlign: "center" }}>
-                     This runs entirely in your browser. The first load may take a few moments.
+                     Preparing cell for applied code block.
                  </p>
              </div>
           )}
 
           <iframe
-            key={refreshKey}
-            src={mode === "lite" ? `https://jupyterlite.github.io/demo/lab/index.html${getThemeParam()}` : localUrl}
+            key={`${refreshKey}-${appliedCode}`}
+            src={getIframeSrc()}
             style={{ 
                 width: "100%", 
                 height: "100%", 

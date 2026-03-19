@@ -91,6 +91,7 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({
         },
         pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
         code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
+            const [copied, setCopied] = useState(false);
             const match = /language-(\w+)/.exec(className || "");
             let displayLang = match ? match[1] : "";
             if (displayLang === "ml" || displayLang === "dsa") displayLang = "python";
@@ -135,12 +136,14 @@ export const AiLearning = forwardRef<AiLearningHandle, AiLearningProps>(({
                             <button
                                 onClick={() => {
                                     navigator.clipboard.writeText(codeText);
+                                    setCopied(true);
+                                    setTimeout(() => setCopied(false), 2000);
                                 }}
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: copied ? "var(--accent-text)" : "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0, transition: "color 0.2s" }}
                                 title="Copy to Clipboard"
                                 className="code-action-btn"
                             >
-                                <Copy size={13} /> Copy
+                                <Copy size={13} /> {copied ? "Copied!" : "Copy"}
                             </button>
                             <button
                                 onClick={() => {

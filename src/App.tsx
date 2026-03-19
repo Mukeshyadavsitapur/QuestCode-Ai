@@ -111,6 +111,9 @@ function App() {
   useEffect(() => {
     localStorage.setItem("jupyter_local_url", jupyterLocalUrl);
   }, [jupyterLocalUrl]);
+
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
 
   // PromptTest Chat Features State
@@ -130,6 +133,7 @@ function App() {
   const [input, setInput] = useState("");
   const [temperature, setTemperature] = useState<number>(0.3);
   const [isExplaining, setIsExplaining] = useState(false);
+  const [webLlmCopied, setWebLlmCopied] = useState(false);
   const { isPyodideLoading, runPython } = usePython();
 
   // AI Chat History State
@@ -1919,6 +1923,7 @@ function App() {
     pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     p: ({ node, children, ...props }: any) => <p {...props}>{children}</p>,
     code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
+      const [copied, setCopied] = useState(false);
       const match = /language-(\w+)/.exec(className || "");
       let displayLang = match ? match[1] : "";
       if (displayLang === "ml" || displayLang === "dsa") displayLang = "python";
@@ -1963,17 +1968,22 @@ function App() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(codeText);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
                 }}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: copied ? "var(--accent-text)" : "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0, transition: "color 0.2s" }}
                 title="Copy to Clipboard"
                 className="code-action-btn"
               >
-                <Copy size={13} /> Copy
+                <Copy size={13} /> {copied ? "Copied!" : "Copy"}
               </button>
               <button
                 onClick={() => {
-                  setCode(codeText);
-                  // Optional: Switch to editor view if on mobile or if needed
+                  if (isJupyterMode) {
+                    setAppliedCode(codeText);
+                  } else {
+                    setCode(codeText);
+                  }
                 }}
                 style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
                 title="Replace Editor Content"
@@ -2006,7 +2016,7 @@ function App() {
         </div >
       );
     }
-  }), []);
+  }), [isJupyterMode, setAppliedCode, setCode]);
 
   const quickChatMarkdownComponents = useMemo(() => ({
     table: ({ node, ...props }: any) => (
@@ -2025,6 +2035,7 @@ function App() {
     ),
     pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
     code({ className, children, ...props }: { className?: string, children?: React.ReactNode, [key: string]: any }) {
+      const [copied, setCopied] = useState(false);
       const match = /language-(\w+)/.exec(className || "");
       let displayLang = match ? match[1] : "";
       if (displayLang === "ml" || displayLang === "dsa") displayLang = "python";
@@ -2069,16 +2080,22 @@ function App() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(codeText);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
                 }}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: copied ? "var(--accent-text)" : "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0, transition: "color 0.2s" }}
                 title="Copy to Clipboard"
                 className="code-action-btn"
               >
-                <Copy size={13} /> Copy
+                <Copy size={13} /> {copied ? "Copied!" : "Copy"}
               </button>
               <button
                 onClick={() => {
-                  setCode(codeText);
+                  if (isJupyterMode) {
+                    setAppliedCode(codeText);
+                  } else {
+                    setCode(codeText);
+                  }
                 }}
                 style={{ background: "none", border: "none", cursor: "pointer", color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "4px", fontSize: "inherit", padding: 0 }}
                 title="Replace Editor Content"
@@ -2111,7 +2128,7 @@ function App() {
         </div>
       );
     }
-  }), []);
+  }), [isJupyterMode, setAppliedCode, setCode]);
 
   // Compute flat topics and prev/next
   const { prevTopic, nextTopic } = useMemo(() => {
@@ -2194,7 +2211,10 @@ function App() {
                           {group.topics.map(topic => (
                             <button
                               key={topic.id}
-                              onClick={() => handleSelectTopic(topic, group.title)}
+                              onClick={() => {
+                                handleSelectTopic(topic, group.title);
+                                setAppliedCode(null);
+                              }}
                               className={`history-item ${selectedTopic?.id === topic.id ? "active" : ""}`}
                               style={{
                                 width: "100%",
@@ -2444,8 +2464,12 @@ function App() {
                                   <option value="openai">OpenAI (ChatGPT)</option>
                                   <option value="anthropic">Anthropic (Claude)</option>
                                 </select>
-                                <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleOpenWebLlm}>
-                                  <Copy size={16} /> Copy Code & Open {webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"}
+                                <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={() => {
+                                  handleOpenWebLlm();
+                                  setWebLlmCopied(true);
+                                  setTimeout(() => setWebLlmCopied(false), 2000);
+                                }}>
+                                  <Copy size={16} /> {webLlmCopied ? "Code Copied!" : `Copy Code & Open ${webLlm === "openai" ? "ChatGPT" : webLlm === "anthropic" ? "Claude" : webLlm === "groq" ? "Groq" : webLlm === "huggingface" ? "Hugging Face" : "Gemini"}`}
                                 </button>
                               </div>
                             </div>
@@ -2518,7 +2542,13 @@ function App() {
                             topic={selectedTopic}
                             groupTitle={selectedGroup}
                             onBack={() => setIsHistoryOpen(true)}
-                            onApplyCode={setCode}
+                            onApplyCode={(codeText) => {
+                              if (isJupyterMode) {
+                                setAppliedCode(codeText);
+                              } else {
+                                setCode(codeText);
+                              }
+                            }}
                             prevTopic={prevTopic}
                             nextTopic={nextTopic}
                             onSelectTopic={handleSelectTopic}
@@ -2681,7 +2711,10 @@ function App() {
 
                               <button 
                                   className="btn btn-sm btn-secondary" 
-                                  onClick={() => setJupyterRefreshKey(prev => prev + 1)}
+                                  onClick={() => {
+                                      setJupyterRefreshKey(prev => prev + 1);
+                                      setAppliedCode(null);
+                                  }}
                                   style={{ padding: "4px 8px" }}
                                   title="Reload Jupyter Env"
                               >
@@ -2770,6 +2803,8 @@ function App() {
                             mode={jupyterMode}
                             localUrl={jupyterLocalUrl}
                             refreshKey={jupyterRefreshKey}
+                            appliedCode={appliedCode}
+                            onClearApplied={() => setAppliedCode(null)}
                             onCellsChange={(newCellsJson) => setCode(newCellsJson)}
                           />
                         ) : (

@@ -18,7 +18,8 @@ export function Notebook({ theme, mode, localUrl, refreshKey, appliedCode, onCle
   }, [onCellsChange]);
 
   const getThemeParam = () => {
-    return theme === "vs-dark" ? "?theme=JupyterLab Dark" : "?theme=JupyterLab Light";
+    const themeName = theme === "vs-dark" ? "JupyterLab Dark" : "JupyterLab Light";
+    return `?theme=${encodeURIComponent(themeName)}`;
   };
 
   const getIframeSrc = () => {
@@ -27,7 +28,8 @@ export function Notebook({ theme, mode, localUrl, refreshKey, appliedCode, onCle
         const baseUrl = "https://jupyterlite.github.io/demo/repl/index.html";
         const kernel = "python";
         const code = encodeURIComponent(appliedCode);
-        return `${baseUrl}?kernel=${kernel}&code=${code}${theme === "vs-dark" ? "&theme=JupyterLab Dark" : "&theme=JupyterLab Light"}`;
+        const themeName = theme === "vs-dark" ? "JupyterLab Dark" : "JupyterLab Light";
+        return `${baseUrl}?kernel=${kernel}&code=${code}&theme=${encodeURIComponent(themeName)}`;
     }
     
     return mode === "lite" ? `https://jupyterlite.github.io/demo/lab/index.html${getThemeParam()}` : localUrl;
@@ -105,6 +107,8 @@ export function Notebook({ theme, mode, localUrl, refreshKey, appliedCode, onCle
                 background: "transparent"
             }}
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            // @ts-ignore - credentialless is a newer attribute
+            credentialless="true"
             title="Jupyter Notebook"
           />
       </div>

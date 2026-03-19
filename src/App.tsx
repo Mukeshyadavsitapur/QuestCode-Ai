@@ -134,7 +134,7 @@ function App() {
   const [temperature, setTemperature] = useState<number>(0.3);
   const [isExplaining, setIsExplaining] = useState(false);
   const [webLlmCopied, setWebLlmCopied] = useState(false);
-  const { isPyodideLoading, runPython } = usePython();
+  const { isPyodideLoading, runPython, error: pyodideError } = usePython();
 
   // AI Chat History State
   const [chats, setChats] = useState<ChatSession[]>(() => {
@@ -1579,8 +1579,14 @@ function App() {
     setTerminalOutput("");
 
     if (language === "python" || language === "dsa" || language === "ml") {
+      if (pyodideError) {
+        setTerminalOutput(`Error: Python engine failed to load: ${pyodideError}\nPlease refresh to try again.\n`);
+        setIsRunning(false);
+        return;
+      }
+      
       if (isPyodideLoading) {
-        setTerminalOutput("Error: Python engine is still loading... Please wait a moment and try again.\\n");
+        setTerminalOutput("Error: Python engine is still loading... Please wait a moment and try again.\n");
         setIsRunning(false);
         return;
       }

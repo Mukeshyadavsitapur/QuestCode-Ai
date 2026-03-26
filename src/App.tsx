@@ -2469,8 +2469,38 @@ function App() {
                           )}
                         </div>
 
-                        <div style={{ display: viewMode === "docs" ? "flex" : "none", flex: 1, flexDirection: "column" }}>
-                          {(language === "rust" || language === "python" || language === "ml") ? (
+                        <div style={{ display: viewMode === "docs" ? "flex" : "none", flex: 1, flexDirection: "column", position: "relative" }}>
+                          <div style={{
+                            padding: "8px 16px",
+                            borderBottom: "1px solid var(--border-color)",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            background: "var(--panel-bg)"
+                          }}>
+                            <span style={{ fontWeight: 500, color: "var(--text-main)" }}>
+                              {language.toUpperCase()} Documentation
+                            </span>
+                            {(!(language === "rust" || language === "python" || language === "ml" || language === "dsa") || !!(window as any).__TAURI_INTERNALS__) && (
+                              <button
+                                className="btn btn-secondary"
+                                style={{ fontSize: "12px", padding: "4px 8px" }}
+                                onClick={async () => {
+                                  const url = language === "rust" ? "https://doc.rust-lang.org/book/" :
+                                    language === "ml" ? "https://scikit-learn.org/stable/user_guide.html" :
+                                      "https://docs.python.org/3/";
+                                  try {
+                                    await openUrl(url);
+                                  } catch (e) {
+                                    window.open(url, "_blank");
+                                  }
+                                }}
+                              >
+                                <ExternalLink size={14} style={{ marginRight: 4 }} /> Open in Browser
+                              </button>
+                            )}
+                          </div>
+                          {(language === "rust" || language === "python" || language === "ml" || language === "dsa") ? (
                             <iframe
                               src={language === "rust" ? "https://doc.rust-lang.org/book/" : language === "ml" ? "https://scikit-learn.org/stable/user_guide.html" : "https://docs.python.org/3/"}
                               title="Documentation"
@@ -2492,26 +2522,12 @@ function App() {
                               <div style={{ background: "var(--bg-color)", padding: 32, borderRadius: 16, border: "1px solid var(--border-color)", maxWidth: 400 }}>
                                 <Book size={48} color="var(--accent-color)" style={{ marginBottom: 16 }} />
                                 <h3 style={{ marginBottom: 8, color: "var(--text-main)" }}>Official Documentation</h3>
-                                <p style={{ color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.5 }}>
-                                  MDN documentation cannot be embedded directly. Please open it in your browser.
+                                <p style={{ color: "var(--text-muted)", marginBottom: 8, lineHeight: 1.5 }}>
+                                  This documentation cannot be embedded directly.
                                 </p>
-                                <button
-                                  className="btn btn-primary"
-                                  style={{ width: "100%", justifyContent: "center" }}
-                                  onClick={async () => {
-                                    const url =
-                                      language === "html" ? "https://developer.mozilla.org/en-US/docs/Web/HTML" :
-                                        language === "css" ? "https://developer.mozilla.org/en-US/docs/Web/CSS" :
-                                          "https://developer.mozilla.org/en-US/docs/Web/JavaScript";
-                                    try {
-                                      await openUrl(url);
-                                    } catch (e) {
-                                      window.open(url, "_blank");
-                                    }
-                                  }}
-                                >
-                                  <Globe size={16} style={{ marginRight: 8 }} /> Open {language.toUpperCase()} Docs
-                                </button>
+                                <p style={{ color: "var(--text-muted)", marginBottom: 24, fontSize: "14px" }}>
+                                  Please use the <strong>Open in Browser</strong> button in the header.
+                                </p>
                               </div>
                             </div>
                           )}

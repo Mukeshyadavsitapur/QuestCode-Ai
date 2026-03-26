@@ -2237,18 +2237,16 @@ function App() {
                     <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
                       <Plus size={16} /> New Chat
                     </button>
-                    {language === "ml" && (
-                      <button
-                        className="btn btn-secondary"
-                        style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                        onClick={() => {
-                          setViewMode("docs");
-                          if (!isWideLayout) setIsHistoryOpen(false);
-                        }}
-                      >
-                        <Book size={16} /> Official Docs
-                      </button>
-                    )}
+                    <button
+                      className="btn btn-secondary"
+                      style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                      onClick={() => {
+                        setViewMode("docs");
+                        if (!isWideLayout) setIsHistoryOpen(false);
+                      }}
+                    >
+                      <Book size={16} /> Official Docs
+                    </button>
                     <button
                       className="btn btn-secondary"
                       style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}

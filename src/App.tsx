@@ -79,12 +79,11 @@ function App() {
     if (lang === "css") return DEFAULT_CSS_CODE;
     if (lang === "javascript") return DEFAULT_JS_CODE;
     if (lang === "ml") return DEFAULT_ML_NOTES_CODE;
-    if (lang === "ml-notes") return DEFAULT_ML_NOTES_CODE;
     return DEFAULT_PYTHON_CODE;
   };
 
-  const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes">(() => {
-    return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes") || "python";
+  const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml">(() => {
+    return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml") || "python";
   });
 
   // Initialize code from localStorage based on valid language
@@ -93,7 +92,7 @@ function App() {
     return savedCode || getDefaultCode(language);
   });
   
-  const isJupyterMode = language === "ml-notes" || language === "ml";
+  const isJupyterMode = language === "ml";
   
   // Jupyter Notebook State
   const [jupyterMode, setJupyterMode] = useState<"lite" | "local">(() => {
@@ -239,7 +238,7 @@ function App() {
     else if (language === "html") topics = TOPICS_HTML;
     else if (language === "css") topics = TOPICS_CSS;
     else if (language === "javascript") topics = TOPICS_JS;
-    else if (language === "ml" || language === "ml-notes") topics = TOPICS_ML;
+    else if (language === "ml") topics = TOPICS_ML;
 
     setExpandedGroups(new Set(topics.map(t => t.title)));
   }, [language]);
@@ -954,28 +953,14 @@ function App() {
     }
   }, [code, language]);
 
-  const handleLanguageChange = (newLang: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes") => {
+  const handleLanguageChange = (newLang: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml") => {
     setLanguage(newLang);
     localStorage.setItem("language", newLang);
 
-    if (newLang === "ml-notes" && viewMode === "docs") {
-      setViewMode("ai");
-    }
-
-    // If switching to ml-notes, ensure the code is valid JSON for Notebook
-    if (newLang === "ml-notes") {
-      try {
-        JSON.parse(code); // Check if current code is valid JSON
-      } catch (e) {
-        // If not valid JSON, set to default ML notes code
-        setCode(getDefaultCode(newLang));
-      }
-    } else {
-      // Load saved code for new language or default
-      const savedCode = localStorage.getItem(`code_${newLang}`);
-      const newCode = savedCode || getDefaultCode(newLang);
-      setCode(newCode);
-    }
+    // Load saved code for new language or default
+    const savedCode = localStorage.getItem(`code_${newLang}`);
+    const newCode = savedCode || getDefaultCode(newLang);
+    setCode(newCode);
 
     setIsSettingsOpen(false);
 
@@ -1072,8 +1057,8 @@ function App() {
   };
 
   const handleCycleLanguage = () => {
-    const languages: ("python" | "rust" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes")[] =
-      ["python", "rust", "dsa", "html", "css", "javascript", "ml", "ml-notes"];
+    const languages: ("python" | "rust" | "dsa" | "html" | "css" | "javascript" | "ml")[] =
+      ["python", "rust", "dsa", "html", "css", "javascript", "ml"];
     const currentIndex = languages.indexOf(language);
     const nextIndex = (currentIndex + 1) % languages.length;
     handleLanguageChange(languages[nextIndex]);
@@ -1575,14 +1560,14 @@ function App() {
 
     if (!isTerminalVisible) setIsTerminalVisible(true);
 
-    if (language === "html" || language === "css" || language === "ml-notes") {
+    if (language === "html" || language === "css" || language === "ml") {
       return;
     }
 
     setIsRunning(true);
     setTerminalOutput("");
 
-    if (language === "python" || language === "dsa" || language === "ml") {
+    if (language === "python" || language === "dsa") {
       if (pyodideError) {
         setTerminalOutput(`Error: Python engine failed to load: ${pyodideError}\nPlease refresh to try again.\n`);
         setIsRunning(false);
@@ -2149,7 +2134,7 @@ function App() {
     else if (language === "html") topics = TOPICS_HTML;
     else if (language === "css") topics = TOPICS_CSS;
     else if (language === "javascript") topics = TOPICS_JS;
-    else if (language === "ml" || language === "ml-notes") topics = TOPICS_ML;
+    else if (language === "ml") topics = TOPICS_ML;
 
     const flatTopics = topics.flatMap(group => group.topics.map((t: Topic) => ({ ...t, groupTitle: group.title })));
     const currentIndex = flatTopics.findIndex((t: Topic) => t.id === selectedTopic?.id);
@@ -2191,7 +2176,7 @@ function App() {
                         language === "dsa" ? TOPICS_DSA :
                           language === "html" ? TOPICS_HTML :
                             language === "css" ? TOPICS_CSS :
-                              language === "ml" || language === "ml-notes" ? TOPICS_ML :
+                              language === "ml" ? TOPICS_ML :
                                 TOPICS_JS
                   ).map((group) => (
                     <div key={group.title} style={{ marginBottom: "12px" }}>
@@ -2252,7 +2237,7 @@ function App() {
                     <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
                       <Plus size={16} /> New Chat
                     </button>
-                    {language !== "ml-notes" && (
+                    {language === "ml" && (
                       <button
                         className="btn btn-secondary"
                         style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
@@ -2655,8 +2640,7 @@ function App() {
                           <option value="html">🌐 HTML</option>
                           <option value="css">🎨 CSS</option>
                           <option value="javascript">📜 JavaScript</option>
-                          <option value="ml">🤖 ML Course</option>
-                          <option value="ml-notes">📘 ML Notes</option>
+                          <option value="ml">🤖 Machine Learning</option>
                         </select>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button

@@ -12,7 +12,7 @@ import { ML_LEARNING_DATA } from "./mlLearningData";
 
 const ALL_OFFLINE_DATA: Record<string, Record<string, string>> = {
     "python": PYTHON_LEARNING_DATA,
-    "ml-notes": ML_LEARNING_DATA
+    "ml": ML_LEARNING_DATA
 };
 
 export interface AiLearningHandle {
@@ -20,7 +20,7 @@ export interface AiLearningHandle {
 }
 
 interface AiLearningProps {
-    language: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "ml-notes";
+    language: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml";
     apiKey: string;
     openAiApiKey: string;
     anthropicApiKey: string;

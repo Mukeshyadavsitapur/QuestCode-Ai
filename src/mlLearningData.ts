@@ -13,7 +13,7 @@ Arthur Samuel, a pioneer in AI, defined machine learning as:
 > "The field of study that gives computers the ability to learn without being explicitly programmed."
 
 #### ♟️ The Checkers Legend
-Back in the 1950s, Arthur Samuel wrote a **Checkers playing program**. The amazing thing? Samuel himself wasn't a very good player!
+Back in the 1950s, Arthur Samuel wrote a **Checkers playing program**. The amazing thing? Samuel himself was a very good player!
 - He programmed the computer to play **tens of thousands of games** against itself.
 - By watching which board positions led to wins and which led to losses, the program learned over time.
 - Eventually, it became a **better player** than Samuel himself!
@@ -41,7 +41,7 @@ It doesn't work like that, right? You need the **skills** to use those tools eff
 - **Tools:** Learning algorithms (the "hammers" of ML).
 - **Skills:** Knowing *how* and *when* to apply them (the "craftsmanship").
 
-In this class, you'll get both. You won't just learn the algorithms; icons you'll learn the **best practices** used by top ML engineers to build practical systems that actually work.
+In this application, you'll get both. You won't just learn the algorithms; icons you'll learn the **best practices** used by top ML engineers to build practical systems that actually work.
 
 ---
 
@@ -508,75 +508,78 @@ Congratulations on finishing the first week of **Machine Learning Introduction**
 *This lesson is available offline to get you started immediately.*
 `,
     "2.1": `
-# Linear Regression Part 1 (Chapter 2.1)
+# Linear Regression: The Art of Prediction (Chapter 2.1)
 
-Welcome to Course 1! Today, we’re going to look at the overall process of supervised learning and dive into our very first model: **Linear Regression**.
+Welcome to Course 1! Today, we’re going to explore the backbone of modern AI: **Linear Regression**. Don't let the name intimidate you—at its heart, it’s just a way to "connect the dots" to predict the future.
 
 ## 📏 What is Linear Regression?
 
-Linear regression is probably the most widely used learning algorithm in the world today. At its core, it simply means **fitting a straight line to your data**. 
+Imagine you're trying to guess how much a pizza will cost based on its diameter. 
+- A 10-inch pizza might be $10.
+- A 12-inch pizza might be $12.
+- What about a 14-inch pizza? You'd probably guess $14!
+
+You just performed **Linear Regression** in your head! You found a relationship (1 inch = $1) and used it to make a prediction.
 
 > [!TIP]
-> **Why start here?** Many of the concepts you learn with linear regression will apply to almost every other machine learning model you’ll see later in this specialization.
+> **The Goal:** In ML, we want the computer to find these "rules of thumb" automatically by looking at thousands of examples.
 
 ---
 
 ## 🏠 The Portland Housing Problem
 
-Imagine you’re a real estate agent in Portland. A client wants to sell her house, and she asks, *"How much do you think I can get for this?"* To answer this, you look at a dataset of houses that were recently sold in the city.
+To see this in action, imagine you’re a real estate agent in Portland. You have a collection of house sizes and their sale prices.
 
-### 📊 Visualizing the Data
-We plot the data where:
-- **Horizontal Axis (x):** Size of the house in square feet.
-- **Vertical Axis (y):** Price of the house in thousands of dollars.
+### 📊 Visualizing the "Relationship"
+We plot this data on a graph:
+- **Horizontal Axis (x):** House Size (the "Cause").
+- **Vertical Axis (y):** Sale Price (the "Result").
 
 ![Linear Regression Housing Plot](/ml_notes/linear_regression_housing_plot.png)
 
-Each little cross on the graph represents a house. If your client's house is **1,250 square feet**, you can use the straight line fit to the data to predict a price of about **$220,000**.
+Each cross × is a house that was actually sold. Notice how they mostly form a "diagonal line" going up? Our job is to find the **best straight line** that passes through these points.
 
 ---
 
-## 🧠 Supervised Learning Recap
+## 🏗️ Building Our Model
 
-This is a **Supervised Learning** model because we are training it with the "right answers."
-- You give the model examples (house sizes).
-- You also give it the correct output (the actual sale prices).
+When we say "Supervised Learning," we mean we're telling the computer:
+1. "Here is the **Input** (Size: 1,250 sq ft)."
+2. "Here is the **Right Answer** (Price: $220,000)."
 
-Since the model predicts a **number** (like 220,000 or 1.5), it is specifically a **Regression Model**.
+The computer looks at all these pairs and says: *"Aha! I see the pattern. For every extra square foot, the price goes up by about $200."*
 
-| Type | Predicts... | Example |
+---
+
+## 📝 The "Secret Language" of ML (Notation)
+
+To talk to the computer, we use a few symbols. They might look scary at first, but think of them as labels in a spreadsheet:
+
+| Symbol | English Name | What it means in our example |
 | :--- | :--- | :--- |
-| **Regression** | Continuous Numbers | House Prices, Stock Value |
-| **Classification** | Discrete Categories | Cat vs. Dog, Spam vs. Not Spam |
+| **x** | **Input Variable** (Feature) | The size of the house (e.g., 2104 sq ft). |
+| **y** | **Output Variable** (Target) | The actual price it sold for (e.g., $400k). |
+| **m** | **Training Examples** | The total number of houses in our data. |
+| **(x, y)** | **Training Example** | One single row in our data table. |
+| **(x⁽ⁱ⁾, y⁽ⁱ⁾)** | **The i-th Example** | The data for a specific house (like the 5th house). |
+
+> [!IMPORTANT]
+> **Wait! Is x⁽ⁱ⁾ an exponent?**
+> NO! In ML notation, the number in parentheses (i) is just an index (like a row number). x⁽²⁾ just means "the input for the 2nd house in our list," not "x squared."
 
 ---
 
-## 📝 Machine Learning Notation
+## 🧠 Concept Check: Can you predict?
 
-To talk about these concepts effectively, we use a standard set of mathematical notations. Don't worry if you don't memorize them all at once—they will become second nature over time!
+Look at this tiny "Training Set":
 
-![ML Notation Guide](/ml_notes/ml_notation_guide.png)
+| Size (x) | Price (y) |
+| :--- | :--- |
+| 1,000 | 200 |
+| 2,000 | 400 |
+| 3,000 | ??? |
 
-### Key Terms:
-1.  **x**: The **Input Variable** (also called a **feature**). In our example, this is the House Size.
-2.  **y**: The **Output Variable** (also called the **target variable**). This is what we want to predict (the Price).
-3.  **m**: The total number of **training examples** (rows in your data table).
-4.  **(x, y)**: A single training example (one pair of input and output).
-5.  **(x⁽ⁱ⁾, y⁽ⁱ⁾)**: The **i-th** training example. The superscript **(i)** is NOT exponentiation (it's not x^2); it simply refers to the row number in your table.
-
-### Example Training Set (m = 47)
-
-| Size (x) | Price (y) | Notation |
-| :--- | :--- | :--- |
-| 2,104 | 400 | (x⁽¹⁾, y⁽¹⁾) |
-| 1,600 | 330 | (x⁽²⁾, y⁽²⁾) |
-| 2,400 | 369 | (x⁽³⁾, y⁽³⁾) |
-
----
-
-## 🚀 What's Next?
-
-In the next video, we’ll look at how to take this training set and feed it to a learning algorithm so it can actually "learn" that straight line!
+If you guessed **600**, congratulations! You've just "trained" your first mental model. In the next chapter, we'll see the math that lets the computer do this automatically for billions of data points!
 
 ---
 
@@ -585,60 +588,66 @@ In the next video, we’ll look at how to take this training set and feed it to 
     "2.2": `
 # The Model Representation (Chapter 2.2)
 
-In this lesson, we’ll explore how a supervised learning algorithm actually works. What does it do with the data, and what exactly does it output?
+In this lesson, we’ll explore the "inner workings" of a supervised learning algorithm. What does it do with the house sizes and prices we gave it, and how does it actually make a prediction?
 
-## 🔄 The Supervised Learning Workflow
+## 🔄 The Prediction Workflow
 
-To train a model, we feed the **Training Set** (Input Features + Output Targets) into a **Learning Algorithm**. The algorithm then produces a **Function (f)**.
+Think of a supervised learning model as a **factory**. 
+1. **Training Set**: You feed it your data (sizes and prices).
+2. **Learning Algorithm**: The algorithm "studies" the data to find the best pattern.
+3. **The Machine (f)**: It outputs a mathematical function (or "machine") that can predict the price for any new house size.
 
 ![Supervised Learning Workflow](/ml_notes/supervised_learning_workflow.png)
 
-### How it predicts:
-1.  You give the function a **new input (x)** (e.g., house size).
-2.  The function outputs an **estimate or prediction**, which we call **ŷ (y-hat)**.
+---
+
+## 🎩 Meet the Characters: ŷ vs y
+
+To understand the math, we need to distinguish between **Truth** and **Guessing**:
+
+| Term | Symbol | What it represents |
+| :--- | :--- | :--- |
+| **Target** | **y** | The **Actual Price** the house sold for (The Truth). |
+| **Prediction** | **ŷ** | The **Price Guess** made by our model (The Guess). |
 
 > [!NOTE]
-> **ŷ vs. y**: In machine learning, **y** refers to the actual true value from the data, while **ŷ** is the estimated value predicted by the model.
+> We call it **y-hat** (**ŷ**) because it's like the variable is wearing a little hat to show it's only an estimate!
 
 ---
 
-## 📐 Mathematically Representing the Model
+## 📐 The "Straight Line" Formula
 
-A key question is: *What mathematical formula do we use for f?* 
-
-For now, we’ll stick with a straight line. This is represented by the formula:
+In our housing example, we've decided our "machine" will be a straight line. The mathematical formula for this line is:
 
 ### f_w,b(x) = wx + b
 
 ![Linear Equation Visual](/ml_notes/linear_equation_visual.png)
 
-- **w and b** are numbers called **parameters** (or weights and biases).
-- The values of **w** and **b** determine exactly where the line sits on the graph and how it predicts **ŷ** for a given **x**.
+This looks like high school algebra (**y = mx + c**), but with different letters. Let's break it down:
+- **x**: The input (House Size).
+- **w**: The **Weight** (Slope). It determines how *steep* the line is.
+- **b**: The **Bias** (Intercept). It determines where the line *starts* on the vertical axis.
+
+Together, **w** and **b** are called **Parameters**. 
 
 ---
 
-## 🏷️ Univariate Linear Regression
+## 🛠️ Turning the Knobs
 
-Since we are using only **one input variable** (house size x), this model is called **Univariate Linear Regression**.
-- **Uni** = One (Latin)
+Imagine you're standing in front of a machine with two knobs: one labeled **w** and one labeled **b**.
+- Turning the **w knob** tilts the line up or down.
+- Turning the **b knob** slides the whole line up or down.
+
+The goal of Machine Learning is to find the **perfect setting** for these two knobs so that the line passes as close as possible to all the data points!
+
+---
+
+## 🏷️ Why "Univariate"?
+
+You might hear this model called **Univariate Linear Regression**. 
+- **Uni** = One
 - **Variate** = Variable
-
-It’s a fancy way of saying "Linear regression with one variable." Later, we’ll see models that take many inputs (like number of bedrooms, age of the house, etc.).
-
----
-
-## 💻 Optional Lab: Model Representation
-
-In the next step, you can look at an optional lab to see how to define a straight line function in Python. You'll be able to:
-1.  Choose values for **w** and **b**.
-2.  See how the line changes on the graph.
-3.  Try to manually "fit" the line to the training data.
-
----
-
-## 🧠 Moving Forward: The Cost Function
-
-To make this model work automatically, we need a way to tell the computer how "good" its line is. This is where the **Cost Function** comes in—one of the most important ideas in all of AI.
+It’s just a fancy way of saying we are only using **one feature** (House Size) to predict the price. Later, we'll use multiple features like number of bedrooms, location, and age!
 
 ---
 

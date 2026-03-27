@@ -2743,6 +2743,36 @@ function App() {
                           ) : (
                             <>
                               <button
+                                className="tab-btn"
+                                onClick={handleExplain}
+                                title="Explain Code (Ctrl+Alt+C)"
+                                disabled={isExplaining || aiService === "web"}
+                                style={{
+                                  padding: "4px 8px",
+                                  opacity: aiService === "web" ? 0.5 : 1,
+                                  cursor: aiService === "web" ? "not-allowed" : "pointer",
+                                }}
+                              >
+                                {isExplaining ? <Sparkles size={14} className="animate-pulse" /> : <Sparkles size={14} />}
+                              </button>
+                              <button
+                                className={`tab-btn ${isRunning ? "active" : ""}`}
+                                onClick={handleRunCode}
+                                title={isRunning ? "Stop" : (language === "html" || language === "css") ? "Preview" : "Run Code (F5 / Ctrl+Enter)"}
+                                style={{
+                                  padding: "4px 8px",
+                                  color: isRunning ? "#ef4444" : undefined,
+                                }}
+                              >
+                                {isRunning ? (
+                                  <Square size={14} fill="currentColor" />
+                                ) : (language === "html" || language === "css") ? (
+                                  <Globe size={14} />
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                )}
+                              </button>
+                              <button
                                 className={`tab-btn mobile-hidden ${isMinimapVisible ? "active" : ""}`}
                                 title={isMinimapVisible ? "Hide Minimap" : "Show Minimap"}
                                 onClick={() => setIsMinimapVisible(!isMinimapVisible)}
@@ -2767,51 +2797,14 @@ function App() {
                                 {language === "html" || language === "css" ? <Eye size={14} /> : <TerminalIcon size={14} />}
                               </button>
                               <button
-                                className="btn btn-sm btn-secondary mobile-icon-btn"
+                                className="tab-btn"
                                 onClick={() => setCode("")}
                                 title="Clear Editor"
                                 style={{
-                                  marginRight: 8,
-                                  padding: "4px 12px",
-                                  fontSize: "0.8rem",
+                                  padding: "4px 8px",
                                 }}
                               >
-                                <Trash2 size={14} style={{ marginRight: 6 }} />
-                                <span className="action-btn-text">Clear</span>
-                              </button>
-                              <button
-                                className="btn btn-sm btn-primary mobile-icon-btn"
-                                onClick={handleExplain}
-                                title="Explain Code (Ctrl+Alt+C)"
-                                disabled={isExplaining || aiService === "web"}
-                                style={{
-                                  marginRight: 8,
-                                  padding: "4px 12px",
-                                  fontSize: "0.8rem",
-                                  opacity: aiService === "web" ? 0.5 : 1,
-                                  cursor: aiService === "web" ? "not-allowed" : "pointer"
-                                }}
-                              >
-                                <span style={{ marginLeft: 0 }}>{isExplaining ? <><Sparkles size={14} className="animate-pulse" style={{ marginRight: 6 }} /><span className="action-btn-text"> Thinking...</span></> : <><Sparkles size={14} style={{ marginRight: 6 }} /><span className="action-btn-text"> Explain Code</span></>}</span>
-                              </button>
-                              <button
-                                className={`btn btn-sm btn-primary mobile-icon-btn ${isRunning ? "is-running" : ""}`}
-                                onClick={handleRunCode}
-                                title="Run Code (F5 / Ctrl+Enter)"
-                                style={{
-                                  padding: "4px 12px",
-                                  fontSize: "0.8rem",
-                                  backgroundColor: isRunning ? "#ef4444" : "var(--accent-color)",
-                                  transition: "background-color 0.2s"
-                                }}
-                              >
-                                {isRunning ? (
-                                  <><Square size={12} fill="currentColor" style={{ marginRight: 6 }} /><span className="action-btn-text"> Stop</span></>
-                                ) : (language === "html" || language === "css") ? (
-                                  <><Globe size={12} style={{ marginRight: 6 }} /><span className="action-btn-text"> Preview</span></>
-                                ) : (
-                                  <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg><span className="action-btn-text"> Run Code</span></>
-                                )}
+                                <Trash2 size={14} />
                               </button>
                             </>
                           )}

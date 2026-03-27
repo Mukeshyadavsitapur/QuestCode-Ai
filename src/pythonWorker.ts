@@ -1,6 +1,5 @@
 import { LAB_UTILS_UNI, QUESTCODE_AI_MPLSTYLE } from './pythonAssets';
-// @ts-ignore
-import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.mjs";
+import { loadPyodide } from "pyodide";
 
 let pyodide: any = null;
 
@@ -18,9 +17,9 @@ async function loadPyodideAndPackages(sab?: SharedArrayBuffer) {
       sharedInputData = new Uint8Array(sharedInputBuffer, 8, 1016);
     }
     
-    // pyodide is now loaded via ES import
+    // pyodide is now loaded via ES import from npm package
     pyodide = await loadPyodide({
-      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/"
+      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/"
     });
 
     await pyodide.loadPackage(["numpy", "matplotlib", "micropip"]);

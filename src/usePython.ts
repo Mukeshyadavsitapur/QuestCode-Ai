@@ -96,10 +96,17 @@ export function usePython() {
     };
 
     worker.addEventListener('message', onMessage);
+    
+    worker.onerror = (err) => {
+      console.error("Worker initialization error:", err);
+      loadError = "Worker initialization failed. Check the console for details.";
+      initializationListeners.forEach(l => l(false, loadError));
+    };
 
     return () => {
       initializationListeners.delete(onStatusUpdate);
       worker.removeEventListener('message', onMessage);
+      worker.onerror = null;
     };
   }, []);
 

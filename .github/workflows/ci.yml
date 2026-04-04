@@ -6,8 +6,6 @@ on:
     pull_request:
         branches: [main]
 
-env:
-    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
     # ── Rust / Tauri backend checks ─────────────────────────
@@ -15,7 +13,7 @@ jobs:
         name: Check Rust Backend
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             - name: Install system dependencies
               run: |
@@ -47,10 +45,10 @@ jobs:
         name: Check Frontend (TypeScript + Build)
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             - name: Setup Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: 24
                   cache: "npm"

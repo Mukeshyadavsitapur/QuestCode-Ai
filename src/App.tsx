@@ -2234,6 +2234,22 @@ function App() {
                 // Chat History Sidebar
                 <>
                   <div className="sidebar-header" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div className="language-selector-wrapper">
+                      <select
+                        value={language}
+                        onChange={(e) => handleLanguageChange(e.target.value as any)}
+                        className="sidebar-language-select"
+                        title="Change Language"
+                      >
+                        <option value="python">🐍 Python</option>
+                        <option value="rust">🦀 Rust</option>
+                        <option value="dsa">📊 DSA</option>
+                        <option value="html">🌐 HTML</option>
+                        <option value="css">🎨 CSS</option>
+                        <option value="javascript">📜 JavaScript</option>
+                        <option value="ml">🤖 Machine Learning</option>
+                      </select>
+                    </div>
                     <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
                       <Plus size={16} /> New Chat
                     </button>
@@ -2631,31 +2647,11 @@ function App() {
                   <Panel defaultSize={70} minSize={20}>
                     <div className="panel">
                       <div className="panel-header">
-                        <select
-                          value={language}
-                          onChange={(e) => handleLanguageChange(e.target.value as any)}
-                          className="language-select"
-                          style={{
-                            background: "transparent",
-                            color: "var(--text-main)",
-                            border: "none",
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                            outline: "none",
-                            fontWeight: "600",
-                            fontSize: "0.85rem",
-                            marginTop: -2
-                          }}
-                        >
-                          <option value="python">🐍 Python</option>
-                          <option value="rust">🦀 Rust</option>
-                          <option value="dsa">📊 DSA</option>
-                          <option value="html">🌐 HTML</option>
-                          <option value="css">🎨 CSS</option>
-                          <option value="javascript">📜 JavaScript</option>
-                          <option value="ml">🤖 Machine Learning</option>
-                        </select>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                            {language === "ml" ? "Notebook" : "Editor"}
+                          </span>
+                        </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
                             className={`tab-btn ${!isAiAssistantVisible ? "active" : ""}`}

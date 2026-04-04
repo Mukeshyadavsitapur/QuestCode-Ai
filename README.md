@@ -30,7 +30,7 @@
 
 Before you begin, ensure you have the following installed:
 
--   **[Node.js](https://nodejs.org/)** (v18 or newer)
+-   **[Node.js](https://nodejs.org/)** (v24 LTS)
 -   **[Rust](https://www.rust-lang.org/tools/install)** (stable)
 -   **[Microsoft Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)** (for Windows users)
 
@@ -38,8 +38,8 @@ Before you begin, ensure you have the following installed:
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/yourusername/questcode-ai.git
-    cd questcode-ai
+    git clone https://github.com/Mukeshyadavsitapur/QuestCode-Ai.git
+    cd QuestCode-Ai
     ```
 
 2.  **Install dependencies**:
@@ -76,3 +76,13 @@ To build the application for production:
 ```bash
 npm run tauri build
 ```
+
+## 🤖 Continuous Integration
+
+This project uses **GitHub Actions** for Continuous Integration (CI).
+
+-   **Backend Checks**: Automatic validation of Rust code using `cargo check`, `rustfmt`, and `clippy`.
+-   **Frontend Checks**: Automated TypeScript type-checking and Vite build verification.
+-   **Node.js Environment**: The CI pipeline runs on **Node.js 24** to ensure consistency across environments.
+
+All pull requests and pushes to the `main` branch trigger the CI pipeline to maintain code quality.

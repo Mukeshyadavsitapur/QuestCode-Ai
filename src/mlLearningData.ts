@@ -55,7 +55,7 @@ When calculating the error of our model, which symbol represents the **Predictio
 
 *👉 Answer & Explanation:*
 > **Answer: C**
-> **y** is the actual value from our data (The Truth). **ŷ** (y-hat) is the output of our function $f(x)$ (The Guess).
+> **y** is the actual value from our data (The Truth). **ŷ** (y-hat) is the output of our function **f(x)** (The Guess).
 
 ---
 
@@ -73,7 +73,7 @@ What is the primary purpose of the **Cost Function J(w,b)**?
 ---
 
 ### ❓ Question 6: The Squared Error
-In the Squared Error Cost Function, why do we **square** the difference $(\hat{y} - y)$?
+In the Squared Error Cost Function, why do we **square** the difference **(ŷ - y)**?
 - A) Because the math looks more impressive.
 - B) To ensure that the error is always a positive number (so negative and positive errors don't cancel out).
 - C) To make large errors much more penalized than small errors.
@@ -81,7 +81,7 @@ In the Squared Error Cost Function, why do we **square** the difference $(\hat{y
 
 *👉 Answer & Explanation:*
 > **Answer: D**
-> Squaring ensures that being $100 off is always recorded as a positive error, and it ensures that being far away from the line results in a much higher "cost" than being close.
+> Squaring ensures that being 100 off is always recorded as a positive error, and it ensures that being far away from the line results in a much higher "cost" than being close.
 
 ---
 
@@ -233,7 +233,7 @@ It might:
 1.  **Fit a Straight Line:** A simple prediction—good for some cases.
 2.  **Fit a Curve:** A more complex prediction that might be more accurate for your specific data.
 
-If your friend has a **750 sq. ft. house**, the algorithm uses the line or curve it learned to predict the price ($150k or even $200k depending on the pattern!).
+If your friend has a **750 sq. ft. house**, the algorithm uses the line or curve it learned to predict the price (150k or even 200k dollars depending on the pattern!).
 
 ---
 
@@ -611,11 +611,11 @@ Welcome to Course 1! Today, we’re going to explore the backbone of modern AI: 
 ## 📏 What is Linear Regression?
 
 Imagine you're trying to guess how much a pizza will cost based on its diameter. 
-- A 10-inch pizza might be $10.
-- A 12-inch pizza might be $12.
-- What about a 14-inch pizza? You'd probably guess $14!
+- A 10-inch pizza might be 10 dollars.
+- A 12-inch pizza might be 12 dollars.
+- What about a 14-inch pizza? You'd probably guess 14!
 
-You just performed **Linear Regression** in your head! You found a relationship (1 inch = $1) and used it to make a prediction.
+You just performed **Linear Regression** in your head! You found a relationship (1 inch = 1 dollar) and used it to make a prediction.
 
 > [!TIP]
 > **The Goal:** In ML, we want the computer to find these "rules of thumb" automatically by looking at thousands of examples.
@@ -641,9 +641,9 @@ Each cross × is a house that was actually sold. Notice how they mostly form a "
 
 When we say "Supervised Learning," we mean we're telling the computer:
 1. "Here is the **Input** (Size: 1,250 sq ft)."
-2. "Here is the **Right Answer** (Price: $220,000)."
+2. "Here is the **Right Answer** (Price: 220,000 dollars)."
 
-The computer looks at all these pairs and says: *"Aha! I see the pattern. For every extra square foot, the price goes up by about $200."*
+The computer looks at all these pairs and says: *"Aha! I see the pattern. For every extra square foot, the price goes up by about 200 dollars."*
 
 ---
 
@@ -654,8 +654,8 @@ To talk to the computer, we use a few symbols. They might look scary at first, b
 | Symbol | English Name | What it means in our example |
 | :--- | :--- | :--- |
 | **x** | **Input Variable** (Input Feature) | The size of the house (e.g., 2104 sq ft). |
-| **y** | **Output Variable** (Output Target) | The actual price it sold for (e.g., $400k). |
-| **m** | **Training Examples** | The total number of houses in our data. |
+| **y** | **Output Variable** (Output Target) | The actual price it sold for (e.g., 400k). |
+| **m** | **Number of Training Examples** | The total number of houses in our data. |
 | **(x, y)** | **Training Example** | One single row in our data table. |
 | **(x⁽ⁱ⁾, y⁽ⁱ⁾)** | **The i-th Example** | The data for a specific house (like the 5th house). |
 
@@ -770,7 +770,7 @@ Here is a quick reference for the notation we will use in this lab:
 | Notation | Description | Python Variable |
 | :--- | :--- | :--- |
 | **x** | Training Example feature (Size in 1000 sqft) | \`x_train\` |
-| **y** | Training Example targets (Price in $1000s) | \`y_train\` |
+| **y** | Training Example targets (Price in 1000s of dollars) | \`y_train\` |
 | **x^(i), y^(i)** | i-th Training Example | \`x_i, y_i\` |
 | **m** | Number of training examples | \`m\` |
 | **w** | Parameter: weight | \`w\` |
@@ -794,10 +794,10 @@ import matplotlib.pyplot as plt
 ## 🏠 Problem Statement
 
 We'll use a simple dataset with two houses:
-- **House 1**: 1,000 sqft sold for $300,000.
-- **House 2**: 2,000 sqft sold for $500,000.
+- **House 1**: 1,000 sqft sold for 300,000 dollars.
+- **House 2**: 2,000 sqft sold for 500,000 dollars.
 
-| Size (1000 sqft) | Price ($1000s) |
+| Size (1000 sqft) | Price (in 1000s) |
 | :--- | :--- |
 | 1.0 | 300 |
 | 2.0 | 500 |
@@ -880,7 +880,7 @@ w = 200
 b = 100    
 x_i = 1.2
 prediction = w * x_i + b    
-print(f"Prediction: \${prediction:.0f} thousand dollars")
+print(f"Prediction: {prediction:.0f} thousand dollars")
 \`\`\`
 
 ---
@@ -1259,7 +1259,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from lab_utils_uni import plt_intuition, plt_stationary, plt_update_onclick, soup_bowl
 
-# House sizes (1000 sqft) and prices ($1000s)
+# House sizes (1000 sqft) and prices (1000s of dollars)
 x_train = np.array([1.0, 2.0])
 y_train = np.array([300.0, 500.0])
 \`\`\`
@@ -2146,5 +2146,83 @@ Congratulations! You have completed the **Optimization** module. You now underst
 ---
 
 *This quiz is available offline to get you started immediately.*
+`,
+    "4.1": `
+# Multiple Features (Chapter 4.1)
+
+Welcome back! In this section, we'll see how to make Linear Regression much faster and more powerful by looking at not just one feature, but **multiple features** at the same time.
+
+---
+
+## 🏗️ Beyond the Single House Size
+
+Previously, we used a single feature **x** (the size of the house) to predict **y** (the price). But in the real world, many factors influence a house's price:
+
+- **x₁**: Size of the house (sq ft)
+- **x₂**: Number of bedrooms
+- **x₃**: Number of floors
+- **x₄**: Age of the home (years)
+
+By considering all of these, our model gets a lot more information, which leads to much better predictions!
+
+![Multiple Features Table](/ml_notes/multiple_features_table.png)
+
+---
+
+## 📝 New Notation for Multiple Features
+
+To handle multiple variables, we need to expand our math toolkit. Here is the new notation we'll use:
+
+| Symbol | Meaning | Example |
+| :--- | :--- | :--- |
+| **n** | Total number of features | **n = 4** |
+| **xⱼ** | The j¹ʰ feature | **x₂** is Number of Bedrooms |
+| **x⁽ⁱ⁾** | Features of the i¹ʰ training example (a **vector**) | **x⁽²⁾** represents all data for the 2nd house |
+| **x⁽ⁱ⁾ⱼ** | Value of feature **j** in the i¹ʰ training example | **x⁽²⁾₃** is the number of floors for the 2nd house |
+
+> [!NOTE]
+> **Vectors**: You'll see **x⁽ⁱ⁾** written with an arrow on top (**x⃗⁽ⁱ⁾**) to show it's a list (vector) of numbers, not just a single digit.
+
+---
+
+## 📐 The Multiple Linear Regression Model
+
+With multiple features, our formula grows into a sum of all inputs multiplied by their respective weights, plus a single bias term.
+
+### The General Formula:
+**f_w,b(x) = w₁x₁ + w₂x₂ + ... + wₙxₙ + b**
+
+### 🏠 A Concrete Example:
+Imagine our model for Oregon housing prices looks like this:
+**f_w,b(x) = 0.1x₁ + 4x₂ + 10x₃ - 2x₄ + 80**
+
+**How to interpret these numbers?**
+1. **b = 80**: The base price of a house starts at 80,000 dollars.
+2. **w₁ = 0.1**: For every additional square foot, the price increases by 0.1k (100 dollars).
+3. **w₂ = 4**: For every additional bedroom, the price increases by 4k.
+4. **w₄ = -2**: For every additional year of age, the price **decreases** by 2k (depreciation).
+
+---
+
+## ⚡ The Power of Vectorization
+
+Writing out **w₁x₁ + w₂x₂ + ...** is tedious. We can simplify this using **Vectors** and the **Dot Product**.
+
+1. **Weight Vector (w⃗)**: [w₁, w₂, ..., wₙ]
+2. **Feature Vector (x⃗)**: [x₁, x₂, ..., xₙ]
+
+### Succinct Notation:
+**f_w⃗,b(x⃗) = w⃗ · x⃗ + b**
+
+This "dot product" means: multiply corresponding elements and sum them up. It's the same formula, just written in a cleaner way that computers can process incredibly fast!
+
+---
+
+> [!TIP]
+> This algorithm is called **Multiple Linear Regression**. (Note: We don't call it "Multivariate Regression," as that actually refers to predicting multiple outputs at once!).
+
+---
+
+*This lesson is available offline to get you started immediately.*
 `,
 };

@@ -394,7 +394,7 @@ If you break these, Python will throw a \`SyntaxError\` and your code won't run 
 - **Must start with a letter or underscore (_):** A name cannot start with a number.
   - ✅ \`user_name\`, \`_id\`, \`player1\`
   - ❌ \`1st_place\` (Starts with a number)
-- **Only letters, numbers, and underscores:** No spaces, hyphens (\`-\`), or special symbols like \`@\`, \`$\`, \`%\`.
+- **Only letters, numbers, and underscores:** No spaces, hyphens (\`-\`), or special symbols like \`@\`, \`#\`, \`%\`.
   - ✅ \`total_score\`, \`price_2\`
   - ❌ \`user name\` (Contains a space)
   - ❌ \`total-cost\` (Contains a hyphen)
@@ -627,8 +627,8 @@ You can perform simple calculations directly inside the \`{}\`.
 \`\`\`python
 price = 100
 tax = 0.05
-print(f"Total Price: \${price + (price * tax)}")
-# Output: Total Price: $105.0
+print(f"Total Price: {price + (price * tax)} dollars")
+# Output: Total Price: 105.0 dollars
 \`\`\`
 
 ---
@@ -870,14 +870,14 @@ Congratulations! You've finished the Python Fundamentals section. In the next ch
   </div>
 
   <div class="question">
-    <p><strong>9. F-String Formatting:</strong> Correct the code to print: "Price: $50.0"</p>
+    <p><strong>9. F-String Formatting:</strong> Correct the code to print: "Price: 50.0 dollars"</p>
     <pre class="language-python"><code>price = 50.0
 print("Price: {price}")</code></pre>
     <p class="tip-text">Tip: You need a special character before the quotes to make it an f-string.</p>
     <details>
       <summary>Show Answer</summary>
       <div class="answer-content">
-        <pre class="language-python"><code>print(f"Price: \${price}")</code></pre>
+        <pre class="language-python"><code>print(f"Price: {price} dollars")</code></pre>
         <p><strong>Explanation:</strong> Adding an <code>f</code> before the string allows you to embed variables directly inside curly braces <code>{}</code>.</p>
       </div>
     </details>

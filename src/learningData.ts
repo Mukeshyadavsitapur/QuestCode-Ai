@@ -623,13 +623,15 @@ export const TOPICS_ML: TopicGroup[] = [
         ],
     },
     {
-        title: "4. Supervised Learning - Nearest Neighbors & Naive Bayes",
+        title: "4. Linear Regression with Multiple Variables",
         topics: [
-            { id: "4.1", title: "K-Nearest Neighbors (KNN) Wrapper" },
-            { id: "4.2", title: "Nearest Centroid Classifier" },
-            { id: "4.3", title: "Gaussian Naive Bayes" },
-            { id: "4.4", title: "Multinomial & Bernoulli Naive Bayes" },
-            { id: "4.5", title: "Practice Questions" },
+            { id: "4.1", title: "Multiple Features" },
+            { id: "4.2", title: "Vectorization Background" },
+            { id: "4.3", title: "Gradient Descent for Multiple Variables" },
+            { id: "4.4", title: "Feature Scaling" },
+            { id: "4.5", title: "Learning Rate Selection" },
+            { id: "4.6", title: "Feature Engineering & Polynomial Regression" },
+            { id: "4.7", title: "Revision & Practice Questions" },
         ],
     },
     {

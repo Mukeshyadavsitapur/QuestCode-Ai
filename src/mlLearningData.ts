@@ -2181,7 +2181,7 @@ To handle multiple variables, we need to expand our math toolkit. Here is the ne
 | **x⁽ⁱ⁾ⱼ** | Value of feature **j** in the i¹ʰ training example | **x⁽²⁾₃** is the number of floors for the 2nd house |
 
 > [!NOTE]
-> **Vectors**: You'll see **x⁽ⁱ⁾** written with an arrow on top (**x⃗⁽ⁱ⁾**) to show it's a list (vector) of numbers, not just a single digit.
+> **Vectors**: In some textbooks, you'll see **x⁽ⁱ⁾** written with a small arrow on top or in **bold** to show it's a list (vector) of numbers, not just a single digit.
 
 ---
 
@@ -2208,13 +2208,13 @@ Imagine our model for Oregon housing prices looks like this:
 
 Writing out **w₁x₁ + w₂x₂ + ...** is tedious. We can simplify this using **Vectors** and the **Dot Product**.
 
-1. **Weight Vector (w⃗)**: [w₁, w₂, ..., wₙ]
-2. **Feature Vector (x⃗)**: [x₁, x₂, ..., xₙ]
+1. **Weight Vector (w)**: [w₁, w₂, ..., wₙ]
+2. **Feature Vector (x)**: [x₁, x₂, ..., xₙ]
 
 ### Succinct Notation:
-**f_w⃗,b(x⃗) = w⃗ · x⃗ + b**
+**f_w,b(x) = w · x + b**
 
-This "dot product" means: multiply corresponding elements and sum them up. It's the same formula, just written in a cleaner way that computers can process incredibly fast!
+This "dot product" means: multiply corresponding elements and sum them up. It's the same formula, just written in a cleaner way (using bold **w** and **x** to represent lists) that computers can process incredibly fast!
 
 ---
 

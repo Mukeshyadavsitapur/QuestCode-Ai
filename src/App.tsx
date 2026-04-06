@@ -223,25 +223,31 @@ function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [selectedGroup, setSelectedGroup] = useState<string | null>(() => {
-    // Optional: Persist selected group too if needed, or derive/reset
-    // For now, let's reset or try to recover if we wanted to be very precise
-    return null;
+    return localStorage.getItem(`selected_group_${language}`);
   });
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
+    const savedGroup = localStorage.getItem(`selected_group_${language}`);
+    return savedGroup ? new Set([savedGroup]) : new Set();
+  });
 
   // Update default expanded groups when language changes
   useEffect(() => {
-    let topics: any[] = [];
-    if (language === "rust") topics = TOPICS_RUST;
-    else if (language === "python") topics = TOPICS_PYTHON;
-    else if (language === "dsa") topics = TOPICS_DSA;
-    else if (language === "html") topics = TOPICS_HTML;
-    else if (language === "css") topics = TOPICS_CSS;
-    else if (language === "javascript") topics = TOPICS_JS;
-    else if (language === "ml") topics = TOPICS_ML;
-
-    setExpandedGroups(new Set(topics.map(t => t.title)));
+    const savedGroup = localStorage.getItem(`selected_group_${language}`);
+    if (savedGroup) {
+      setExpandedGroups(new Set([savedGroup]));
+    } else {
+      setExpandedGroups(new Set());
+    }
   }, [language]);
+
+  // Persist selected group
+  useEffect(() => {
+    if (selectedGroup) {
+      localStorage.setItem(`selected_group_${language}`, selectedGroup);
+    } else {
+      localStorage.removeItem(`selected_group_${language}`);
+    }
+  }, [selectedGroup, language]);
 
   // Scroll Refs
   const mainChatScrollRef = useRef<HTMLDivElement>(null);
@@ -1897,6 +1903,11 @@ function App() {
   const handleSelectTopic = (topic: Topic, groupTitle: string) => {
     setSelectedTopic(topic);
     setSelectedGroup(groupTitle);
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      next.add(groupTitle);
+      return next;
+    });
     if (!isWideLayout) setIsHistoryOpen(false);
   };
 
@@ -2184,7 +2195,9 @@ function App() {
                         onClick={() => toggleGroup(group.title)}
                         style={{
                           display: "flex",
-                          alignItems: "center",
+                          alignItems: "flex-start",
+                          justifyContent: "flex-start",
+                          textAlign: "left",
                           width: "100%",
                           background: "transparent",
                           border: "none",
@@ -2195,7 +2208,7 @@ function App() {
                           fontWeight: "600"
                         }}
                       >
-                        <span style={{ color: "var(--text-muted)", marginRight: "6px" }}>
+                        <span style={{ color: "var(--text-muted)", marginRight: "6px", flexShrink: 0, marginTop: "3px" }}>
                           {expandedGroups.has(group.title) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                         </span>
                         {group.title}

@@ -1,4 +1,112 @@
 export const ML_LEARNING_DATA: Record<string, string> = {
+    "2.9": `
+# Practice Questions: Linear Regression (Chapter 2.9)
+
+Test your knowledge of Section 2! These questions cover the fundamental building blocks of Supervised Learning and the Cost Function.
+
+---
+
+### ❓ Question 1: Data Notation
+In our training set for housing prices, what does the symbol **m** represent?
+- A) The price of a specific house.
+- B) The size of the house in square feet.
+- C) The total number of training examples (rows) in our dataset.
+- D) The number of features we are using.
+
+*👉 Answer & Explanation:*
+> **Answer: C**
+> **m** represents the total size of your training set. If you have 50 houses in your list, **m = 50**.
+
+
+---
+
+### ❓ Question 2: Indexing
+What does the notation **x⁽³⁾** (x with a superscript 3 in parentheses) mean in a Machine Learning dataset?
+- A) The value of **x** to the third power (**x³**).
+- B) The input value (feature) for the **3rd training example**.
+- C) The 3rd parameter of the model.
+- D) A variable named "x three".
+
+*👉 Answer & Explanation:*
+> **Answer: B**
+> In ML notation, the superscript in parentheses **(i)** is an **index**, not an exponent. It points to the **i-th row** in your data table.
+
+---
+
+### ❓ Question 3: The Model Formula
+Which of the following is the standard formula for a **Linear Regression model** with one variable?
+- A) **f(x) = ax² + bx + c**
+- B) **f(x) = w + b**
+- C) **f(x) = wx + b**
+- D) **J(w,b) = wx + b**
+
+*👉 Answer & Explanation:*
+> **Answer: C**
+> **f(x) = wx + b** represents a straight line where **w** is the slope (weight) and **b** is the y-intercept (bias).
+
+---
+
+### ❓ Question 4: Guess vs. Reality
+When calculating the error of our model, which symbol represents the **Prediction** (the model's guess) and which represents the **Target** (the actual truth)?
+- A) **y** is the prediction, **ŷ** is the target.
+- B) **x** is the prediction, **y** is the target.
+- C) **ŷ** is the prediction, **y** is the target.
+- D) **w** is the prediction, **b** is the target.
+
+*👉 Answer & Explanation:*
+> **Answer: C**
+> **y** is the actual value from our data (The Truth). **ŷ** (y-hat) is the output of our function $f(x)$ (The Guess).
+
+---
+
+### ❓ Question 5: The Cost Function Goal
+What is the primary purpose of the **Cost Function J(w,b)**?
+- A) To calculate the final price of a product.
+- B) To measure how well our model's line fits the training data.
+- C) To complicate the math for students.
+- D) To determine the size of the training set.
+
+*👉 Answer & Explanation:*
+> **Answer: B**
+> The Cost Function measures the **error** (the difference between guesses and reality). Our goal is to find values for **w** and **b** that make **J** as small as possible!
+
+---
+
+### ❓ Question 6: The Squared Error
+In the Squared Error Cost Function, why do we **square** the difference $(\hat{y} - y)$?
+- A) Because the math looks more impressive.
+- B) To ensure that the error is always a positive number (so negative and positive errors don't cancel out).
+- C) To make large errors much more penalized than small errors.
+- D) Both B and C.
+
+*👉 Answer & Explanation:*
+> **Answer: D**
+> Squaring ensures that being $100 off is always recorded as a positive error, and it ensures that being far away from the line results in a much higher "cost" than being close.
+
+---
+
+### ❓ Question 7: Tuning the Knobs
+In the function **f(x) = wx + b**, which variables are the **parameters** that the learning algorithm will adjust?
+- A) **x**
+- B) **y**
+- C) **w** and **b**
+- D) **f** and **x**
+
+*👉 Answer & Explanation:*
+> **Answer: C**
+> **w** and **b** are the "parameters" (or weights/biases). By changing these values, the algorithm can move, tilt, and shift the line to find the best fit.
+
+---
+
+## 🎓 Summary
+If you answered most of these correctly, you have a solid grasp of the **foundation of supervised learning**! 
+
+You are now ready to move toward the next major module: **Optimization**, where you'll learn about **Gradient Descent**—the algorithm that automatically fixes these parameters for you!
+
+---
+
+*This quiz is available offline to get you started immediately.*
+`,
     "1.1": `
 # Introduction to Machine Learning (Chapter 1.1)
 
@@ -30,18 +138,6 @@ A more formal definition used today:
 - **Task (T):** Classifying emails as "Spam" or "Not Spam".
 - **Experience (E):** Watching you mark emails as spam.
 - **Performance (P):** The percentage of emails correctly classified.
-
----
-
-## 🛠️ Tools vs. Skills: The House Analogy
-
-Imagine someone gives you a state-of-the-art hammer and a high-tech hand drill and says, *"Good luck, now you have all the tools you need to build a three-story house!"*
-
-It doesn't work like that, right? You need the **skills** to use those tools effectively.
-- **Tools:** Learning algorithms (the "hammers" of ML).
-- **Skills:** Knowing *how* and *when* to apply them (the "craftsmanship").
-
-In this application, you'll get both. You won't just learn the algorithms; icons you'll learn the **best practices** used by top ML engineers to build practical systems that actually work.
 
 ---
 
@@ -557,8 +653,8 @@ To talk to the computer, we use a few symbols. They might look scary at first, b
 
 | Symbol | English Name | What it means in our example |
 | :--- | :--- | :--- |
-| **x** | **Input Variable** (Feature) | The size of the house (e.g., 2104 sq ft). |
-| **y** | **Output Variable** (Target) | The actual price it sold for (e.g., $400k). |
+| **x** | **Input Variable** (Input Feature) | The size of the house (e.g., 2104 sq ft). |
+| **y** | **Output Variable** (Output Target) | The actual price it sold for (e.g., $400k). |
 | **m** | **Training Examples** | The total number of houses in our data. |
 | **(x, y)** | **Training Example** | One single row in our data table. |
 | **(x⁽ⁱ⁾, y⁽ⁱ⁾)** | **The i-th Example** | The data for a specific house (like the 5th house). |
@@ -1269,5 +1365,786 @@ Given the **Larger Data Set** above, is it possible to find a straight line that
 ---
 
 *This lesson is available offline to get you started immediately.*
+`,
+    "3.1": `
+# Gradient Descent (Chapter 3.1)
+
+In the last section, we saw how to calculate the **Cost Score (J)** to see how well our model fits. But how do we find the best values for **w** and **b** without manual guessing? 
+
+There is a superstar algorithm used all over Machine Learning—from simple linear regression to the world's most advanced **Deep Learning** models—called **Gradient Descent**.
+
+## 🏗️ The Big Idea
+
+**Gradient Descent** is a systematic way to find the values of your parameters (**w** and **b**) that result in the **smallest possible cost (J)**. 
+
+### Why is it so important?
+- **Versatility**: It works for linear regression, but also for training complex Neural Networks.
+- **Automation**: You don't have to "guess" anymore; the algorithm "walks" toward the best answer.
+- **Scalability**: It can handle models with hundreds, thousands, or even millions of parameters (w₁, w₂, ..., wₙ)!
+
+---
+
+## ⛰️ The Hill-Walking Analogy
+
+Imagine you are standing at the top of a hilly park or a golf course, and your goal is to get to the bottom of the deepest valley as efficiently as possible.
+
+![Gradient Descent Surface](/ml_notes/gradient_descent_surface.png)
+
+### The Strategy:
+1. **Initial Guess**: You start at some random point (a common choice is **w = 0** and **b = 0**).
+2. **Look Around**: You spin 360 degrees and ask: *"In which direction should I take a tiny baby step to go downhill as quickly as possible?"*
+3. **Take a Step**: You take that small step in the direction of the **steepest descent**.
+4. **Repeat**: Now that you're at a new point, you repeat the process until the cost **J** settles at a minimum.
+
+---
+
+## 🗺️ Local Minima: Choosing Your Path
+
+One fascinating property of gradient descent is that **where you start matters**. 
+
+For simple Linear Regression, the cost function always looks like a "bowl" or a "hammock," so you always find the same bottom. However, for more complex models (like Neural Networks), the surface can have many peaks and valleys:
+
+- **Path A**: Starting at one point leads you to a certain valley.
+- **Path B**: Starting just a few steps away might lead you to a **totally different valley**!
+
+These "bottoms" are called **Local Minima**. Because if you're in one valley, gradient descent won't lead you back out to find a different one.
+
+---
+
+## 🧠 Concept Check
+
+If you take a **Giant Leap** instead of a **Tiny Baby Step**, what do you think might happen to your search for the bottom?
+
+> [!TIP]
+> **Stop and Think:** Could you accidentally jump over the valley and end up higher on the other side? We'll explore this "Learning Rate" mystery in the next lesson!
+
+---
+
+## 🏗️ What's Next?
+
+Now that you have the intuition of "walking downhill," we'll look at the **mathematical expressions** that actually make these baby steps happen in code!
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "3.2": `
+# Implementing Gradient Descent (Chapter 3.2)
+
+In the last lesson, we visualized Gradient Descent as "walking downhill." Now, let’s look at the actual **mathematical implementation** that makes this happen!
+
+## 📐 The Gradient Descent Algorithm
+
+To find the lowest point of the cost function, we repeat the following update until the parameters **w** and **b** stop changing (this is called **convergence**):
+
+![Gradient Descent Algorithm](/ml_notes/gd_algorithm_slide.png)
+
+### The Update Formula:
+**repeat until convergence {**
+  **w = w - α * [∂/∂w J(w,b)]**
+  **b = b - α * [∂/∂b J(w,b)]**
+**}**
+
+Wait, what are these symbols?
+- **α (Alpha)**: The **Learning Rate**. It determines how big your "baby steps" are.
+- **∂/∂w J(w,b)**: This is a **Derivative**. It tells the algorithm the direction and steepness of the hill.
+
+---
+
+## 🎨 Coding Concepts
+
+### 1. Assignment (=) vs. Equality (==)
+In most programming languages (like Python), the **=** sign is an **Assignment Operator**.
+- **Math**: \`a = b\` means "a is equal to b".
+- **Code**: \`a = b\` means "copy the value of **b** and store it in **a**".
+- This is why **w = w - 1** is valid code! It just means "take the current w and subtract 1 from it."
+
+### 2. Simultaneous Update (The Correct Way)
+When implementing this in code, you must update **w** and **b** at the same time. This is called a **Simultaneous Update**.
+
+**Correct Implementation:**
+\`\`\`python
+# 1. Calculate the new values and store in temporary variables
+temp_w = w - alpha * gradient_w
+temp_b = b - alpha * gradient_b
+
+# 2. Update the actual parameters only after both are calculated
+w = temp_w
+b = temp_b
+\`\`\`
+
+> [!CAUTION]
+> If you update **w** first and then use that new value to calculate **b**, your algorithm is no longer pure Gradient Descent. It might still work, but it's technically a different algorithm!
+
+---
+
+## 📍 Choosing Your Step Size (α)
+
+Remember our "Learning Rate" visualization? The size of **α** is your most important choice:
+
+![Learning Rate Impact](/ml_notes/learning_rate_impact.png)
+
+- **If α is too high**: You may overshoot the valley and never find the minimum.
+- **If α is too low**: The algorithm will take a very, very long time to finish.
+
+---
+
+## 🏗️ What's Next?
+We’ve mentioned the "Derivative" (the ∂/∂w term) several times. In the next chapter, we’ll dive into the **Intuition of Derivatives** so you can see exactly how the algorithm "feels" the slope of the hill!
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "3.3": `
+# Gradient Descent Intuition (Chapter 3.3)
+
+In the previous lesson, we saw the mathematical update rule for gradient descent. Now, let’s dive deeper into **the derivative term** to understand why it leads us directly to the minimum of the cost function.
+
+## 🏗️ The Big Idea
+
+The magic of gradient descent lies in its ability to automatically decide **which direction** to move. By looking at the slope (derivative) of the cost curve, the algorithm "knows" whether it needs to increase or decrease the parameters.
+
+---
+
+## 📐 Simplifying to One Parameter (w)
+
+To make visualization easier, let's look at a cost function with just one parameter, **w**. Our update rule simplifies to:
+
+**w = w - α * [d/dw J(w)]**
+
+This allows us to look at a simple 2D curved graph instead of a 3D surface.
+
+![Gradient Descent Intuition Slopes](/ml_notes/gd_intuition_slopes.png)
+
+---
+
+## 📈 Case 1: Positive Slope (Point on the Right)
+
+Imagine your starting point is on the **right side** of the "valley."
+
+1. **The Slope**: If you draw a tangent line at this point, it slopes **up and to the right**. This means the derivative is a **positive number**.
+2. **The Update**: \`w = w - α * (positive number)\`.
+3. **The Result**: Since you are subtracting a positive number, **w decreases**. 
+4. **Direction**: You move to the **left** on the graph, getting closer to the minimum at the bottom of the bowl!
+
+---
+
+## 📉 Case 2: Negative Slope (Point on the Left)
+
+Now, imagine your starting point is on the **left side** of the valley.
+
+1. **The Slope**: The tangent line here slopes **down and to the right**. In math, this is a **negative slope** (negative derivative).
+2. **The Update**: \`w = w - α * (negative number)\`.
+3. **The Result**: Subtracting a negative number is the same as **adding a positive number**! So, **w increases**.
+4. **Direction**: You move to the **right** on the graph, again heading straight for the minimum!
+
+---
+
+## 🧠 Summary: The "Self-Correcting" Logic
+
+No matter where you start, the math is self-correcting:
+- **Too far right?** The positive slope pulls you left.
+- **Too far left?** The negative slope pushes you right.
+
+> [!TIP]
+> **Stop and Think:** What happens when you are exactly at the minimum? The slope of the tangent line becomes zero! This means \`w = w - α * 0\`, and the algorithm stops moving. We've reached **Convergence**.
+
+---
+
+## 🏗️ What's Next?
+
+We’ve seen how the **derivative** manages the direction. But how big should those steps be? In the next lesson, we’ll look at the **Learning Rate (α)** and what happens if you choose a value that is too big or too small!
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "3.4": `
+# The Learning Rate (Chapter 3.4)
+
+The choice of the **learning rate (α)** is the most important decision you make when training a machine learning model. If α is chosen poorly, your algorithm may take centuries to finish or may never work at all!
+
+## 🏗️ The Big Idea
+
+The **Learning Rate (α)** controls how big of a step you take when updating your model's parameters. Think of it as the "aggression" of your learning algorithm.
+
+---
+
+## 🚦 Choosing Your Step Size
+
+To understand the impact of α, let's look at what happens when it's either too small or too large.
+
+![Learning Rate Comparison](/ml_notes/learning_rate_comparison.png)
+
+### Case A: α is Too Small
+- **The Behavior**: You take tiny, microscopic baby steps. 
+- **The Result**: Gradient descent **will work**, but it will be **incredibly slow**. You might need millions of steps to reach the bottom of a simple curve.
+- **Analogy**: Trying to walk across a continent by taking 1-inch steps.
+
+### Case B: α is Too Large
+- **The Behavior**: You take giant, uncontrolled leaps.
+- **The Result**: You will **overshoot** the minimum. Instead of getting closer, you might jump right over the valley to the other side—and even end up higher than where you started!
+- **Outcome**: The algorithm may **diverge** (the cost increases) and never find the answer.
+
+---
+
+## 📍 What if we reach the Minimum?
+
+A common question is: *"Does gradient descent keep moving once it reaches the bottom?"* 
+
+The answer is **No.** 
+
+![GD at Minimum](/ml_notes/gd_at_minimum.png)
+
+At a local minimum, the tangent line is perfectly horizontal. This means the **slope (derivative) is exactly 0**.
+- **The Math**: \`w = w - α * 0\`
+- **The Result**: \`w = w\`
+
+Once you reach the minimum, the parameters stop changing. The algorithm has "converged."
+
+---
+
+## 📉 Fixed α: Naturally Smaller Steps
+
+You might wonder: *"Do I need to manually decrease α as I get closer to the bottom to avoid overshooting?"*
+
+Actually, for most cases, **No.** 
+
+![Fixed LR Convergence](/ml_notes/fixed_lr_convergence.png)
+
+As you approach the minimum, the curve gets flatter. This means the **derivative (slope) automatically gets smaller**. 
+- Even with a **fixed α**, the product \`α * derivative\` gets smaller and smaller.
+- Consequently, gradient descent **naturally takes smaller steps** as it nears the goal!
+
+---
+
+## 🏗️ What's Next?
+
+We've mastered the intuition of gradient descent—the "Hill," the "Update Rule," the "Derivative," and the "Learning Rate." Now, it's time to put it all together. In the next lesson, we will apply gradient descent to our **Linear Regression** model to create our very first complete Learning Algorithm!
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "3.5": `
+# Linear Regression with Gradient Descent (Chapter 3.5)
+
+It’s time to put all the pieces together! We have our **Model** (the straight line), our **Cost Function** (the measurement of error), and our **Optimization Algorithm** (gradient descent). Now, let’s combine them into a single, automated learning system.
+
+## 🏗️ The Big Idea
+
+By applying gradient descent to the squared error cost function, we can automatically "tune" the parameters **w** and **b** to fit a straight line to any set of training data.
+
+---
+
+## 📐 Putting it All Together
+
+Here is the complete mathematical framework for your first learning algorithm:
+
+![Linear Regression GD Summary](/ml_notes/lr_gd_summary.png)
+
+### The Update Formulas:
+For each step of the algorithm, we calculate:
+**w = w - α * [1/m * Σ (f(xⁱ) - yⁱ) * xⁱ]**
+**b = b - α * [1/m * Σ (f(xⁱ) - yⁱ)]**
+
+Where:
+- **f(xⁱ)** is our prediction (**w * xⁱ + b**).
+- **(f(xⁱ) - yⁱ)** is the **Error** (Prediction - Actual).
+- **m** is the number of training examples.
+
+---
+
+## ⛰️ Global vs. Local Minima
+
+One common challenge in Gradient Descent is that some cost functions look like an outdoor park with many hills and valleys.
+
+![Non-Convex Surface](/ml_notes/non_convex_surface.png)
+
+### Choosing Your Path
+As you can see in the diagram above, your **starting point matters**:
+- **Path A**: Starting in one location might lead you to a certain valley.
+- **Path B**: Starting just a few steps away might lead you to a **completely different valley**!
+
+These individual valleys are called **Local Minima**. The goal of machine learning is usually to find the deepest valley of all—the **Global Minimum**.
+
+---
+
+## 🥣 The Convex Advantage
+
+You might be worried: *"What if my Linear Regression gets stuck in a shallow valley?"*
+
+The good news is: **It won't!**
+
+![Convex Cost Function](/ml_notes/convex_cost_function.png)
+
+When you use the **Squared Error Cost Function** for **Linear Regression**, the surface is always a perfect, smooth bowl. 
+- The technical term for this is a **Convex Function**.
+- **The Guarantee**: A convex function has **no local minima**; it only has one single global minimum at the bottom.
+- This means as long as your learning rate is chosen correctly, Gradient Descent will **always find the best possible answer**.
+
+---
+
+## 🎓 Congratulations!
+
+You have just mastered your first machine learning algorithm! You've transitioned from "guessing" to "automating" with a system that is mathematically guaranteed to find the best fit for your data.
+
+In the next course, we'll expand these concepts to "Multiple Linear Regression," allowing us to predict things like house prices using size, age, *and* location all at once!
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "3.6": `
+# Optional Lab: Gradient Descent for Linear Regression
+
+In this lab, you will automate the process of optimizing **w** and **b** using gradient descent. 
+
+## 🎯 Goals
+- Implement the gradient descent algorithm for one feature.
+- Visualize how the cost function behaves over time.
+- Understand the impact of the learning rate **α**.
+
+---
+
+## 🛠️ Step 1: Setup and Tools
+First, we'll import the necessary libraries and define our training dataset. We'll also include some plotting routines that were previously external to help us visualize the cost function and its gradients.
+
+\`\`\`python
+import math, copy
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load our data set
+x_train = np.array([1.0, 2.0])   # features
+y_train = np.array([300.0, 500.0])   # target values
+
+# --- PLOTTING HELPERS (lab_utils_uni equivalent) ---
+
+def plt_gradients(x, y, cost_fn, grad_fn):
+    fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+    b_fixed = 100
+    w_range = np.linspace(0, 400, 50)
+    costs = [cost_fn(x, y, w, b_fixed) for w in w_range]
+    ax[0].plot(w_range, costs, color='#0096ff')
+    w_points = [100, 200, 300]
+    for w_p in w_points:
+        c_p = cost_fn(x, y, w_p, b_fixed)
+        dj_dw, _ = grad_fn(x, y, w_p, b_fixed)
+        ax[0].scatter(w_p, c_p, color='#0096ff', s=50)
+        dx = 30
+        ax[0].plot([w_p-dx, w_p+dx], [c_p-dx*dj_dw, c_p+dx*dj_dw], 'r--', lw=1)
+        ax[0].text(w_p+5, c_p, f"∂J/∂w = {int(dj_dw)}", fontsize=10, fontweight='bold')
+    ax[0].set_title("Cost vs w, with gradient; b set to 100")
+    ax[0].set_xlabel("w"); ax[0].set_ylabel("Cost")
+    
+    w_grid = np.linspace(-100, 600, 10); b_grid = np.linspace(-200, 200, 10)
+    W, B = np.meshgrid(w_grid, b_grid)
+    u, v = np.zeros(W.shape), np.zeros(B.shape)
+    for i in range(len(w_grid)):
+        for j in range(len(b_grid)):
+            dj_dw, dj_db = grad_fn(x, y, w_grid[i], b_grid[j])
+            u[j, i] = -dj_dw; v[j, i] = -dj_db
+    mag = np.sqrt(u**2 + v**2)
+    ax[1].quiver(W, B, u, v, mag, cmap='viridis', alpha=0.8)
+    ax[1].set_title("Gradient shown in quiver plot")
+    ax[1].set_xlabel("w"); ax[1].set_ylabel("b")
+    plt.tight_layout(); plt.show()
+
+def plt_contour_wgrad(x, y, p_hist, ax, w_range=[0, 400, 0.5], b_range=[-200, 600, 0.5], contours=[1, 50, 1000, 10000, 25000, 50000]):
+    # Setup grid
+    w = np.arange(w_range[0], w_range[1], w_range[2])
+    b = np.arange(b_range[0], b_range[1], b_range[2])
+    z = np.zeros((len(w), len(b)))
+    for i in range(len(w)):
+        for j in range(len(b)):
+            z[i, j] = compute_cost(x, y, w[i], b[j])
+    W, B = np.meshgrid(w, b)
+    
+    # Draw contours
+    CS = ax.contour(W, B, z.T, levels=contours, colors=['#FF00FF', '#FF00FF', '#800080', '#0000FF', '#0096FF', '#FFA500'])
+    ax.clabel(CS, inline=True, fontsize=8, fmt='%1.0f')
+    ax.set_title("Contour plot of cost J(w,b), vs b,w with path of gradient descent")
+    ax.set_xlabel("w"); ax.set_ylabel("b")
+    
+    # Draw path with red arrows
+    path = np.array(p_hist)
+    ax.quiver(path[:-1,0], path[:-1,1], path[1:,0]-path[:-1,0], path[1:,1]-path[:-1,1], 
+              scale_units='xy', angles='xy', scale=1, color='red', width=0.005)
+    
+    # Target indicator lines (Dotted)
+    w_final, b_final = path[-1]
+    ax.axvline(w_final, color='purple', linestyle=':', lw=2)
+    ax.axhline(b_final, color='purple', linestyle=':', lw=2)
+    ax.scatter(w_final, b_final, color='red', marker='x', s=100)
+
+def plt_divergence(p_hist, J_hist, x, y):
+    fig = plt.figure(figsize=(12, 5))
+    fig.suptitle("Cost escalates when learning rate is too large", fontsize=14)
+    
+    # Left: 2D Cost vs w (fixed b=100)
+    ax1 = fig.add_subplot(1, 2, 1)
+    w_range = np.linspace(-70000, 70000, 100)
+    costs = [compute_cost(x, y, w, 100) for w in w_range]
+    ax1.plot(w_range, costs, color='#0096ff', lw=5)
+    path = np.array(p_hist)
+    ax1.plot(path[:,0], J_hist, color='#FF00FF', lw=4) # Pink zig-zag path
+    ax1.set_title("Cost vs w, b set to 100")
+    ax1.set_xlabel("w"); ax1.set_ylabel("Cost")
+    
+    # Right: 3D Surface
+    ax2 = fig.add_subplot(1, 2, 2, projection='3d')
+    w = np.linspace(-70000, 70000, 50)
+    b = np.linspace(-40000, 40000, 50)
+    W, B = np.meshgrid(w, b)
+    Z = np.zeros(W.shape)
+    for i in range(len(w)):
+        for j in range(len(b)):
+            Z[j, i] = compute_cost(x, y, w[i], b[j])
+    ax2.plot_surface(W, B, Z, color='skyblue', alpha=0.3, edgecolor='grey', lw=0.5)
+    ax2.plot(path[:,0], path[:,1], J_hist, color='#FF00FF', lw=4) # Path Escalating
+    ax2.set_title("Cost vs (b, w)")
+    ax2.set_xlabel("w"); ax2.set_ylabel("b"); ax2.set_zlabel("cost")
+    plt.tight_layout(); plt.show()
+
+print("Setup complete.")
+\`\`\`
+
+---
+
+## 📐 Step 2: Coding the Math
+We need three main functions to implement gradient descent:
+1. **Compute Cost**: Measures how well our line fits the data.
+2. **Compute Gradient**: Calculates the derivatives (the direction and steepness).
+3. **Gradient Descent**: The loop that updates the parameters.
+
+### 2.1 The Cost Function
+\`\`\`python
+def compute_cost(x, y, w, b):
+    m = x.shape[0] 
+    cost = 0
+    for i in range(m):
+        f_wb = w * x[i] + b
+        cost = cost + (f_wb - y[i])**2
+    total_cost = 1 / (2 * m) * cost
+    return total_cost
+\`\`\`
+
+### 2.2 The Gradient Function
+\`\`\`python
+def compute_gradient(x, y, w, b): 
+    m = x.shape[0]    
+    dj_dw = 0
+    dj_db = 0
+    
+    for i in range(m):  
+        f_wb = w * x[i] + b 
+        dj_dw_i = (f_wb - y[i]) * x[i] 
+        dj_db_i = f_wb - y[i] 
+        dj_db += dj_db_i
+        dj_dw += dj_dw_i 
+        dj_dw = dj_dw / m 
+    dj_db = dj_db / m 
+        
+    return dj_dw, dj_db
+\`\`\`
+
+---
+
+## 🧭 Step 3: Visualizing Gradients
+The lectures described how gradient descent utilizes the partial derivative of the cost with respect to a parameter at a point to update that parameter. Let's use our \`compute_gradient\` function to find and plot some partial derivatives of our cost function relative to one of the parameters, **w**.
+
+\`\`\`python
+# Visualize partial derivatives
+plt_gradients(x_train, y_train, compute_cost, compute_gradient)
+\`\`\`
+
+Above, the left plot shows **∂J/∂w** or the slope of the cost curve relative to **w** at three points. 
+- On the right side of the plot, the derivative is **positive**, while on the left it is **negative**. 
+- Due to the "bowl shape," the derivatives will always lead gradient descent toward the bottom where the gradient is zero.
+
+The **quiver plot** on the right provides a means of viewing the gradient of both parameters. The arrow sizes reflect the magnitude of the gradient at that point. Note that the gradient points away from the minimum; however, in equation (3), the scaled gradient is subtracted from the current value of **w** or **b**, moving the parameters in a direction that reduces cost.
+
+---
+
+## 🏃 Step 4: Running Gradient Descent
+Now we implement the main loop that takes "baby steps" toward the minimum.
+
+\`\`\`python
+def gradient_descent(x, y, w_in, b_in, alpha, num_iters, cost_function, gradient_function): 
+    J_history = []
+    p_history = []
+    b = b_in
+    w = w_in
+    
+    for i in range(num_iters):
+        dj_dw, dj_db = gradient_function(x, y, w , b)     
+
+        b = b - alpha * dj_db                            
+        w = w - alpha * dj_dw                            
+
+        if i < 100000:
+            J_history.append(cost_function(x, y, w , b))
+            p_history.append([w, b])
+
+        if i % (num_iters // 10) == 0:
+            print(f"Iteration {i:4}: Cost {J_history[-1]:0.2e} "
+                  f"dj_dw: {dj_dw: 0.3e}, dj_db: {dj_db: 0.3e} "
+                  f"w: {w: 0.3e}, b:{b: 0.5e}")
+ 
+    return w, b, J_history, p_history
+
+# Initialize parameters
+w_init = 0
+b_init = 0
+iterations = 10000
+alpha = 1.0e-2
+
+# Run gradient descent
+w_final, b_final, J_hist, p_hist = gradient_descent(x_train ,y_train, w_init, b_init, alpha, 
+                                                    iterations, compute_cost, compute_gradient)
+
+print(f"(w,b) found by gradient descent: ({w_final:8.4f},{b_final:8.4f})")
+\`\`\`
+
+---
+
+## 📊 Step 4: Visualizing Results
+Run the code below to see how the cost decreases over time. A successful run should show the cost dropping rapidly at first and then leveling off.
+
+\`\`\`python
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+ax1.plot(J_hist[:100])
+ax1.set_title("Cost vs. iteration (Start)")
+ax1.set_ylabel('Cost')
+ax1.set_xlabel('Iteration step')
+
+ax2.plot(1000 + np.arange(len(J_hist[1000:])), J_hist[1000:])
+ax2.set_title("Cost vs. iteration (End)")
+ax2.set_ylabel('Cost')
+ax2.set_xlabel('Iteration step')
+
+plt.tight_layout()
+plt.show()
+\`\`\`
+
+---
+
+## 📈 Step 5: Path of Gradient Descent
+To see the "Path" your algorithm took on the cost surface, run the block below. This generates a contour plot where each elliptical ring represents a different cost level. The red arrows show the direction of each update.
+
+\`\`\`python
+# Visualize the path on the cost contours
+fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+plt_contour_wgrad(x_train, y_train, p_hist, ax)
+plt.show()
+
+# Zoomed in view
+fig, ax = plt.subplots(1, 1, figsize=(12, 4))
+plt_contour_wgrad(x_train, y_train, p_hist, ax, 
+                   w_range=[180, 220, 0.5], b_range=[80, 120, 0.5],
+                   contours=[1, 5, 10, 20])
+plt.show()
+\`\`\`
+
+---
+
+## 🚀 Step 6: What happens with a Large α?
+Try running gradient descent with a much larger learning rate (e.g., **α = 0.8**). You will see the parameters "bounce" back and forth, eventually escalating until the cost explodes. This is a clear sign of **divergence**.
+
+\`\`\`python
+# Initialize parameters for divergence test
+w_init = 0
+b_init = 0
+iterations = 10
+tmp_alpha = 0.8
+
+# Run gradient descent with high learning rate
+_, _, J_inv, p_inv = gradient_descent(x_train, y_train, w_init, b_init, tmp_alpha, 
+                                      iterations, compute_cost, compute_gradient)
+
+# Plot divergence (2D and 3D)
+plt_divergence(p_inv, J_inv, x_train, y_train)
+\`\`\`
+
+---
+
+## 🏗️ Summary
+In this lab, you developed the core routines for gradient descent and visualized how the algorithm finds the optimal parameters. You also saw why picking the right **learning rate** is so critical!
+
+---
+
+*This lab is interactive. Click 'Run' on any code block to see the live results.*
+`,
+    "3.7": `
+# Revision: Gradient Descent (Chapter 3.7)
+
+Congratulations on reaching the end of the **Optimization** module! You've moved from understanding how to measure error (Cost) to building a machine that automatically fixes that error.
+
+Here is a 3-minute summary of the key pillars you've mastered.
+
+---
+
+## 🏛️ Pillar 1: The Optimized Algorithm
+
+Gradient Descent is an iterative process of taking "baby steps" downhill to reach the bottom (the minimum cost).
+
+### The Master Equation:
+**w = w - α * [∂/∂w J(w,b)]**
+**b = b - α * [∂/∂b J(w,b)]**
+
+### ⚡ The Golden Coding Rule:
+You must perform a **Simultaneous Update**. Always calculate your temporary values first before updating the final parameters:
+- \`temp_w = ...\`
+- \`temp_b = ...\`
+- \`w = temp_w; b = temp_b\`
+
+---
+
+## 📐 Pillar 2: The Learning Rate (α)
+
+Alpha is your "Step Size." It is the most important parameter you choose as an engineer.
+
+- **Too Small**: Gradient descent works, but it’s painfully slow.
+- **Too Large**: You overshoot the minimum, the cost escalates, and the algorithm **diverges**.
+- **Fixed α**: As you approach the minimum, the slope gets flatter, so the algorithm **naturally takes smaller steps** even if α stays the same!
+
+---
+
+## 🧭 Pillar 3: The Derivative Intuition
+
+The derivative isn't just a math symbol; it's a **directional guide**. It tells the algorithm which way is "downhill":
+
+- **Positive Slope**: The formula subtracts a positive, moving **w** left.
+- **Negative Slope**: The formula "adds" a positive, moving **w** right.
+- **Zero Slope**: You are at the minimum. The update becomes \`w = w - 0\`. You have reached **Convergence**.
+
+---
+
+## 🥣 Pillar 4: The Convex Advantage
+
+Why do we use the **Squared Error Cost Function** for Linear Regression? 
+
+![Convex Cost Function](/ml_notes/convex_cost_function.png)
+
+Because it is **Convex** (bowl-shaped). This means it is mathematically impossible to get stuck in "local valleys." There is only one **Global Minimum**, and Gradient Descent is guaranteed to find it if your α is correct.
+
+---
+
+## 🧪 From Lab to Reality
+
+In the Optional Lab, you saw how:
+1. **Automation** replaces manual guessing.
+2. **Contours** help us visualize the optimization path.
+3. **Vectors (Gradients)** show us the direction of steepest descent.
+
+---
+
+## ✅ Ready for the Challenge?
+
+Now that you've reviewed the core concepts, you are ready to test your knowledge in the **Practice Questions**! 
+
+*Next up, we'll expand these concepts to look at models that can predict things like house prices using multiple features like size, age, and location all at once!*
+
+---
+
+*This lesson is available offline to get you started immediately.*
+`,
+    "3.8": `
+# Practice Questions: Optimization (Chapter 3.8)
+
+Test your knowledge of Section 3! These questions cover Gradient Descent, the Learning Rate, and the specifics of Linear Regression optimization.
+
+---
+
+### ❓ Question 1: The Update Rule
+In the simultaneous update rule for Gradient Descent, why do we use **temp_w** and **temp_b**?
+- A) To make the code look more professional.
+- B) To ensure that the calculation of **b** uses the **old** value of **w**, not the newly updated one.
+- C) To save memory in the computer.
+- D) To make the algorithm run faster.
+
+*👉 Answer & Explanation:*
+> **Answer: B**
+> Gradient Descent requires a **Simultaneous Update**. If you update **w** first and then use that new **w** to calculate the gradient for **b**, you are technically using a different (and often less stable) algorithm.
+
+---
+
+### ❓ Question 2: The Learning Rate Impact
+If your training process shows that the **Cost J** is increasing after every iteration, what is the most likely cause?
+- A) The learning rate **alpha** is too small.
+- B) The learning rate **alpha** is too large (causing divergence).
+- C) The computer is running out of memory.
+- D) You have reached the Global Minimum.
+
+*👉 Answer & Explanation:*
+> **Answer: B**
+> If **alpha** is too large, the algorithm "overshoots" the minimum and jumps to the other side of the valley, potentially heading even higher. This is called **Divergence**.
+
+---
+
+### ❓ Question 3: The Derivative Direction
+If the derivative **dj/dw** is a **negative** number, how does the update rule **w = w - alpha * (dj/dw)** change the value of **w**?
+- A) **w** decreases.
+- B) **w** stays the same.
+- C) **w** increases.
+- D) **w** becomes zero.
+
+*👉 Answer & Explanation:*
+> **Answer: C**
+> Subtracting a negative number is the same as **adding a positive number**. Thus, **w** increases, which moves you to the right toward the minimum of the "bowl."
+
+---
+
+### ❓ Question 4: Natural Convergence
+Does Gradient Descent require you to manually decrease the learning rate **alpha** as you get closer to the minimum?
+- A) Yes, always.
+- B) No, because the **derivative** automatically gets smaller as the slope flattens.
+- C) No, because **alpha** is not used near the minimum.
+- D) Yes, otherwise it will never stop.
+
+*👉 Answer & Explanation:*
+> **Answer: B**
+> As you approach the bottom of the "bowl" (the minimum), the slope becomes flatter. This means the derivative gets closer to zero, so the step size (**alpha * derivative**) **naturally decreases** even if **alpha** is fixed!
+
+---
+
+### ❓ Question 5: Convexity
+Why is the **Quadratic (Squared Error) Cost Function** so popular for Linear Regression?
+- A) It is a **Convex Function** (bowl-shaped), meaning it has no local minima—only one Global Minimum.
+- B) It is the easiest formula to memorize.
+- C) It works for both classification and regression.
+- D) It prevents the computer from overheating.
+
+*👉 Answer & Explanation:*
+> **Answer: A**
+> A Convex function guarantees that Gradient Descent will always find the **best possible fit** for your data, as long as your learning rate is chosen correctly.
+
+---
+
+### ❓ Question 6: The Calculus "Why"
+What happens to the parameter **w** when you are exactly at the **Global Minimum**?
+- A) It becomes zero.
+- B) It stops changing because the derivative is zero (**w = w - alpha * 0**).
+- C) It starts increasing again.
+- D) The algorithm crashes.
+
+*👉 Answer & Explanation:*
+> **Answer: B**
+> At the minimum, the slope is horizontal (zero). The update rule results in **w = w**, meaning the algorithm has **converged**.
+
+---
+
+## 🎓 Module Complete!
+
+Congratulations! You have completed the **Optimization** module. You now understand how machines "learn" by walking down mountains of data to find the lowest possible error.
+
+*Next, we'll dive into **Multiple Linear Regression**, where we'll learn how to predict results using many features at once—like predicting house prices based on size, age, and number of bedrooms!*
+
+---
+
+*This quiz is available offline to get you started immediately.*
 `,
 };

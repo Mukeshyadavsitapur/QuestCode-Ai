@@ -192,3 +192,13 @@ export const DEFAULT_ML_NOTES_CODE = JSON.stringify([
   { id: "1", code: "# Welcome to Machine Learning Notes!\n# This is a Jupyter-like notebook cell.\nprint('Hello, ML Learner!')", output: "" },
   { id: "2", code: "import numpy as np\n# State persists between cells!\nx = np.array([1, 2, 3])\nprint('x:', x)", output: "" }
 ]);
+
+export const DEFAULT_ENGLISH_CODE = `# Welcome to English Learning!
+# Practice your sentences here.
+
+# Example:
+# Sarah is driving to work right now.
+# I am currently learning English with QuestCode AI.
+
+# Write your own sentences below:
+`;

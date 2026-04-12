@@ -33,12 +33,12 @@ import { Shortcuts } from "./Shortcuts";
 import { themes } from "./themes";
 import { Terminal } from "./Terminal"; // Import Terminal
 import { AiLearning, AiLearningHandle } from "./AiLearning";
-import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, TOPICS_HTML, TOPICS_CSS, TOPICS_JS, TOPICS_ML, Topic } from "./learningData";
+import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, TOPICS_HTML, TOPICS_CSS, TOPICS_JS, TOPICS_ML, TOPICS_ENGLISH, Topic } from "./learningData";
 import Quiz from "./Quiz";
 import "./App.css";
 import {
   DEFAULT_RUST_CODE, DEFAULT_PYTHON_CODE, DEFAULT_HTML_CODE, DEFAULT_CSS_CODE, DEFAULT_JS_CODE,
-  DEFAULT_ML_NOTES_CODE,
+  DEFAULT_ML_NOTES_CODE, DEFAULT_ENGLISH_CODE
 } from "./defaultCode";
 import Prism from "prismjs";
 import "prismjs/themes/prism-tomorrow.css";
@@ -79,11 +79,12 @@ function App() {
     if (lang === "css") return DEFAULT_CSS_CODE;
     if (lang === "javascript") return DEFAULT_JS_CODE;
     if (lang === "ml") return DEFAULT_ML_NOTES_CODE;
+    if (lang === "english") return DEFAULT_ENGLISH_CODE;
     return DEFAULT_PYTHON_CODE;
   };
 
-  const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml">(() => {
-    return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml") || "python";
+  const [language, setLanguage] = useState<"rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "english">(() => {
+    return (localStorage.getItem("language") as "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "english") || "python";
   });
 
   // Initialize code from localStorage based on valid language
@@ -959,7 +960,7 @@ function App() {
     }
   }, [code, language]);
 
-  const handleLanguageChange = (newLang: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml") => {
+  const handleLanguageChange = (newLang: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "english") => {
     setLanguage(newLang);
     localStorage.setItem("language", newLang);
 
@@ -1063,8 +1064,8 @@ function App() {
   };
 
   const handleCycleLanguage = () => {
-    const languages: ("python" | "rust" | "dsa" | "html" | "css" | "javascript" | "ml")[] =
-      ["python", "rust", "dsa", "html", "css", "javascript", "ml"];
+    const languages: ("python" | "rust" | "dsa" | "html" | "css" | "javascript" | "ml" | "english")[] =
+      ["english", "python", "rust", "dsa", "html", "css", "javascript", "ml"];
     const currentIndex = languages.indexOf(language);
     const nextIndex = (currentIndex + 1) % languages.length;
     handleLanguageChange(languages[nextIndex]);
@@ -1566,7 +1567,7 @@ function App() {
 
     if (!isTerminalVisible) setIsTerminalVisible(true);
 
-    if (language === "html" || language === "css" || language === "ml") {
+    if (language === "html" || language === "css" || language === "ml" || language === "english") {
       return;
     }
 
@@ -2146,6 +2147,7 @@ function App() {
     else if (language === "css") topics = TOPICS_CSS;
     else if (language === "javascript") topics = TOPICS_JS;
     else if (language === "ml") topics = TOPICS_ML;
+    else if (language === "english") topics = TOPICS_ENGLISH;
 
     const flatTopics = topics.flatMap(group => group.topics.map((t: Topic) => ({ ...t, groupTitle: group.title })));
     const currentIndex = flatTopics.findIndex((t: Topic) => t.id === selectedTopic?.id);
@@ -2188,7 +2190,8 @@ function App() {
                           language === "html" ? TOPICS_HTML :
                             language === "css" ? TOPICS_CSS :
                               language === "ml" ? TOPICS_ML :
-                                TOPICS_JS
+                                language === "english" ? TOPICS_ENGLISH :
+                                  TOPICS_JS
                   ).map((group) => (
                     <div key={group.title} style={{ marginBottom: "12px" }}>
                       <button
@@ -2254,6 +2257,7 @@ function App() {
                         className="sidebar-language-select"
                         title="Change Language"
                       >
+                        <option value="english">English</option>
                         <option value="python">🐍 Python</option>
                         <option value="rust">🦀 Rust</option>
                         <option value="dsa">📊 DSA</option>
@@ -2266,16 +2270,18 @@ function App() {
                     <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleNewChat}>
                       <Plus size={16} /> New Chat
                     </button>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
-                      onClick={() => {
-                        setViewMode("docs");
-                        if (!isWideLayout) setIsHistoryOpen(false);
-                      }}
-                    >
-                      <Book size={16} /> Official Docs
-                    </button>
+                    {language !== "english" && (
+                      <button
+                        className="btn btn-secondary"
+                        style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
+                        onClick={() => {
+                          setViewMode("docs");
+                          if (!isWideLayout) setIsHistoryOpen(false);
+                        }}
+                      >
+                        <Book size={16} /> Official Docs
+                      </button>
+                    )}
                     <button
                       className="btn btn-secondary"
                       style={{ width: "100%", justifyContent: "center", border: "1px solid var(--border-color)" }}
@@ -2754,7 +2760,7 @@ function App() {
                               <button
                                 className="tab-btn"
                                 onClick={handleExplain}
-                                title="Explain Code (Ctrl+Alt+C)"
+                                title={language === "english" ? "Explain Sentences (Ctrl+Alt+C)" : "Explain Code (Ctrl+Alt+C)"}
                                 disabled={isExplaining || aiService === "web"}
                                 style={{
                                   padding: "4px 8px",
@@ -2767,7 +2773,7 @@ function App() {
                               <button
                                 className={`tab-btn ${isRunning ? "active" : ""}`}
                                 onClick={handleRunCode}
-                                title={isRunning ? "Stop" : (language === "html" || language === "css") ? "Preview" : "Run Code (F5 / Ctrl+Enter)"}
+                                title={isRunning ? "Stop" : (language === "html" || language === "css") ? "Preview" : language === "english" ? "Check Sentences (Experimental)" : "Run Code (F5 / Ctrl+Enter)"}
                                 style={{
                                   padding: "4px 8px",
                                   color: isRunning ? "#ef4444" : undefined,
@@ -2777,6 +2783,8 @@ function App() {
                                   <Square size={14} fill="currentColor" />
                                 ) : (language === "html" || language === "css") ? (
                                   <Globe size={14} />
+                                ) : language === "english" ? (
+                                  <Sparkles size={14} />
                                 ) : (
                                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                                 )}
@@ -2833,7 +2841,7 @@ function App() {
                         ) : (
                           <Editor
                             height="100%"
-                            language={language === "dsa" ? "python" : language}
+                            language={language === "dsa" ? "python" : (language === "english" ? "markdown" : language)}
                             theme={theme}
                             value={code}
                             onChange={(value) => setCode(value || "")}

@@ -9,10 +9,12 @@ import "prismjs/components/prism-python";
 import { Topic } from "./learningData";
 import { PYTHON_LEARNING_DATA } from "./pythonLearningData";
 import { ML_LEARNING_DATA } from "./mlLearningData";
+import { ENGLISH_LEARNING_DATA } from "./englishLearningData";
 
 const ALL_OFFLINE_DATA: Record<string, Record<string, string>> = {
     "python": PYTHON_LEARNING_DATA,
-    "ml": ML_LEARNING_DATA
+    "ml": ML_LEARNING_DATA,
+    "english": ENGLISH_LEARNING_DATA
 };
 
 export interface AiLearningHandle {
@@ -20,7 +22,7 @@ export interface AiLearningHandle {
 }
 
 interface AiLearningProps {
-    language: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml";
+    language: "rust" | "python" | "dsa" | "html" | "css" | "javascript" | "ml" | "english";
     apiKey: string;
     openAiApiKey: string;
     anthropicApiKey: string;

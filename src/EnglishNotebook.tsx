@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import { CheckCircle2, XCircle, Play, RotateCcw } from "lucide-react";
+import { Check, X, Play, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 
 interface EnglishExercise {
   id: string;
@@ -15,9 +15,10 @@ interface EnglishNotebookProps {
   value: string;
   appliedCode: string | null;
   onCellsChange: (cellsJson: string) => void;
+  onExplain?: (index: number) => void;
 }
 
-export function EnglishNotebook({ value, appliedCode, onCellsChange }: EnglishNotebookProps) {
+export function EnglishNotebook({ value, appliedCode, onCellsChange, onExplain }: EnglishNotebookProps) {
   const [exercises, setExercises] = useState<EnglishExercise[]>([]);
   const [activeCellIdx, setActiveCellIdx] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -64,6 +65,9 @@ export function EnglishNotebook({ value, appliedCode, onCellsChange }: EnglishNo
   const handleInputChange = (idx: number, value: string) => {
     const newEx = [...exercises];
     newEx[idx].userAnswer = value;
+    // Reset submission state when editing, so user can re-submit
+    newEx[idx].isSubmitted = false;
+    newEx[idx].isCorrect = undefined;
     setExercises(newEx);
   };
 
@@ -82,18 +86,10 @@ export function EnglishNotebook({ value, appliedCode, onCellsChange }: EnglishNo
     newEx[idx].isCorrect = isCorrect;
     setExercises(newEx);
 
-    // Focus next cell if available
-    if (idx < exercises.length - 1) {
+    // Focus next cell if available (only if correct, like Jupyter moving forward)
+    if (isCorrect && idx < exercises.length - 1) {
       setActiveCellIdx(idx + 1);
     }
-  };
-
-  const resetExercise = (idx: number) => {
-    const newEx = [...exercises];
-    newEx[idx].isSubmitted = false;
-    newEx[idx].userAnswer = "";
-    newEx[idx].isCorrect = undefined;
-    setExercises(newEx);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, idx: number) => {
@@ -123,14 +119,7 @@ export function EnglishNotebook({ value, appliedCode, onCellsChange }: EnglishNo
   }
 
   return (
-    <div className="english-notebook-container" ref={containerRef}>
-      <div className="notebook-header">
-        <h3>English Exercise Notebook</h3>
-        <span className="notebook-stats">
-          {exercises.filter(ex => ex.isSubmitted && ex.isCorrect).length} / {exercises.length} Correct
-        </span>
-      </div>
-      
+    <div className="notebook-container" ref={containerRef}>
       <div className="notebook-cells">
         {exercises.map((ex, idx) => (
           <div 
@@ -138,8 +127,20 @@ export function EnglishNotebook({ value, appliedCode, onCellsChange }: EnglishNo
             className={`exercise-cell ${activeCellIdx === idx ? 'active' : ''} ${ex.isSubmitted ? 'submitted' : ''}`}
             onClick={() => setActiveCellIdx(idx)}
           >
-            <div className="cell-input-label">
-              In [{ex.isSubmitted ? (ex.isCorrect ? '*' : '!') : idx + 1}]:
+            <div className="cell-header">
+              <button 
+                className="cell-explain-btn" 
+                onClick={(e) => { e.stopPropagation(); onExplain?.(idx); }}
+                title="Explain this question"
+              >
+                <Sparkles size={14} />
+              </button>
+              <div className={`cell-input-label ${ex.isSubmitted ? (ex.isCorrect ? 'correct' : 'incorrect') : ''}`}>
+                In [{ex.isSubmitted ? (
+                  ex.isCorrect ? <Check size={16} strokeWidth={3} style={{ display: 'inline', verticalAlign: 'middle', marginTop: '-2px' }} /> 
+                              : <X size={16} strokeWidth={3} style={{ display: 'inline', verticalAlign: 'middle', marginTop: '-2px' }} />
+                ) : idx + 1}]:
+              </div>
             </div>
             
             <div className="cell-content">
@@ -155,15 +156,8 @@ export function EnglishNotebook({ value, appliedCode, onCellsChange }: EnglishNo
                   value={ex.userAnswer}
                   onChange={(e) => handleInputChange(idx, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(e, idx)}
-                  disabled={ex.isSubmitted}
                   autoFocus={idx === 0}
                 />
-                
-                {ex.isSubmitted && (
-                  <button className="cell-reset-btn" onClick={() => resetExercise(idx)}>
-                    <RotateCcw size={14} />
-                  </button>
-                )}
               </div>
 
               {ex.isSubmitted && (

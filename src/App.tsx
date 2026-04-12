@@ -94,6 +94,21 @@ function App() {
     if (language === "english") {
       const lastTopicId = localStorage.getItem(`topic_english`) ? JSON.parse(localStorage.getItem(`topic_english`)!).id : "1.1";
       const savedCode = localStorage.getItem(`code_english_${lastTopicId}`);
+      if (savedCode && ENGLISH_EXERCISES[lastTopicId]) {
+        try {
+          const saved = JSON.parse(savedCode);
+          if (Array.isArray(saved)) {
+            // Sync saved answers with potentially updated curriculum questions
+            const synced = ENGLISH_EXERCISES[lastTopicId].map(currEx => {
+              const savedEx = saved.find(s => s.id === currEx.id);
+              return savedEx ? { ...currEx, userAnswer: savedEx.userAnswer, isSubmitted: savedEx.isSubmitted, isCorrect: savedEx.isCorrect } : currEx;
+            });
+            return JSON.stringify(synced);
+          }
+        } catch (e) {
+          console.error("Failed to sync English exercises:", e);
+        }
+      }
       return savedCode || JSON.stringify(ENGLISH_EXERCISES[lastTopicId] || DEFAULT_ENGLISH_CODE);
     }
     const savedCode = localStorage.getItem(`code_${language}`);
@@ -110,6 +125,7 @@ function App() {
     return localStorage.getItem("jupyter_local_url") || "http://localhost:8888";
   });
   const [jupyterRefreshKey, setJupyterRefreshKey] = useState(0);
+  const [englishRefreshKey, setEnglishRefreshKey] = useState(0);
 
   useEffect(() => {
     localStorage.setItem("jupyter_mode", jupyterMode);
@@ -260,6 +276,19 @@ function App() {
   // Scroll Refs
   const mainChatScrollRef = useRef<HTMLDivElement>(null);
   const quickChatScrollRef = useRef<HTMLDivElement>(null);
+
+  // English Exercise Stats
+  const englishStats = useMemo(() => {
+    if (language !== "english") return null;
+    try {
+      const parsed = JSON.parse(code);
+      if (Array.isArray(parsed)) {
+        const correct = parsed.filter((ex: any) => ex.isSubmitted && ex.isCorrect).length;
+        return { correct, total: parsed.length };
+      }
+    } catch (e) {}
+    return null;
+  }, [code, language]);
 
   const scrollToLatestMessage = (ref: React.RefObject<HTMLDivElement | null>) => {
     // Wait for a tiny bit for render to finish
@@ -1403,6 +1432,18 @@ function App() {
     }
   };
 
+  const handleClearEnglishNotebook = () => {
+    if (!selectedTopic) return;
+    
+    // Reset to curriculum defaults
+    const freshData = ENGLISH_EXERCISES[selectedTopic.id] || [];
+    const json = JSON.stringify(freshData);
+    
+    setCode(json);
+    localStorage.setItem(`code_english_${selectedTopic.id}`, json);
+    setEnglishRefreshKey(prev => prev + 1); // Force notebook component to re-mount/re-initialize
+  };
+
   const handleTryAgain = (idx: number) => {
     const userMsg = messages[idx - 1];
     if (userMsg && userMsg.role === 'user') {
@@ -1918,9 +1959,23 @@ function App() {
     
     // Auto-load English exercises for this topic
     if (language === "english") {
-      const saved = localStorage.getItem(`code_english_${topic.id}`);
-      if (saved) {
-        setCode(saved);
+      const savedCode = localStorage.getItem(`code_english_${topic.id}`);
+      if (savedCode && ENGLISH_EXERCISES[topic.id]) {
+        try {
+          const saved = JSON.parse(savedCode);
+          if (Array.isArray(saved)) {
+            // Sync saved progress with updated curriculum questions
+            const synced = ENGLISH_EXERCISES[topic.id].map(currEx => {
+              const savedEx = saved.find(s => s.id === currEx.id);
+              return savedEx ? { ...currEx, userAnswer: savedEx.userAnswer, isSubmitted: savedEx.isSubmitted, isCorrect: savedEx.isCorrect } : currEx;
+            });
+            setCode(JSON.stringify(synced));
+          } else {
+            setCode(savedCode);
+          }
+        } catch (e) {
+          setCode(savedCode);
+        }
       } else if (ENGLISH_EXERCISES[topic.id]) {
         setCode(JSON.stringify(ENGLISH_EXERCISES[topic.id]));
       } else {
@@ -2692,8 +2747,13 @@ function App() {
                       <div className="panel-header">
                         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <span style={{ fontWeight: 600, fontSize: "0.85rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                            {language === "ml" ? "Notebook" : "Editor"}
+                            {language === "ml" ? "Notebook" : language === "english" ? "Exercise" : "Editor"}
                           </span>
+                          {englishStats && (
+                            <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600, marginLeft: 12 }}>
+                              {englishStats.correct} / {englishStats.total}
+                            </span>
+                          )}
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
@@ -2783,20 +2843,7 @@ function App() {
                             <>
                               <button
                                 className="tab-btn"
-                                onClick={handleExplain}
-                                title="Explain Sentences (Ctrl+Alt+C)"
-                                disabled={isExplaining || aiService === "web"}
-                                style={{
-                                  padding: "4px 8px",
-                                  opacity: aiService === "web" ? 0.5 : 1,
-                                  cursor: aiService === "web" ? "not-allowed" : "pointer",
-                                }}
-                              >
-                                {isExplaining ? <Sparkles size={14} className="animate-pulse" /> : <Sparkles size={14} />}
-                              </button>
-                              <button
-                                className="tab-btn"
-                                onClick={() => setCode("")}
+                                onClick={handleClearEnglishNotebook}
                                 title="Clear Notebook"
                                 style={{
                                   padding: "4px 8px",
@@ -2879,9 +2926,22 @@ function App() {
                         {isJupyterMode ? (
                           language === "english" ? (
                             <EnglishNotebook
+                              key={`${selectedTopic?.id || "english-default"}-${englishRefreshKey}`}
                               value={code}
                               appliedCode={appliedCode}
                               onCellsChange={(newCellsJson) => setCode(newCellsJson)}
+                              onExplain={(idx) => {
+                                try {
+                                  const parsed = JSON.parse(code);
+                                  if (Array.isArray(parsed) && parsed[idx]) {
+                                    const ex = parsed[idx];
+                                    const prompt = `Can you explain this English grammar exercise?\n\n**Question:** ${ex.question}\n**Target Answer:** ${ex.correctAnswer}\n\nPlease explain the rules involved and why this is the correct answer.`;
+                                    handleExplainWithContext(prompt, messages);
+                                  }
+                                } catch (e) {
+                                  handleExplain();
+                                }
+                              }}
                             />
                           ) : (
                             <Notebook

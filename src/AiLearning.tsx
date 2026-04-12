@@ -323,7 +323,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
       Structure your response as a JSON array inside a code block tagged with 'json'.
       Each object in the array MUST have:
       - "id": A unique string (e.g., "ex1", "ex2").
-      - "question": A Markdown string with the sentence and a blank (e.g., "I __________ (work) today.").
+      - "question": A Markdown string with the sentence and a blank, AND a hint in parentheses (e.g., "I __________ for my exams today. (study)"). DO NOT include manual numbering (like "1.") in the question text.
       - "correctAnswer": The correct string to fill the blank.
 
       Example output format:

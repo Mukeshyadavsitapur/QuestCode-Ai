@@ -1065,7 +1065,7 @@ details[open] summary::before {
 }
 
 /* English Notebook Styles */
-.english-notebook-container {
+.notebook-container {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -1135,6 +1135,46 @@ details[open] summary::before {
   color: var(--accent-text);
   min-width: 50px;
   padding-top: 4px;
+}
+
+.cell-input-label.correct {
+  color: #10b981;
+}
+
+.cell-input-label.incorrect {
+  color: #ef4444;
+}
+
+.cell-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  min-width: 50px;
+}
+
+.cell-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cell-explain-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.cell-explain-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--accent-color);
 }
 
 .cell-content {

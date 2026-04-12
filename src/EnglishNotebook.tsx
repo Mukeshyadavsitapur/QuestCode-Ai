@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import { Check, X, Play, CheckCircle2, XCircle, Sparkles } from "lucide-react";
+import { Play, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 
 interface EnglishExercise {
   id: string;

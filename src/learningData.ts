@@ -699,11 +699,10 @@ export const TOPICS_ML: TopicGroup[] = [
 
 export const TOPICS_ENGLISH: TopicGroup[] = [
     {
-        title: "1. Present continuous (I am doing)",
+        title: "1. Tenses",
         topics: [
-            { id: "1.1", title: "Wait, What is Present Continuous?" },
-            { id: "1.2", title: "The Simple Truth (Present Simple)" },
-            { id: "1.3", title: "Practice Questions" },
+            { id: "1.1", title: "The Simple Truth (Present Simple)" },
+            { id: "1.2", title: "Wait, What is Present Continuous?" },
         ],
     },
 ];

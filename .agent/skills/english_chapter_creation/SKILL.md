@@ -9,52 +9,50 @@ This skill documents the process for adding new English language modules to Ques
 
 ## 🌟 Enrichment Philosophy
 
-When explaining English grammar (Present Continuous, Past Simple, Tenses, etc.), follow these core principles:
+When explaining English grammar (Tenses, Articles, etc.), follow these core principles:
 
 1.  **Multi-Scene Visuals**: ALWAYS prefer a single 2 or 4-panel image over a single-scene illustration. This helps the student understand the concept in different contexts (e.g., "Right Now" vs. "Around Now").
-2.  **Abundance of Examples**: For every category or panel described, provide **at least 5 different examples**. This helps students move from seeing a pattern to actually understanding its application.
-3.  **Narrative-Driven Examples**: Use relatable characters or situations (e.g., "Sarah driving to work" or "Talking at a cafe") to make the grammar feel alive.
-3.  **The "Momentum" Rule**: Explain the *feeling* of a tense. For example, explain how **-ing** adds "momentum" or "motion" to a verb.
-4.  **Avoid Dry Copy-Pasting**: Do not simply transcribe textbook content. Rephrase it into a friendly, guided conversation.
-5.  **Stop & Practice**: End lessons with a "Challenge" that encourages the user to write their own sentences in the editor.
-
-## 🎨 Image Generation Strategies
-
-### 1. Panel-Based Illustrations
-Generate 4-panel educational graphics that cover different usage cases of a tense.
-*   **Prompt Pattern**: "Professional 4-panel educational illustration for [Topic]. Panel 1: [Scene 1]. Panel 2: [Scene 2]. Panel 3: [Scene 3]. Panel 4: [Scene 4]. Style: Clean, minimalist, modern flat design. Soft, harmonious colors."
-
-### 2. High-Frequency Icons
-Use icons and emojis (🇬🇧, ✨, 📱, 🛠️) strategically to make headings pop and tables easier to read.
+2.  **Abundance of Examples**: For every category or panel described, provide **at least 5 different examples**.
+3.  **Narrative-Driven Examples**: Use relatable characters or situations (e.g., "Sarah driving to work") to make the grammar feel alive.
+4.  **The "Momentum" Rule**: Explain the *feeling* of a tense. For example, explain how **-ing** adds "momentum" or "motion" to a verb.
+5.  **Stop & Practice**: Lessons are unified. The student reads theory and practices in the same view.
 
 ---
 
-## 📂 Asset & Data Management
+## 🎨 Interactive Notebook Standards
 
-### 1. Curriculum Content
-All English curriculum text is stored in `src/englishLearningData.ts`.
-*   Export a record with IDs matching those in `src/learningData.ts`.
-*   Use standard Markdown.
-*   Embed images using `![Alt Text](/src/assets/filename.png)`.
+The English track uses a cell-based notebook for exercises. New chapters MUST follow these UI standards:
 
-### 2. Topic Registration
-New topics must be registered in `src/learningData.ts` under the `TOPICS_ENGLISH` constant.
+1.  **High Exercise Volume**: Every chapter (topic) must have a **minimum of 35 exercises**.
+2.  **Grouped Questions**: Group similar exercises (5-8 questions) into clusters using `###` headers within a single exercise cell.
+3.  **No Row Labels**: The "In [idx]" labels have been removed. Question numbers (1., 2.) must be part of the exercise Markdown.
+4.  **Vertical Flow**: The **Explain** button (sparkles icon) is positioned vertically **below** the question text.
+5.  **Left Alignment**: All content must be left-aligned with question numbers positioned inside the cell boundaries.
 
-### 3. Visual Assets
-Store all generated images in `src/assets/`.
-*   Use descriptive filenames like `present_continuous_concept.png`.
-*   Avoid using absolute local paths in the final Markdown; use `/src/assets/filename.png`.
+---
 
-## 🛠️ Integrated Tools
+## 📂 Data Management & Integration
 
-*   **Explain Sentences**: The "Explain Code" button in the English track is labeled "Explain Sentences". Use this context when writing "Check" or "Challenge" instructions.
-*   **Editor Mode**: The editor for English is set to **Markdown** mode.
+### 1. Curriculum Structure
+Register topics in `src/learningData.ts` under the `TOPICS_ENGLISH` constant.
+-   **Group Strategy**: Use broad chapter titles (e.g., "1. Tenses").
+-   **Topic Strategy**: Each topic ID (e.g., "1.1") corresponds to both theory and a full exercise set.
 
-## 📝 Update Checklist
+### 2. Matching IDs
+-   **Theory**: Stored in `src/englishLearningData.ts` using the topic ID as the key.
+-   **Exercises**: Stored in `src/englishExercises.ts` using the **same** topic ID as the key. Selecting a topic automatically loads both.
 
-- [ ] Define the grammar concept and its "momentum/feeling."
-- [ ] Generate a 4-panel illustration representing different usage cases.
-- [ ] Move the generated image to `src/assets/`.
-- [ ] Draft the enriched chapter in `src/englishLearningData.ts` referencing the panels.
-- [ ] Register the new topic ID in `src/learningData.ts`.
-- [ ] Verify the "Explain Sentences" button and "Check Sentences" (Run) button titles are appropriate for the content.
+---
+
+## 📝 Integrated Tools
+-   **Explain Search**: The "Explain" button triggers a contextual AI breakdown of that specific exercise.
+-   **Check Answer**: `Shift + Enter` allows students to check their answer immediately.
+
+## 🏁 Update Checklist
+
+- [ ] Group exercises into a single broad chapter (e.g., "Tenses").
+- [ ] Ensure the chapter has **35+ total questions**.
+- [ ] Standardize question numbering inside each Markdown cell.
+- [ ] Map both theory and exercises to the same topic ID.
+- [ ] Verify the Explain button is properly spaced and vertically aligned.
+- [ ] Generate a multi-scene (2+ panel) concept image and save to `src/assets/`.

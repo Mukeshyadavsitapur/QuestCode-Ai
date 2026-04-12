@@ -1960,26 +1960,35 @@ function App() {
     // Auto-load English exercises for this topic
     if (language === "english") {
       const savedCode = localStorage.getItem(`code_english_${topic.id}`);
-      if (savedCode && ENGLISH_EXERCISES[topic.id]) {
+      let isSavedValid = false;
+      
+      if (savedCode) {
         try {
-          const saved = JSON.parse(savedCode);
-          if (Array.isArray(saved)) {
+          const parsed = JSON.parse(savedCode);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            isSavedValid = true;
             // Sync saved progress with updated curriculum questions
-            const synced = ENGLISH_EXERCISES[topic.id].map(currEx => {
-              const savedEx = saved.find(s => s.id === currEx.id);
-              return savedEx ? { ...currEx, userAnswer: savedEx.userAnswer, isSubmitted: savedEx.isSubmitted, isCorrect: savedEx.isCorrect } : currEx;
-            });
-            setCode(JSON.stringify(synced));
-          } else {
-            setCode(savedCode);
+            if (ENGLISH_EXERCISES[topic.id]) {
+              const synced = ENGLISH_EXERCISES[topic.id].map(currEx => {
+                const savedEx = parsed.find((s: any) => s.id === currEx.id);
+                return savedEx ? { ...currEx, userAnswer: savedEx.userAnswer, isSubmitted: savedEx.isSubmitted, isCorrect: savedEx.isCorrect } : currEx;
+              });
+              setCode(JSON.stringify(synced));
+            } else {
+              setCode(savedCode);
+            }
           }
         } catch (e) {
-          setCode(savedCode);
+          isSavedValid = false;
         }
-      } else if (ENGLISH_EXERCISES[topic.id]) {
-        setCode(JSON.stringify(ENGLISH_EXERCISES[topic.id]));
-      } else {
-        setCode(DEFAULT_ENGLISH_CODE);
+      }
+
+      if (!isSavedValid) {
+        if (ENGLISH_EXERCISES[topic.id]) {
+          setCode(JSON.stringify(ENGLISH_EXERCISES[topic.id]));
+        } else {
+          setCode(DEFAULT_ENGLISH_CODE);
+        }
       }
     }
 

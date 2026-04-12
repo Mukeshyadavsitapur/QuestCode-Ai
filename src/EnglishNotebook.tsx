@@ -127,25 +127,20 @@ export function EnglishNotebook({ value, appliedCode, onCellsChange, onExplain }
             className={`exercise-cell ${activeCellIdx === idx ? 'active' : ''} ${ex.isSubmitted ? 'submitted' : ''}`}
             onClick={() => setActiveCellIdx(idx)}
           >
-            <div className="cell-header">
-              <button 
-                className="cell-explain-btn" 
-                onClick={(e) => { e.stopPropagation(); onExplain?.(idx); }}
-                title="Explain this question"
-              >
-                <Sparkles size={14} />
-              </button>
-              <div className={`cell-input-label ${ex.isSubmitted ? (ex.isCorrect ? 'correct' : 'incorrect') : ''}`}>
-                In [{ex.isSubmitted ? (
-                  ex.isCorrect ? <Check size={16} strokeWidth={3} style={{ display: 'inline', verticalAlign: 'middle', marginTop: '-2px' }} /> 
-                              : <X size={16} strokeWidth={3} style={{ display: 'inline', verticalAlign: 'middle', marginTop: '-2px' }} />
-                ) : idx + 1}]:
-              </div>
-            </div>
-            
             <div className="cell-content">
               <div className="cell-question">
                  <ReactMarkdown>{ex.question}</ReactMarkdown>
+              </div>
+
+              <div className="cell-actions-row">
+                <button 
+                  className="cell-explain-btn" 
+                  onClick={(e) => { e.stopPropagation(); onExplain?.(idx); }}
+                  title="Explain this question"
+                >
+                  <Sparkles size={14} />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 500 }}>Explain</span>
+                </button>
               </div>
               
               <div className="cell-input-wrapper">

@@ -1110,7 +1110,7 @@ details[open] summary::before {
 
 .exercise-cell {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   padding: 16px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
@@ -1145,18 +1145,11 @@ details[open] summary::before {
   color: #ef4444;
 }
 
-.cell-header {
+.cell-actions-row {
   display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 8px;
-  min-width: 50px;
-}
-
-.cell-actions {
-  display: flex;
-  gap: 8px;
+  gap: 12px;
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 .cell-explain-btn {
@@ -1164,12 +1157,14 @@ details[open] summary::before {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   transition: all 0.2s ease;
+  border: 1px solid var(--border-color);
 }
 
 .cell-explain-btn:hover {
@@ -1188,6 +1183,16 @@ details[open] summary::before {
   margin: 0;
   font-size: 1rem;
   line-height: 1.6;
+}
+
+.cell-question ol, .cell-question ul {
+  list-style-position: inside;
+  padding-left: 0;
+  margin: 0;
+}
+
+.cell-question li {
+  margin-bottom: 0.5rem;
 }
 
 .cell-input-wrapper {

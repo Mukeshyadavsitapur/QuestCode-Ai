@@ -69,6 +69,12 @@ Always use standard bolding or code blocks for formulas. Ensure there is a blank
 **J(w, b) = 1/2m * Σ(f(x) - y)²**
 ```
 
+### 4. Exercise Notebook Lists
+When writing exercises for the English Notebook (in `englishExercises.ts`), ensure that question numbers (1., 2.) render correctly inside the cell.
+-   **Rule**: Lists must use `list-style-position: inside` (already handled in `App.css`).
+-   **Rule**: Always include the question number as part of the Markdown text (e.g., `1. Tanya **__________** German.`).
+-   **Rule**: If a single exercise cell contains a sub-set of questions, use `###` headers to distinguish the groups (e.g., `### 1.1 Match verbs`).
+
 ## ⚠️ Critical Rules
 1. **No Raw HTML**: Never include `<details>`, `<div>`, `<span>`, or `<table>` within the strings in `mlLearningData.ts` or `pythonLearningData.ts`.
 2. **Standard Formatting**: Stick to pure Markdown. If you need a special box, use the blockquote alert system (`> [!TIP]`).

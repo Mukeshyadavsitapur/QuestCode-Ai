@@ -318,7 +318,23 @@ Answer the user's question in the context of this topic. Be concise and helpful.
 
       Use clean Markdown formatting. Use code blocks for all code.`;
             } else if (currentTopic.title === "Practice Questions") {
-                prompt = `Generate 10 beginner-friendly practice questions and exercises for the topic: "${groupTitle || "General Practice"}" in ${language}.
+                if (language === "english") {
+                    prompt = `Generate 5 interactive grammar exercises for the topic: "${groupTitle || "General Practice"}".
+      Structure your response as a JSON array inside a code block tagged with 'json'.
+      Each object in the array MUST have:
+      - "id": A unique string (e.g., "ex1", "ex2").
+      - "question": A Markdown string with the sentence and a blank (e.g., "I __________ (work) today.").
+      - "correctAnswer": The correct string to fill the blank.
+
+      Example output format:
+      \`\`\`json
+      [
+        { "id": "pc1", "question": "I __________ (is/am/are) learning English.", "correctAnswer": "am" }
+      ]
+      \`\`\`
+      Ensure the exercises are relevant to the current unit.`;
+                } else {
+                    prompt = `Generate 10 beginner-friendly practice questions and exercises for the topic: "${groupTitle || "General Practice"}" in ${language}.
       Act as a friendly, expert tutor.
 
       Structure your response as follows:
@@ -329,6 +345,7 @@ Answer the user's question in the context of this topic. Be concise and helpful.
           -   **Solution**: A collapsible or clear code block with the solution and brief explanation.
 
       Ensure the questions range from easy to medium difficulty. Use clean Markdown formatting.`;
+                }
             } else if (language === "html" || language === "css" || language === "javascript") {
                 prompt = `Explain the topic '${currentTopic.title}' for a beginner learning ${language.toUpperCase()}.
         Act as a friendly, expert web development tutor.

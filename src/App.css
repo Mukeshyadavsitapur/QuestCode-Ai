@@ -1063,3 +1063,184 @@ details[open] summary::before {
   color: var(--text-primary);
   padding: 8px;
 }
+
+/* English Notebook Styles */
+.english-notebook-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--code-bg);
+  color: var(--text-main);
+  overflow: hidden;
+}
+
+.notebook-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--code-header-bg);
+}
+
+.notebook-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.notebook-stats {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.notebook-cells {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.exercise-cell {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--panel-bg);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.exercise-cell.active {
+  border-color: var(--accent-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.exercise-cell.submitted {
+  background: rgba(var(--accent-color-rgb), 0.02);
+}
+
+.cell-input-label {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-text);
+  min-width: 50px;
+  padding-top: 4px;
+}
+
+.cell-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cell-question p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.cell-input-wrapper {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.cell-input {
+  flex: 1;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: var(--text-main);
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.cell-input:focus {
+  border-color: var(--accent-color);
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.cell-input.correct {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.cell-input.incorrect {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.cell-reset-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.cell-reset-btn:hover {
+  background: var(--highlight);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.cell-result {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  align-items: center;
+}
+
+.cell-result.correct {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.cell-result.incorrect {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.cell-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.cell-hint code {
+  background: var(--bg-tertiary);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+.english-notebook-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 40px;
+}

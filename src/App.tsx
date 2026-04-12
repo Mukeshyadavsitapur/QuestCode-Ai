@@ -10,6 +10,7 @@ import {
 } from "react-resizable-panels";
 import Editor, { loader } from "@monaco-editor/react";
 import { Notebook } from "./Notebook";
+import { EnglishNotebook } from "./EnglishNotebook";
 import { Rnd } from "react-rnd";
 import {
   Send, Sparkles, Settings, Book, MessageSquare, Copy, Globe, Bot, Terminal as TerminalIcon, Layout, Menu, Plus,
@@ -34,6 +35,7 @@ import { themes } from "./themes";
 import { Terminal } from "./Terminal"; // Import Terminal
 import { AiLearning, AiLearningHandle } from "./AiLearning";
 import { TOPICS_RUST, TOPICS_PYTHON, TOPICS_DSA, TOPICS_HTML, TOPICS_CSS, TOPICS_JS, TOPICS_ML, TOPICS_ENGLISH, Topic } from "./learningData";
+import { ENGLISH_EXERCISES } from "./englishExercises";
 import Quiz from "./Quiz";
 import "./App.css";
 import {
@@ -89,11 +91,16 @@ function App() {
 
   // Initialize code from localStorage based on valid language
   const [code, setCode] = useState(() => {
+    if (language === "english") {
+      const lastTopicId = localStorage.getItem(`topic_english`) ? JSON.parse(localStorage.getItem(`topic_english`)!).id : "1.1";
+      const savedCode = localStorage.getItem(`code_english_${lastTopicId}`);
+      return savedCode || JSON.stringify(ENGLISH_EXERCISES[lastTopicId] || DEFAULT_ENGLISH_CODE);
+    }
     const savedCode = localStorage.getItem(`code_${language}`);
     return savedCode || getDefaultCode(language);
   });
   
-  const isJupyterMode = language === "ml";
+  const isJupyterMode = language === "ml" || language === "english";
   
   // Jupyter Notebook State
   const [jupyterMode, setJupyterMode] = useState<"lite" | "local">(() => {
@@ -275,8 +282,12 @@ function App() {
 
   // Persist Code per Language
   useEffect(() => {
-    localStorage.setItem(`code_${language}`, code);
-  }, [code, language]);
+    if (language === "english" && selectedTopic) {
+      localStorage.setItem(`code_english_${selectedTopic.id}`, code);
+    } else {
+      localStorage.setItem(`code_${language}`, code);
+    }
+  }, [code, language, selectedTopic]);
 
   // Persist Topic per Language
   useEffect(() => {
@@ -1904,6 +1915,19 @@ function App() {
   const handleSelectTopic = (topic: Topic, groupTitle: string) => {
     setSelectedTopic(topic);
     setSelectedGroup(groupTitle);
+    
+    // Auto-load English exercises for this topic
+    if (language === "english") {
+      const saved = localStorage.getItem(`code_english_${topic.id}`);
+      if (saved) {
+        setCode(saved);
+      } else if (ENGLISH_EXERCISES[topic.id]) {
+        setCode(JSON.stringify(ENGLISH_EXERCISES[topic.id]));
+      } else {
+        setCode(DEFAULT_ENGLISH_CODE);
+      }
+    }
+
     setExpandedGroups(prev => {
       const next = new Set(prev);
       next.add(groupTitle);
@@ -2693,7 +2717,7 @@ function App() {
                             {isAiAssistantVisible ? <PanelLeft size={14} /> : <PanelLeftClose size={14} />}
                           </button>
                           
-                          {isJupyterMode ? (
+                          {language === "ml" ? (
                             <>
                               <div style={{ display: "flex", background: "var(--bg-secondary)", borderRadius: "6px", overflow: "hidden", border: "1px solid var(--border-color)" }}>
                                 <button 
@@ -2755,12 +2779,38 @@ function App() {
                                   <span className="mobile-hidden" style={{ marginRight: 6 }}>Open Externally</span> <ExternalLink size={14} />
                               </a>
                             </>
+                          ) : language === "english" ? (
+                            <>
+                              <button
+                                className="tab-btn"
+                                onClick={handleExplain}
+                                title="Explain Sentences (Ctrl+Alt+C)"
+                                disabled={isExplaining || aiService === "web"}
+                                style={{
+                                  padding: "4px 8px",
+                                  opacity: aiService === "web" ? 0.5 : 1,
+                                  cursor: aiService === "web" ? "not-allowed" : "pointer",
+                                }}
+                              >
+                                {isExplaining ? <Sparkles size={14} className="animate-pulse" /> : <Sparkles size={14} />}
+                              </button>
+                              <button
+                                className="tab-btn"
+                                onClick={() => setCode("")}
+                                title="Clear Notebook"
+                                style={{
+                                  padding: "4px 8px",
+                                }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
                           ) : (
                             <>
                               <button
                                 className="tab-btn"
                                 onClick={handleExplain}
-                                title={language === "english" ? "Explain Sentences (Ctrl+Alt+C)" : "Explain Code (Ctrl+Alt+C)"}
+                                title="Explain Code (Ctrl+Alt+C)"
                                 disabled={isExplaining || aiService === "web"}
                                 style={{
                                   padding: "4px 8px",
@@ -2773,7 +2823,7 @@ function App() {
                               <button
                                 className={`tab-btn ${isRunning ? "active" : ""}`}
                                 onClick={handleRunCode}
-                                title={isRunning ? "Stop" : (language === "html" || language === "css") ? "Preview" : language === "english" ? "Check Sentences (Experimental)" : "Run Code (F5 / Ctrl+Enter)"}
+                                title={isRunning ? "Stop" : (language === "html" || language === "css") ? "Preview" : "Run Code (F5 / Ctrl+Enter)"}
                                 style={{
                                   padding: "4px 8px",
                                   color: isRunning ? "#ef4444" : undefined,
@@ -2783,8 +2833,6 @@ function App() {
                                   <Square size={14} fill="currentColor" />
                                 ) : (language === "html" || language === "css") ? (
                                   <Globe size={14} />
-                                ) : language === "english" ? (
-                                  <Sparkles size={14} />
                                 ) : (
                                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                                 )}
@@ -2829,19 +2877,27 @@ function App() {
                       </div>
                       <div className="editor-container" style={{ flex: 1, position: "relative", display: "flex", flexDirection: "column", overflow: "hidden" }}>
                         {isJupyterMode ? (
-                          <Notebook
-                            theme={theme}
-                            mode={jupyterMode}
-                            localUrl={jupyterLocalUrl}
-                            refreshKey={jupyterRefreshKey}
-                            appliedCode={appliedCode}
-                            onClearApplied={() => setAppliedCode(null)}
-                            onCellsChange={(newCellsJson) => setCode(newCellsJson)}
-                          />
+                          language === "english" ? (
+                            <EnglishNotebook
+                              value={code}
+                              appliedCode={appliedCode}
+                              onCellsChange={(newCellsJson) => setCode(newCellsJson)}
+                            />
+                          ) : (
+                            <Notebook
+                              theme={theme}
+                              mode={jupyterMode}
+                              localUrl={jupyterLocalUrl}
+                              refreshKey={jupyterRefreshKey}
+                              appliedCode={appliedCode}
+                              onClearApplied={() => setAppliedCode(null)}
+                              onCellsChange={(newCellsJson) => setCode(newCellsJson)}
+                            />
+                          )
                         ) : (
                           <Editor
                             height="100%"
-                            language={language === "dsa" ? "python" : (language === "english" ? "markdown" : language)}
+                            language={language === "dsa" ? "python" : language}
                             theme={theme}
                             value={code}
                             onChange={(value) => setCode(value || "")}
